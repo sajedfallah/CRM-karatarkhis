@@ -1,0 +1,48 @@
+# Secrets
+.env
+.env.*
+!.env.example
+credentials.json
+service-account*.json
+*secret*.json
+*secrets*.json
+*.pem
+*.key
+
+# Apps Script / clasp local state
+.clasp.json
+.claspignore.local
+
+# Customer and operational exports
+exports/
+backups/
+data/
+customer-data/
+customer-documents/
+*.csv
+*.xlsx
+*.xls
+*.zip
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Node / tooling
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.swp
+*.log
+
+# Local screenshots / captures that may contain sensitive data
+screenshots/private/
+captures/
