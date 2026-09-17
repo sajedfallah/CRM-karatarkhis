@@ -5,7 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from app.api.deps import CurrentUser, DbSession
-from app.models.core import AuditLog, Customer, User
+from app.models.core import AuditLog, Customer, Permission, User
 from app.schemas.admin import (
     AdminCustomerCreate,
     AdminCustomerUpdate,
@@ -45,6 +45,24 @@ def _customer_dict(customer: Customer) -> dict:
     }
 
 
+def _employee_permission(employee: User) -> Permission:
+    return Permission(
+        id=f"PERM-{uuid4().hex[:16].upper()}",
+        user_id=employee.id,
+        role="internal_employee",
+        scope_type="ASSIGNED",
+        scope_id="OWN_ASSIGNMENTS",
+        profile=employee.permission_profile,
+        can_view=True,
+        can_create=True,
+        can_edit=True,
+        can_assign=False,
+        can_approve_documents=False,
+        can_finance=False,
+        is_active=employee.is_active,
+    )
+
+
 @router.get("/employees")
 def list_employees(db: DbSession, current_user: CurrentUser) -> list[dict]:
     _require_admin(current_user)
@@ -70,6 +88,8 @@ def create_employee(payload: AdminEmployeeCreate, db: DbSession, current_user: C
         is_active=True,
     )
     db.add(employee)
+    db.flush()
+    db.add(_employee_permission(employee))
     db.add(AuditLog(actor_user_id=current_user.id, entity_type="user", entity_id=employee.id, action="create_employee", source="api"))
     try:
         db.commit()
@@ -89,6 +109,12 @@ def update_employee(user_id: str, payload: AdminEmployeeUpdate, db: DbSession, c
     changes = payload.model_dump(exclude_unset=True)
     for key, value in changes.items():
         setattr(employee, key, value.strip() if isinstance(value, str) else value)
+    permission = db.scalar(select(Permission).where(Permission.user_id == employee.id, Permission.role == "internal_employee"))
+    if permission is None:
+        db.add(_employee_permission(employee))
+    else:
+        permission.profile = employee.permission_profile
+        permission.is_active = employee.is_active
     db.add(AuditLog(actor_user_id=current_user.id, entity_type="user", entity_id=employee.id, action="update_employee", source="api"))
     try:
         db.commit()
