@@ -48,6 +48,30 @@ class AuthorizationService:
     def require_create_task(self, user: User, customer_id: str | None) -> None:
         self._require_create_for_customer(user, customer_id)
 
+    def require_customer_action(self, user: User, customer_id: str, action: Action) -> None:
+        if not user.is_active:
+            raise AuthorizationDenied("inactive_user")
+        if user.role == "admin":
+            return
+        if user.role in {"customer_manager", "customer_employee"}:
+            if not user.customer_id or user.customer_id != customer_id:
+                raise AuthorizationDenied("customer_boundary_violation")
+
+        matching = [
+            p for p in self._active_permissions(user)
+            if getattr(p, _PERMISSION_FIELD[action]) and p.scope_type in {"GLOBAL", "CUSTOMER", "ASSIGNED"}
+        ]
+        if not matching:
+            raise AuthorizationDenied(f"action_not_allowed:{action.value}")
+
+        if any(p.scope_type in {"GLOBAL", "CUSTOMER"} for p in matching):
+            return
+
+        if action in {Action.VIEW, Action.EDIT, Action.APPROVE_DOCUMENTS}:
+            if self._has_any_active_assignment_for_customer(user.id, customer_id):
+                return
+        raise AuthorizationDenied(f"action_not_allowed:{action.value}")
+
     def _require_create_for_customer(self, user: User, customer_id: str | None) -> None:
         if not user.is_active:
             raise AuthorizationDenied("inactive_user")
@@ -137,5 +161,17 @@ class AuthorizationService:
             CaseAssignment.user_id == user_id,
             CaseAssignment.case_id == case_id,
             CaseAssignment.is_active.is_(True),
+        )
+        return self.db.scalar(statement) is not None
+
+    def _has_any_active_assignment_for_customer(self, user_id: str, customer_id: str) -> bool:
+        statement = (
+            select(CaseAssignment.id)
+            .join(Case, Case.id == CaseAssignment.case_id)
+            .where(
+                CaseAssignment.user_id == user_id,
+                CaseAssignment.is_active.is_(True),
+                Case.customer_id == customer_id,
+            )
         )
         return self.db.scalar(statement) is not None
