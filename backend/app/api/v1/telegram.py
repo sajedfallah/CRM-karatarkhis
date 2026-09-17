@@ -31,19 +31,19 @@ def _admin_menu() -> dict:
         "inline_keyboard": [
             [
                 {"text": "👥 کارمندان", "callback_data": "admin:employees:list"},
-                {"text": "➕ کارمند", "callback_data": "admin:employees:add"},
+                {"text": "➕ ثبت کارمند", "callback_data": "admin:employees:add"},
             ],
             [
-                {"text": "✏️ کارمند", "callback_data": "admin:employees:edit"},
-                {"text": "🗑 کارمند", "callback_data": "admin:employees:delete"},
+                {"text": "✏️ اصلاح کارمند", "callback_data": "admin:employees:edit"},
+                {"text": "🗑 حذف کارمند", "callback_data": "admin:employees:delete"},
             ],
             [
                 {"text": "🏢 مشتریان", "callback_data": "admin:customers:list"},
-                {"text": "➕ مشتری", "callback_data": "admin:customers:add"},
+                {"text": "➕ ثبت مشتری", "callback_data": "admin:customers:add"},
             ],
             [
-                {"text": "✏️ مشتری", "callback_data": "admin:customers:edit"},
-                {"text": "🗑 مشتری", "callback_data": "admin:customers:delete"},
+                {"text": "✏️ اصلاح مشتری", "callback_data": "admin:customers:edit"},
+                {"text": "🗑 حذف مشتری", "callback_data": "admin:customers:delete"},
             ],
         ]
     }
@@ -154,8 +154,15 @@ def telegram_webhook(
 
         if action == "admin:employees:list":
             rows = list_employees(db, admin)
-            text = "👥 کارمندان\n" + ("\n".join(f"{r['id']} | {r['full_name']} | {r['telegram_user_id']} | {'فعال' if r['is_active'] else 'غیرفعال'}" for r in rows) if rows else "هیچ کارمندی ثبت نشده است.")
-            bot.send_message(chat_id, text)
+            text = "👥 کارمندان\n" + (
+                "\n".join(
+                    f"{r['id']} | {r['full_name']} | {r['telegram_user_id']} | {'فعال' if r['is_active'] else 'غیرفعال'}"
+                    for r in rows
+                )
+                if rows
+                else "هیچ کارمندی ثبت نشده است."
+            )
+            bot.send_message(chat_id, text, reply_markup=_admin_menu())
         elif action == "admin:employees:add":
             bot.send_message(chat_id, "[ADD_EMPLOYEE]\nنام | Telegram ID", reply_markup=_force_reply())
         elif action == "admin:employees:edit":
@@ -164,8 +171,12 @@ def telegram_webhook(
             bot.send_message(chat_id, "[DELETE_EMPLOYEE]\nUser ID", reply_markup=_force_reply())
         elif action == "admin:customers:list":
             rows = list_customers(db, admin)
-            text = "🏢 مشتریان\n" + ("\n".join(f"{r['id']} | {r['name']} | {'فعال' if r['is_active'] else 'غیرفعال'}" for r in rows) if rows else "هیچ مشتری ثبت نشده است.")
-            bot.send_message(chat_id, text)
+            text = "🏢 مشتریان\n" + (
+                "\n".join(f"{r['id']} | {r['name']} | {'فعال' if r['is_active'] else 'غیرفعال'}" for r in rows)
+                if rows
+                else "هیچ مشتری ثبت نشده است."
+            )
+            bot.send_message(chat_id, text, reply_markup=_admin_menu())
         elif action == "admin:customers:add":
             bot.send_message(chat_id, "[ADD_CUSTOMER]\nنام مشتری", reply_markup=_force_reply())
         elif action == "admin:customers:edit":
@@ -182,8 +193,12 @@ def telegram_webhook(
         chat_id = message.get("chat", {}).get("id")
         text = (message.get("text") or "").strip()
 
-        if text in {"/admin", "مدیریت", "پنل مدیریت"}:
-            bot.send_message(chat_id, "پنل مدیریت CRM", reply_markup=_admin_menu())
+        if text in {"/start", "/admin", "مدیریت", "پنل مدیریت", "کارمندان"}:
+            bot.send_message(
+                chat_id,
+                "پنل مدیریت کاراترخیص\nثبت، اصلاح و حذف کارمند و مشتری از همین منو انجام می‌شود.",
+                reply_markup=_admin_menu(),
+            )
             return {"ok": True}
 
         reply_to = message.get("reply_to_message") or {}
