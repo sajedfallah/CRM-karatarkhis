@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 
 from app.integrations.google_sheets import GoogleSheetsClient
-from app.models.core import Case
+from app.models.core import AuditLog, Case
 
 
 CASE_SHEET = "پرونده‌ها"
@@ -35,7 +35,7 @@ class CaseSheetSyncService:
 
     It refuses rows without immutable Case ID and Customer ID. The DB remains
     authoritative once a row has been imported. Bidirectional field mutation is
-    deliberately not enabled until conflict policy and audit writes are complete.
+    deliberately not enabled until conflict policy is complete.
     """
 
     def __init__(self, db: Session, sheets: GoogleSheetsClient, spreadsheet_id: str):
@@ -46,39 +46,62 @@ class CaseSheetSyncService:
     def import_new_cases(self) -> SyncResult:
         rows = self.sheets.read_values(self.spreadsheet_id, f"{CASE_SHEET}!A2:AF1000")
         result = SyncResult()
-        for offset, row in enumerate(rows, start=2):
-            result.scanned += 1
-            case_id = self._value(row, "Case ID")
-            customer_id = self._value(row, "Customer ID")
-            if not case_id or not customer_id:
-                result.skipped += 1
-                continue
+        imported_rows: list[tuple[int, str]] = []
 
-            existing = self.db.get(Case, str(case_id))
-            if existing is not None:
-                result.skipped += 1
-                continue
+        try:
+            for offset, row in enumerate(rows, start=2):
+                result.scanned += 1
+                case_id = self._value(row, "Case ID")
+                customer_id = self._value(row, "Customer ID")
+                if not case_id or not customer_id:
+                    result.skipped += 1
+                    continue
 
-            case = Case(
-                id=str(case_id),
-                customer_id=str(customer_id),
-                real_case_number=self._optional(row, "شماره پرونده واقعی"),
-                operation_type=str(self._value(row, "نوع عملیات") or ""),
-                customs=str(self._value(row, "گمرک") or ""),
-                status=str(self._value(row, "وضعیت") or "پیش‌نویس"),
-            )
-            self.db.add(case)
-            self.db.flush()
+                case_id_text = str(case_id)
+                if self.db.get(Case, case_id_text) is not None:
+                    result.skipped += 1
+                    continue
 
-            now = datetime.now(timezone.utc).isoformat()
+                case = Case(
+                    id=case_id_text,
+                    customer_id=str(customer_id),
+                    real_case_number=self._optional(row, "شماره پرونده واقعی"),
+                    operation_type=str(self._value(row, "نوع عملیات") or ""),
+                    customs=str(self._value(row, "گمرک") or ""),
+                    status=str(self._value(row, "وضعیت") or "پیش‌نویس"),
+                )
+                self.db.add(case)
+                self.db.add(
+                    AuditLog(
+                        actor_user_id=None,
+                        entity_type="case",
+                        entity_id=case_id_text,
+                        action="imported",
+                        field_name=None,
+                        old_value=None,
+                        new_value=None,
+                        source="SHEET_SYNC",
+                    )
+                )
+                imported_rows.append((offset, case_id_text))
+                result.imported += 1
+
+            # Commit the database first. Sheet metadata is written only after the
+            # authoritative DB transaction succeeds, preventing false "synced"
+            # markers when a database commit fails.
+            self.db.commit()
+        except Exception:
+            self.db.rollback()
+            raise
+
+        sync_timestamp = datetime.now(timezone.utc).isoformat()
+        for row_number, _case_id in imported_rows:
             self.sheets.update_values(
                 self.spreadsheet_id,
-                f"{CASE_SHEET}!AD{offset}:AF{offset}",
-                [[1, "SHEET_IMPORT", now]],
+                f"{CASE_SHEET}!AD{row_number}:AF{row_number}",
+                [[1, "SHEET_IMPORT", sync_timestamp]],
             )
-            result.imported += 1
 
-        self.db.commit()
         return result
 
     @staticmethod
