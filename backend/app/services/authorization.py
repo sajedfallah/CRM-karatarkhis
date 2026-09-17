@@ -91,7 +91,12 @@ class AuthorizationService:
     def _active_permissions(self, user: User) -> list[Permission]:
         statement = select(Permission).where(
             Permission.is_active.is_(True),
-            (Permission.user_id == user.id) | ((Permission.user_id.is_(None)) & (Permission.role == user.role)),
+            (Permission.user_id == user.id)
+            | (
+                (Permission.user_id.is_(None))
+                & (Permission.role == user.role)
+                & (Permission.profile == user.permission_profile)
+            ),
         )
         return list(self.db.scalars(statement))
 
