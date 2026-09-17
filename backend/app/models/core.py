@@ -20,6 +20,9 @@ class Customer(Base):
     id: Mapped[str] = mapped_column(String(32), primary_key=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    drive_folder_id: Mapped[str | None] = mapped_column(String(128), unique=True)
+    drive_provisioning_status: Mapped[str] = mapped_column(String(32), nullable=False, default="pending")
+    drive_provisioning_error: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
@@ -56,6 +59,9 @@ class Case(Base):
     sync_source: Mapped[str | None] = mapped_column(String(32))
     sync_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_by: Mapped[str | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    drive_folder_id: Mapped[str | None] = mapped_column(String(128), unique=True)
+    drive_provisioning_status: Mapped[str] = mapped_column(String(32), nullable=False, default="pending")
+    drive_provisioning_error: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
