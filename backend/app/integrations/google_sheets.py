@@ -61,3 +61,69 @@ class GoogleSheetsClient:
             valueInputOption="RAW",
             body={"values": values},
         ).execute()
+
+    def append_values(self, spreadsheet_id: str, range_name: str, values: list[list[object]]) -> None:
+        self.service.spreadsheets().values().append(
+            spreadsheetId=spreadsheet_id,
+            range=range_name,
+            valueInputOption="RAW",
+            insertDataOption="INSERT_ROWS",
+            body={"values": values},
+        ).execute()
+
+    def clear_values(self, spreadsheet_id: str, range_name: str) -> None:
+        self.service.spreadsheets().values().clear(
+            spreadsheetId=spreadsheet_id,
+            range=range_name,
+            body={},
+        ).execute()
+
+    def find_row_by_first_column(
+        self,
+        spreadsheet_id: str,
+        sheet_name: str,
+        record_id: str,
+        *,
+        start_row: int = 2,
+        end_row: int = 5000,
+    ) -> int | None:
+        values = self.read_values(spreadsheet_id, f"'{sheet_name}'!A{start_row}:A{end_row}")
+        for offset, row in enumerate(values):
+            if row and str(row[0]).strip() == record_id:
+                return start_row + offset
+        return None
+
+    def upsert_row_by_first_column(
+        self,
+        spreadsheet_id: str,
+        sheet_name: str,
+        record_id: str,
+        row_values: list[object],
+        *,
+        end_column: str,
+        start_row: int = 2,
+    ) -> int:
+        row_number = self.find_row_by_first_column(
+            spreadsheet_id,
+            sheet_name,
+            record_id,
+            start_row=start_row,
+        )
+        if row_number is None:
+            existing = self.read_values(spreadsheet_id, f"'{sheet_name}'!A{start_row}:A5000")
+            row_number = start_row + len(existing)
+            while row_number > start_row and existing and existing[-1] == []:
+                existing.pop()
+                row_number -= 1
+            self.update_values(
+                spreadsheet_id,
+                f"'{sheet_name}'!A{row_number}:{end_column}{row_number}",
+                [row_values],
+            )
+        else:
+            self.update_values(
+                spreadsheet_id,
+                f"'{sheet_name}'!A{row_number}:{end_column}{row_number}",
+                [row_values],
+            )
+        return row_number
