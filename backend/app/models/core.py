@@ -1,7 +1,7 @@
 import enum
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, func
+from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -17,7 +17,7 @@ class UserRole(str, enum.Enum):
 class Customer(Base):
     __tablename__ = "customers"
 
-    id: Mapped[str] = mapped_column(String(32), primary_key=True)  # CUS-...
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
@@ -27,7 +27,7 @@ class Customer(Base):
 class User(Base):
     __tablename__ = "users"
 
-    id: Mapped[str] = mapped_column(String(64), primary_key=True)  # immutable User ID
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
     full_name: Mapped[str] = mapped_column(String(255), nullable=False)
     mobile: Mapped[str | None] = mapped_column(String(32))
     email: Mapped[str | None] = mapped_column(String(320), unique=True)
@@ -46,7 +46,7 @@ class User(Base):
 class Case(Base):
     __tablename__ = "cases"
 
-    id: Mapped[str] = mapped_column(String(64), primary_key=True)  # immutable Case ID
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
     customer_id: Mapped[str] = mapped_column(ForeignKey("customers.id", ondelete="RESTRICT"), nullable=False, index=True)
     real_case_number: Mapped[str | None] = mapped_column(String(128), index=True)
     operation_type: Mapped[str] = mapped_column(String(32), nullable=False)
@@ -92,6 +92,40 @@ class Permission(Base):
     can_approve_documents: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     can_finance: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+
+class Task(Base):
+    __tablename__ = "tasks"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    relation_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    related_id: Mapped[str | None] = mapped_column(String(64))
+    customer_id: Mapped[str | None] = mapped_column(ForeignKey("customers.id", ondelete="RESTRICT"), index=True)
+    case_id: Mapped[str | None] = mapped_column(ForeignKey("cases.id", ondelete="CASCADE"), index=True)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    category: Mapped[str | None] = mapped_column(String(64))
+    created_by: Mapped[str | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    assignee_user_id: Mapped[str | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), index=True)
+    priority: Mapped[str] = mapped_column(String(32), nullable=False, default="عادی", index=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="جدید", index=True)
+    due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
+    needs_manager: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    result: Mapped[str | None] = mapped_column(Text)
+    next_action: Mapped[str | None] = mapped_column(Text)
+    notes: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+
+class TaskMessage(Base):
+    __tablename__ = "task_messages"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    task_id: Mapped[str] = mapped_column(ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False, index=True)
+    sender_user_id: Mapped[str | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    source: Mapped[str] = mapped_column(String(32), nullable=False, default="api")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False, index=True)
 
 
 class AuditLog(Base):
