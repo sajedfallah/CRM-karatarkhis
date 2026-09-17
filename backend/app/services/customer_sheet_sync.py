@@ -38,7 +38,31 @@ class CustomerSheetSyncService:
             if self.db.get(Customer, str(customer_id)) is not None:
                 result.skipped += 1
                 continue
-            self.db.add(Customer(id=str(customer_id), name=str(name), is_active=bool(active)))
+            self.db.add(
+                Customer(
+                    id=str(customer_id),
+                    name=str(name),
+                    is_active=self._normalize_bool(active, default=True),
+                )
+            )
             result.imported += 1
         self.db.commit()
         return result
+
+    @staticmethod
+    def _normalize_bool(value: object, *, default: bool) -> bool:
+        if value is None or value == "":
+            return default
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, (int, float)):
+            return value != 0
+
+        normalized = str(value).strip().casefold()
+        truthy = {"true", "1", "yes", "y", "on", "بله", "فعال"}
+        falsy = {"false", "0", "no", "n", "off", "خیر", "غیرفعال", "غيرفعال"}
+        if normalized in truthy:
+            return True
+        if normalized in falsy:
+            return False
+        return default
