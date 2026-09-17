@@ -47,6 +47,7 @@ class CaseSheetSyncService:
         rows = self.sheets.read_values(self.spreadsheet_id, f"{CASE_SHEET}!A2:AF1000")
         result = SyncResult()
         imported_rows: list[tuple[int, str]] = []
+        sync_time = datetime.now(timezone.utc)
 
         try:
             for offset, row in enumerate(rows, start=2):
@@ -69,6 +70,9 @@ class CaseSheetSyncService:
                     operation_type=str(self._value(row, "نوع عملیات") or ""),
                     customs=str(self._value(row, "گمرک") or ""),
                     status=str(self._value(row, "وضعیت") or "پیش‌نویس"),
+                    sync_version=1,
+                    sync_source="SHEET_IMPORT",
+                    sync_updated_at=sync_time,
                 )
                 self.db.add(case)
                 self.db.add(
@@ -86,15 +90,15 @@ class CaseSheetSyncService:
                 imported_rows.append((offset, case_id_text))
                 result.imported += 1
 
-            # Commit the database first. Sheet metadata is written only after the
-            # authoritative DB transaction succeeds, preventing false "synced"
-            # markers when a database commit fails.
+            # Commit the authoritative DB transaction before exposing sync markers
+            # in Sheets. A failed DB commit can therefore never leave a false
+            # "synced" marker behind.
             self.db.commit()
         except Exception:
             self.db.rollback()
             raise
 
-        sync_timestamp = datetime.now(timezone.utc).isoformat()
+        sync_timestamp = sync_time.isoformat()
         for row_number, _case_id in imported_rows:
             self.sheets.update_values(
                 self.spreadsheet_id,
