@@ -13,6 +13,7 @@ from app.schemas.admin import (
     AdminEmployeeUpdate,
 )
 from app.services.drive_provisioning import DriveProvisioningService
+from app.services.sheet_mirror import SheetMirrorService
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -22,8 +23,8 @@ def _require_admin(user: User) -> None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="admin_required")
 
 
-def _user_dict(user: User) -> dict:
-    return {
+def _user_dict(user: User, sheet_sync: str | None = None) -> dict:
+    result = {
         "id": user.id,
         "full_name": user.full_name,
         "telegram_user_id": user.telegram_user_id,
@@ -33,16 +34,22 @@ def _user_dict(user: User) -> dict:
         "permission_profile": user.permission_profile,
         "is_active": user.is_active,
     }
+    if sheet_sync is not None:
+        result["sheet_sync"] = sheet_sync
+    return result
 
 
-def _customer_dict(customer: Customer) -> dict:
-    return {
+def _customer_dict(customer: Customer, sheet_sync: str | None = None) -> dict:
+    result = {
         "id": customer.id,
         "name": customer.name,
         "is_active": customer.is_active,
         "drive_folder_id": customer.drive_folder_id,
         "drive_provisioning_status": customer.drive_provisioning_status,
     }
+    if sheet_sync is not None:
+        result["sheet_sync"] = sheet_sync
+    return result
 
 
 def _employee_permission(employee: User) -> Permission:
@@ -61,6 +68,30 @@ def _employee_permission(employee: User) -> Permission:
         can_finance=False,
         is_active=employee.is_active,
     )
+
+
+def _mirror_employee(user: User, *, delete: bool = False) -> str:
+    try:
+        mirror = SheetMirrorService()
+        if delete:
+            mirror.delete_employee(user)
+        else:
+            mirror.upsert_employee(user)
+        return "ok"
+    except Exception:
+        return "pending"
+
+
+def _mirror_customer(customer: Customer, *, delete: bool = False) -> str:
+    try:
+        mirror = SheetMirrorService()
+        if delete:
+            mirror.delete_customer(customer)
+        else:
+            mirror.upsert_customer(customer)
+        return "ok"
+    except Exception:
+        return "pending"
 
 
 @router.get("/employees")
@@ -97,7 +128,7 @@ def create_employee(payload: AdminEmployeeCreate, db: DbSession, current_user: C
         db.rollback()
         raise HTTPException(status_code=409, detail="employee_conflict") from None
     db.refresh(employee)
-    return _user_dict(employee)
+    return _user_dict(employee, _mirror_employee(employee))
 
 
 @router.patch("/employees/{user_id}")
@@ -122,7 +153,7 @@ def update_employee(user_id: str, payload: AdminEmployeeUpdate, db: DbSession, c
         db.rollback()
         raise HTTPException(status_code=409, detail="employee_conflict") from None
     db.refresh(employee)
-    return _user_dict(employee)
+    return _user_dict(employee, _mirror_employee(employee))
 
 
 @router.delete("/employees/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -131,12 +162,21 @@ def delete_employee(user_id: str, db: DbSession, current_user: CurrentUser) -> N
     employee = db.get(User, user_id)
     if employee is None or employee.role != "internal_employee":
         raise HTTPException(status_code=404, detail="employee_not_found")
+    employee_snapshot = User(
+        id=employee.id,
+        full_name=employee.full_name,
+        telegram_user_id=employee.telegram_user_id,
+        role=employee.role,
+        permission_profile=employee.permission_profile,
+        is_active=employee.is_active,
+    )
     db.delete(employee)
     try:
         db.commit()
     except IntegrityError:
         db.rollback()
         raise HTTPException(status_code=409, detail="employee_has_dependencies") from None
+    _mirror_employee(employee_snapshot, delete=True)
 
 
 @router.get("/customers")
@@ -163,7 +203,7 @@ def create_customer(payload: AdminCustomerCreate, db: DbSession, current_user: C
     db.add(AuditLog(actor_user_id=current_user.id, entity_type="customer", entity_id=customer.id, action="create_customer", source="api"))
     db.commit()
     db.refresh(customer)
-    return _customer_dict(customer)
+    return _customer_dict(customer, _mirror_customer(customer))
 
 
 @router.patch("/customers/{customer_id}")
@@ -177,7 +217,7 @@ def update_customer(customer_id: str, payload: AdminCustomerUpdate, db: DbSessio
     db.add(AuditLog(actor_user_id=current_user.id, entity_type="customer", entity_id=customer.id, action="update_customer", source="api"))
     db.commit()
     db.refresh(customer)
-    return _customer_dict(customer)
+    return _customer_dict(customer, _mirror_customer(customer))
 
 
 @router.delete("/customers/{customer_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -186,9 +226,17 @@ def delete_customer(customer_id: str, db: DbSession, current_user: CurrentUser) 
     customer = db.get(Customer, customer_id)
     if customer is None:
         raise HTTPException(status_code=404, detail="customer_not_found")
+    customer_snapshot = Customer(
+        id=customer.id,
+        name=customer.name,
+        is_active=customer.is_active,
+        drive_folder_id=customer.drive_folder_id,
+        drive_provisioning_status=customer.drive_provisioning_status,
+    )
     db.delete(customer)
     try:
         db.commit()
     except IntegrityError:
         db.rollback()
         raise HTTPException(status_code=409, detail="customer_has_dependencies") from None
+    _mirror_customer(customer_snapshot, delete=True)
