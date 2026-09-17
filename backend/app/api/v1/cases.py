@@ -11,6 +11,14 @@ from app.services.authorization import Action, AuthorizationDenied, Authorizatio
 
 router = APIRouter(prefix="/cases", tags=["cases"])
 
+_ALLOWED_ASSIGNMENT_TYPES = {
+    "مسئول داخلی اصلی",
+    "همکار داخلی",
+    "مسئول سمت مشتری",
+    "همکار سمت مشتری",
+    "ناظر",
+}
+
 
 def _case_or_404(db: DbSession, case_id: str) -> Case:
     case = db.get(Case, case_id)
@@ -147,6 +155,13 @@ def create_case_assignment(
     case = _case_or_404(db, case_id)
     _require_case_action(db, current_user, case, Action.ASSIGN)
 
+    if payload.assignment_type not in _ALLOWED_ASSIGNMENT_TYPES:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="invalid_assignment_type")
+
+    effective_primary = payload.assignment_type == "مسئول داخلی اصلی"
+    if payload.is_primary != effective_primary:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="invalid_primary_flag")
+
     assignee = db.get(User, payload.user_id)
     if assignee is None or not assignee.is_active:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="invalid_assignee")
@@ -185,7 +200,7 @@ def create_case_assignment(
         user_id=assignee.id,
         customer_id=assignee.customer_id,
         assignment_type=payload.assignment_type,
-        is_primary=payload.is_primary,
+        is_primary=effective_primary,
         is_active=True,
         assigned_by=current_user.id,
     )
