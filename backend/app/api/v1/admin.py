@@ -12,6 +12,7 @@ from app.schemas.admin import (
     AdminEmployeeCreate,
     AdminEmployeeUpdate,
 )
+from app.services.drive_provisioning import DriveProvisioningService
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -128,6 +129,11 @@ def create_customer(payload: AdminCustomerCreate, db: DbSession, current_user: C
         drive_provisioning_status="pending",
     )
     db.add(customer)
+    db.flush()
+    try:
+        DriveProvisioningService(db).provision_customer(customer)
+    except Exception:
+        pass
     db.add(AuditLog(actor_user_id=current_user.id, entity_type="customer", entity_id=customer.id, action="create_customer", source="api"))
     db.commit()
     db.refresh(customer)
