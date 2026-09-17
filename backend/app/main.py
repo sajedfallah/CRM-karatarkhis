@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from sqlalchemy import text
 
+from app.api.v1.router import api_router
 from app.core.config import get_settings
 from app.db.session import engine
 
@@ -12,6 +13,7 @@ app = FastAPI(
     docs_url="/docs" if settings.app_env != "production" else None,
     redoc_url=None,
 )
+app.include_router(api_router)
 
 
 @app.get("/health", tags=["system"])
