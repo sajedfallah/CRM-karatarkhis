@@ -4,7 +4,7 @@ from enum import Enum
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.core import Case, CaseAssignment, Permission, User
+from app.models.core import Case, CaseAssignment, Permission, Task, User
 
 
 class Action(str, Enum):
@@ -37,27 +37,25 @@ _PERMISSION_FIELD = {
 
 
 class AuthorizationService:
-    """Server-side authorization boundary.
-
-    Sheet validation, hidden tabs, and workspace filtering are never treated as
-    authorization. Customer tenant boundaries and case assignment scope are
-    checked here before an application action is allowed.
-    """
+    """Server-side authorization boundary for tenant and assignment scopes."""
 
     def __init__(self, db: Session):
         self.db = db
 
     def require_create_case(self, user: User, customer_id: str) -> None:
+        self._require_create_for_customer(user, customer_id)
+
+    def require_create_task(self, user: User, customer_id: str | None) -> None:
+        self._require_create_for_customer(user, customer_id)
+
+    def _require_create_for_customer(self, user: User, customer_id: str | None) -> None:
         if not user.is_active:
             raise AuthorizationDenied("inactive_user")
-
         if user.role == "admin":
             return
-
         if user.role in {"customer_manager", "customer_employee"}:
-            if not user.customer_id or user.customer_id != customer_id:
+            if not customer_id or not user.customer_id or user.customer_id != customer_id:
                 raise AuthorizationDenied("customer_boundary_violation")
-
         permissions = self._active_permissions(user)
         if not any(permission.can_create for permission in permissions):
             raise AuthorizationDenied("action_not_allowed:create")
@@ -65,23 +63,47 @@ class AuthorizationService:
     def require_case_action(self, user: User, case: Case, action: Action) -> None:
         if not user.is_active:
             raise AuthorizationDenied("inactive_user")
-
         if user.role == "admin":
             return
 
         self._enforce_customer_boundary(user, case)
-
         permissions = self._active_permissions(user)
         if not permissions:
             raise AuthorizationDenied("no_active_permission")
-
-        if not any(self._scope_matches(p, user, case) and getattr(p, _PERMISSION_FIELD[action]) for p in permissions):
+        if not any(self._scope_matches_case(p, user, case) and getattr(p, _PERMISSION_FIELD[action]) for p in permissions):
             raise AuthorizationDenied(f"action_not_allowed:{action.value}")
 
-        matching = [p for p in permissions if self._scope_matches(p, user, case) and getattr(p, _PERMISSION_FIELD[action])]
+        matching = [p for p in permissions if self._scope_matches_case(p, user, case) and getattr(p, _PERMISSION_FIELD[action])]
         if any(p.scope_type == "ASSIGNED" for p in matching) and not any(p.scope_type in {"CUSTOMER", "GLOBAL"} for p in matching):
             if not self._has_active_assignment(user.id, case.id):
                 raise AuthorizationDenied("case_not_assigned")
+
+    def require_task_action(self, user: User, task: Task, action: Action) -> None:
+        if not user.is_active:
+            raise AuthorizationDenied("inactive_user")
+        if user.role == "admin":
+            return
+
+        if user.role in {"customer_manager", "customer_employee"}:
+            if not user.customer_id or user.customer_id != task.customer_id:
+                raise AuthorizationDenied("customer_boundary_violation")
+
+        permissions = self._active_permissions(user)
+        matching = [p for p in permissions if getattr(p, _PERMISSION_FIELD[action])]
+        if not matching:
+            raise AuthorizationDenied(f"action_not_allowed:{action.value}")
+
+        if any(p.scope_type in {"GLOBAL", "CUSTOMER"} for p in matching):
+            return
+
+        if any(p.scope_type == "ASSIGNED" for p in matching):
+            if task.assignee_user_id == user.id:
+                return
+            if task.case_id and self._has_active_assignment(user.id, task.case_id):
+                return
+            raise AuthorizationDenied("task_not_assigned")
+
+        raise AuthorizationDenied(f"action_not_allowed:{action.value}")
 
     def _enforce_customer_boundary(self, user: User, case: Case) -> None:
         if user.role in {"customer_manager", "customer_employee"}:
@@ -101,7 +123,7 @@ class AuthorizationService:
         return list(self.db.scalars(statement))
 
     @staticmethod
-    def _scope_matches(permission: Permission, user: User, case: Case) -> bool:
+    def _scope_matches_case(permission: Permission, user: User, case: Case) -> bool:
         if permission.scope_type == "GLOBAL":
             return True
         if permission.scope_type == "CUSTOMER":
