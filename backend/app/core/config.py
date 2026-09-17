@@ -12,6 +12,8 @@ class Settings(BaseSettings):
 
     google_spreadsheet_id: str | None = None
     google_service_account_file: str | None = None
+    google_service_account_json: str | None = None
+    google_service_account_json_b64: str | None = None
     google_customer_docs_root_folder_id: str | None = None
     google_case_import_root_folder_id: str | None = None
     google_case_export_root_folder_id: str | None = None
