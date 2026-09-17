@@ -17,6 +17,7 @@ app.include_router(api_router)
 
 
 @app.get("/health", tags=["system"])
+@app.get("/api/health", tags=["system"], include_in_schema=False)
 def health() -> dict[str, str]:
     return {
         "status": "ok",
@@ -27,6 +28,7 @@ def health() -> dict[str, str]:
 
 
 @app.get("/health/db", tags=["system"])
+@app.get("/api/health/db", tags=["system"], include_in_schema=False)
 def database_health() -> dict[str, str]:
     with engine.connect() as connection:
         connection.execute(text("SELECT 1"))
