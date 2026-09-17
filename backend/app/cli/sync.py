@@ -12,9 +12,28 @@ def _client() -> tuple[GoogleSheetsClient, str]:
     settings = get_settings()
     if not settings.google_spreadsheet_id:
         raise SystemExit("GOOGLE_SPREADSHEET_ID is required")
-    if not settings.google_service_account_file:
-        raise SystemExit("GOOGLE_SERVICE_ACCOUNT_FILE is required")
-    return GoogleSheetsClient(settings.google_service_account_file), settings.google_spreadsheet_id
+
+    has_credentials = any(
+        [
+            settings.google_service_account_json_b64,
+            settings.google_service_account_json,
+            settings.google_service_account_file,
+        ]
+    )
+    if not has_credentials:
+        raise SystemExit(
+            "Google credentials are required: set GOOGLE_SERVICE_ACCOUNT_JSON_B64, "
+            "GOOGLE_SERVICE_ACCOUNT_JSON, or GOOGLE_SERVICE_ACCOUNT_FILE"
+        )
+
+    return (
+        GoogleSheetsClient(
+            credentials_file=settings.google_service_account_file,
+            credentials_json=settings.google_service_account_json,
+            credentials_json_b64=settings.google_service_account_json_b64,
+        ),
+        settings.google_spreadsheet_id,
+    )
 
 
 def main() -> None:
