@@ -4,5 +4,15 @@
     "api/index.py": {
       "maxDuration": 60
     }
-  }
+  },
+  "rewrites": [
+    {
+      "source": "/health",
+      "destination": "/api/health"
+    },
+    {
+      "source": "/health/db",
+      "destination": "/api/health/db"
+    }
+  ]
 }
