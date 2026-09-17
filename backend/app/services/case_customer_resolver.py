@@ -19,7 +19,7 @@ class CaseCustomerResolver:
     """Populate immutable Customer ID from the existing customer registry.
 
     Matching is intentionally strict: normalized company title must map to exactly
-    one active Customer ID. Ambiguous or unknown names are never guessed.
+    one active Customer ID. Ambiguous, inactive, or unknown names are never guessed.
     """
 
     def __init__(self, sheets: GoogleSheetsClient, spreadsheet_id: str):
@@ -27,10 +27,13 @@ class CaseCustomerResolver:
         self.spreadsheet_id = spreadsheet_id
 
     def resolve(self, dry_run: bool = True) -> ResolveResult:
-        customers = self.sheets.read_values(self.spreadsheet_id, f"{CUSTOMER_SHEET}!A2:C1000")
+        customers = self.sheets.read_values(self.spreadsheet_id, f"{CUSTOMER_SHEET}!A2:T1000")
         index: dict[str, set[str]] = {}
         for row in customers:
             if len(row) < 3 or not row[0] or not row[2]:
+                continue
+            active = row[19] if len(row) > 19 else True
+            if not self._normalize_bool(active, default=True):
                 continue
             index.setdefault(self._normalize(str(row[2])), set()).add(str(row[0]))
 
@@ -75,3 +78,21 @@ class CaseCustomerResolver:
     @staticmethod
     def _normalize(value: str) -> str:
         return " ".join(value.replace("ي", "ی").replace("ك", "ک").split()).casefold()
+
+    @staticmethod
+    def _normalize_bool(value: object, *, default: bool) -> bool:
+        if value is None or value == "":
+            return default
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, (int, float)):
+            return value != 0
+
+        normalized = str(value).strip().casefold()
+        truthy = {"true", "1", "yes", "y", "on", "بله", "فعال"}
+        falsy = {"false", "0", "no", "n", "off", "خیر", "غیرفعال", "غيرفعال"}
+        if normalized in truthy:
+            return True
+        if normalized in falsy:
+            return False
+        return default
