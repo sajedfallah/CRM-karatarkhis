@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
 
     google_spreadsheet_id: str | None = None
+    google_service_account_file: str | None = None
     google_customer_docs_root_folder_id: str | None = None
     google_case_import_root_folder_id: str | None = None
     google_case_export_root_folder_id: str | None = None
