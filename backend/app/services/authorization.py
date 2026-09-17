@@ -47,6 +47,21 @@ class AuthorizationService:
     def __init__(self, db: Session):
         self.db = db
 
+    def require_create_case(self, user: User, customer_id: str) -> None:
+        if not user.is_active:
+            raise AuthorizationDenied("inactive_user")
+
+        if user.role == "admin":
+            return
+
+        if user.role in {"customer_manager", "customer_employee"}:
+            if not user.customer_id or user.customer_id != customer_id:
+                raise AuthorizationDenied("customer_boundary_violation")
+
+        permissions = self._active_permissions(user)
+        if not any(permission.can_create for permission in permissions):
+            raise AuthorizationDenied("action_not_allowed:create")
+
     def require_case_action(self, user: User, case: Case, action: Action) -> None:
         if not user.is_active:
             raise AuthorizationDenied("inactive_user")
@@ -63,7 +78,6 @@ class AuthorizationService:
         if not any(self._scope_matches(p, user, case) and getattr(p, _PERMISSION_FIELD[action]) for p in permissions):
             raise AuthorizationDenied(f"action_not_allowed:{action.value}")
 
-        # ASSIGNED scope requires a live assignment in addition to permission.
         matching = [p for p in permissions if self._scope_matches(p, user, case) and getattr(p, _PERMISSION_FIELD[action])]
         if any(p.scope_type == "ASSIGNED" for p in matching) and not any(p.scope_type in {"CUSTOMER", "GLOBAL"} for p in matching):
             if not self._has_active_assignment(user.id, case.id):
