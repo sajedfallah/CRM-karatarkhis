@@ -19,6 +19,7 @@
 
 - [گردش کار و نقشه کامل سیستم](docs/PROJECT_EXECUTION_WORKFLOW.md)
 - [کاتالوگ تمام شیت‌ها، ستون‌ها و وابستگی‌ها](docs/SHEETS_SCHEMA_AND_DEPENDENCIES.md)
+- [Feature Matrix امکانات و وابستگی‌ها](docs/FEATURE_MATRIX.md)
 - [معماری Google Drive و Templateها](docs/DRIVE_ARCHITECTURE.md)
 - [Master Prompt برای Codex](CODEX_MASTER_PROMPT.md)
 - [سورس فعلی Apps Script](src/apps-script/Code.gs)
