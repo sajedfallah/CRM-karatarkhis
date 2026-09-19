@@ -12040,3 +12040,62 @@ function testV428AuditClosureHelpers() {
   };
 }
 
+
+
+/************************************************************
+ * V4.28 — PROVISIONING CRASH-WINDOW IDEMPOTENCY
+ * ----------------------------------------------------------
+ * If Apps Script stops after Drive makeCopy() but before the
+ * Queue row is patched, retry reuses the deterministic file name
+ * instead of creating a second Workspace.
+ ************************************************************/
+
+function findWorkspaceCopyByDeterministicNameV428_(folder, name) {
+  if (!folder || !name) return null;
+
+  try {
+    const files = folder.getFilesByName(name);
+    if (files && files.hasNext()) {
+      return files.next();
+    }
+  } catch (_) {}
+
+  return null;
+}
+
+// Final provisioning override: private, deterministic and retry-safe.
+function provisionWorkspace(user) {
+  const role = normalizeRole(user['نقش']);
+  const templateId = DASHBOARD_TEMPLATES[role];
+  if (!templateId) return null;
+
+  const destinationFolderId = workspaceFolderIdForRoleV426_(role);
+  const folder = DriveApp.getFolderById(destinationFolderId);
+  const template = DriveApp.getFileById(templateId);
+
+  const name =
+    'Workspace | ' +
+    role +
+    ' | ' +
+    user['نام کامل'] +
+    ' | ' +
+    user['User ID'];
+
+  let copy = findWorkspaceCopyByDeterministicNameV428_(folder, name);
+  const reusedExistingCopy = !!copy;
+
+  if (!copy) {
+    copy = template.makeCopy(name, folder);
+  }
+
+  // Never share here. Sharing happens only after sanitize + scoped sync.
+  return {
+    fileId:copy.getId(),
+    url:copy.getUrl(),
+    shared:false,
+    type:role,
+    templateId:templateId,
+    destinationFolderId:destinationFolderId,
+    reusedExistingCopy:reusedExistingCopy
+  };
+}
