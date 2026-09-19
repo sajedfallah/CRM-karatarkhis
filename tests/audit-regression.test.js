@@ -67,11 +67,11 @@ test('Telegram webhook validates signed relay before update handling', () => {
 
 test('provisioning persists before sync and shares after sync', () => {
   const fn = extractLastFunction('processProvisioningQueue');
-  const persistedAt = fn.indexOf('workspace_persisted_before_sync');
+  const persistedAt = fn.indexOf("'Workspace File ID':workspace.fileId");
   const syncAt = fn.indexOf('syncWorkspaceDataV412_');
   const shareAt = fn.indexOf('reconcileWorkspaceAccessV427_');
-  assert.ok(persistedAt >= 0 && syncAt > persistedAt);
-  assert.ok(shareAt > syncAt);
+  assert.ok(persistedAt >= 0 && syncAt > persistedAt, 'workspace identity must persist before sync');
+  assert.ok(shareAt > syncAt, 'workspace must be shared only after scoped sync');
 
   const provision = extractLastFunction('provisionWorkspace');
   assert.doesNotMatch(provision, /addEditor|addViewer/);
@@ -89,10 +89,15 @@ test('role dashboard renderer uses Vazirmatn', () => {
   assert.doesNotMatch(fn, /Arial/);
 });
 
-test('daily task update detects concurrent changes', () => {
-  const fn = extractLastFunction('upsertPersonalTaskFromWorkspaceV420_');
-  assert.match(fn, /concurrent_change/);
-  assert.match(fn, /centralChanged && localChanged/);
+test('daily task sync detects concurrent changes and preserves local row', () => {
+  const resolver = extractLastFunction('resolveDailyTaskConflictV427_');
+  assert.match(resolver, /localChanged/);
+  assert.match(resolver, /centralChanged/);
+  assert.match(resolver, /return 'conflict'/);
+
+  const pull = extractLastFunction('pullPersonalDailyTasksFromWorkspaceV420_');
+  assert.match(pull, /resolveDailyTaskConflictV427_/);
+  assert.match(pull, /preserveLocalById/);
 });
 
 test('relay backend and Vercel root exist', () => {
