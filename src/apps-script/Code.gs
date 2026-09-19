@@ -12099,3 +12099,289 @@ function provisionWorkspace(user) {
     reusedExistingCopy:reusedExistingCopy
   };
 }
+
+
+/************************************************************
+ * V4.29 — SEMANTIC SHEET STYLING
+ * ----------------------------------------------------------
+ * Preserves each sheet's existing tab color and derives a
+ * coordinated palette from it. Applies Vazirmatn everywhere,
+ * separates headers/column groups/row bands, and avoids
+ * changing values, formulas, validations or protections.
+ ************************************************************/
+
+const SHEET_STYLE_DEFAULT_COLOR_V429 = '#1F4E78';
+const SHEET_STYLE_GROUP_SIZE_V429 = 4;
+
+function clampColorChannelV429_(n) {
+  return Math.max(0, Math.min(255, Math.round(Number(n) || 0)));
+}
+
+function normalizeHexColorV429_(hex, fallback) {
+  const raw = String(hex || '').trim().replace('#', '');
+  const fb = String(fallback || SHEET_STYLE_DEFAULT_COLOR_V429).trim().replace('#', '');
+  const candidate = /^[0-9a-fA-F]{6}$/.test(raw) ? raw : fb;
+  return '#' + candidate.toUpperCase();
+}
+
+function mixHexColorV429_(hex, targetHex, amount) {
+  const a = normalizeHexColorV429_(hex, SHEET_STYLE_DEFAULT_COLOR_V429).slice(1);
+  const b = normalizeHexColorV429_(targetHex, '#FFFFFF').slice(1);
+  const t = Math.max(0, Math.min(1, Number(amount) || 0));
+  const out = [];
+
+  for (let i = 0; i < 3; i++) {
+    const av = parseInt(a.slice(i * 2, i * 2 + 2), 16);
+    const bv = parseInt(b.slice(i * 2, i * 2 + 2), 16);
+    out.push(
+      ('0' + clampColorChannelV429_(av + (bv - av) * t).toString(16)).slice(-2)
+    );
+  }
+
+  return '#' + out.join('').toUpperCase();
+}
+
+function sheetBaseColorV429_(sh) {
+  let tabColor = '';
+  try { tabColor = sh.getTabColor(); } catch (_) {}
+
+  if (tabColor) {
+    return normalizeHexColorV429_(tabColor, SHEET_STYLE_DEFAULT_COLOR_V429);
+  }
+
+  const name = String(sh && sh.getName ? sh.getName() : '');
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = ((hash << 5) - hash + name.charCodeAt(i)) | 0;
+  }
+
+  const palette = [
+    '#1F4E78', '#176B57', '#7A4E14', '#5B4B8A',
+    '#8B3A3A', '#2B6F8A', '#566B2F', '#7B5A3D'
+  ];
+  return palette[Math.abs(hash) % palette.length];
+}
+
+function sheetPaletteV429_(sh) {
+  const base = sheetBaseColorV429_(sh);
+  return {
+    base:base,
+    header:mixHexColorV429_(base, '#000000', 0.12),
+    section:mixHexColorV429_(base, '#FFFFFF', 0.80),
+    bandA:mixHexColorV429_(base, '#FFFFFF', 0.94),
+    bandB:mixHexColorV429_(base, '#FFFFFF', 0.88),
+    bandC:mixHexColorV429_(base, '#FFFFFF', 0.82),
+    border:mixHexColorV429_(base, '#FFFFFF', 0.62),
+    text:mixHexColorV429_(base, '#000000', 0.48)
+  };
+}
+
+function styleUsedRangeV429_(sh) {
+  if (!sh) return { ok:false, reason:'sheet_missing' };
+
+  const lastRow = Math.max(1, sh.getLastRow());
+  const lastCol = Math.max(1, sh.getLastColumn());
+  const palette = sheetPaletteV429_(sh);
+  const whole = sh.getRange(1, 1, lastRow, lastCol);
+
+  whole
+    .setFontFamily(VAZIR_FONT_FAMILY_V427)
+    .setVerticalAlignment('middle')
+    .setWrap(true);
+
+  try { sh.setRightToLeft(true); } catch (_) {}
+  try { sh.setHiddenGridlines(true); } catch (_) {}
+  try { if (!sh.getTabColor()) sh.setTabColor(palette.base); } catch (_) {}
+
+  const header = sh.getRange(1, 1, 1, lastCol);
+  header
+    .setBackground(palette.header)
+    .setFontColor('#FFFFFF')
+    .setFontWeight('bold')
+    .setHorizontalAlignment('center');
+
+  try { sh.setFrozenRows(Math.max(1, sh.getFrozenRows())); } catch (_) {}
+
+  if (lastRow > 1) {
+    const dataRows = lastRow - 1;
+    const body = sh.getRange(2, 1, dataRows, lastCol);
+    body.setFontColor('#222222');
+
+    // Column groups: coordinated shades derived from the original sheet color.
+    for (let startCol = 1, group = 0; startCol <= lastCol; startCol += SHEET_STYLE_GROUP_SIZE_V429, group++) {
+      const width = Math.min(SHEET_STYLE_GROUP_SIZE_V429, lastCol - startCol + 1);
+      const fill = [palette.bandA, palette.bandB, palette.bandC][group % 3];
+      sh.getRange(2, startCol, dataRows, width).setBackground(fill);
+    }
+
+    // Horizontal level separation every 5 rows; this keeps dense CRM tables readable.
+    for (let row = 2; row <= lastRow; row += 5) {
+      const h = Math.min(5, lastRow - row + 1);
+      const section = sh.getRange(row, 1, h, lastCol);
+      try {
+        section.setBorder(
+          row === 2, true, true, true, false, false,
+          palette.border,
+          SpreadsheetApp.BorderStyle.SOLID
+        );
+      } catch (_) {}
+    }
+  }
+
+  try {
+    header.setBorder(
+      true, true, true, true, false, false,
+      palette.border,
+      SpreadsheetApp.BorderStyle.SOLID_MEDIUM
+    );
+  } catch (_) {}
+
+  // Do not override deliberate dashboard canvas formatting; its renderer owns it.
+  const name = String(sh.getName() || '');
+  if (name.indexOf('داشبورد') >= 0 || name.indexOf('Dashboard') >= 0) {
+    renderDashboardFontOnlyV429_(sh);
+  }
+
+  return {
+    ok:true,
+    sheet:name,
+    rows:lastRow,
+    columns:lastCol,
+    baseColor:palette.base
+  };
+}
+
+function renderDashboardFontOnlyV429_(sh) {
+  if (!sh) return false;
+  const lastRow = Math.max(1, sh.getLastRow());
+  const lastCol = Math.max(1, sh.getLastColumn());
+  sh.getRange(1, 1, lastRow, lastCol).setFontFamily(VAZIR_FONT_FAMILY_V427);
+  return true;
+}
+
+function styleSpreadsheetSemanticallyV429_(ss) {
+  const report = {
+    ok:true,
+    font:VAZIR_FONT_FAMILY_V427,
+    sheets:[]
+  };
+
+  ss.getSheets().forEach(function(sh) {
+    try {
+      report.sheets.push(styleUsedRangeV429_(sh));
+    } catch (err) {
+      report.ok = false;
+      report.sheets.push({
+        ok:false,
+        sheet:String(sh.getName() || ''),
+        error:String(err && err.message ? err.message : err)
+      });
+    }
+  });
+
+  return report;
+}
+
+function repairKnownSheetStylesV429_(dryRun) {
+  dryRun = dryRun !== false;
+
+  const ids = {};
+  ids[SPREADSHEET_ID] = 'CRM';
+
+  Object.keys(DASHBOARD_TEMPLATES).forEach(function(role) {
+    const id = String(DASHBOARD_TEMPLATES[role] || '').trim();
+    if (id) ids[id] = 'Template:' + role;
+  });
+
+  Object.keys(LIVE_DASHBOARDS).forEach(function(key) {
+    const id = parseDriveFileId_(LIVE_DASHBOARDS[key]);
+    if (id) ids[id] = 'LIVE:' + key;
+  });
+
+  try {
+    readRows(SHEETS.mapping).forEach(function(m) {
+      const id = String(
+        m['Spreadsheet ID'] ||
+        parseDriveFileId_(m['Workspace URL'] || '') ||
+        ''
+      ).trim();
+      if (id) ids[id] = 'Workspace:' + String(m['User ID'] || '');
+    });
+  } catch (_) {}
+
+  const report = {
+    ok:true,
+    dryRun:dryRun,
+    font:VAZIR_FONT_FAMILY_V427,
+    files:[]
+  };
+
+  Object.keys(ids).forEach(function(id) {
+    if (dryRun) {
+      report.files.push({ id:id, label:ids[id], wouldApply:true });
+      return;
+    }
+
+    try {
+      const ss = SpreadsheetApp.openById(id);
+      const styled = styleSpreadsheetSemanticallyV429_(ss);
+      report.files.push({
+        id:id,
+        label:ids[id],
+        ok:styled.ok,
+        sheetCount:styled.sheets.length,
+        sheets:styled.sheets
+      });
+      if (!styled.ok) report.ok = false;
+    } catch (err) {
+      report.ok = false;
+      report.files.push({
+        id:id,
+        label:ids[id],
+        ok:false,
+        error:String(err && err.message ? err.message : err)
+      });
+    }
+  });
+
+  return report;
+}
+
+// Final workspace sync override: keep functional sync logic from V4.28 and
+// apply semantic styling after all writers/renderers have finished.
+function syncWorkspaceDataV412_(workspace, user) {
+  const fileId = workspace.fileId || parseDriveFileId_(workspace.url);
+  if (!fileId) throw new Error('Workspace File ID نامعتبر است.');
+
+  const ss = ensureWorkspaceStructureV412_(fileId);
+  const personalDaily = syncPersonalDailyTasksV420_(ss, user);
+  const scoped = getScopedWorkspaceDataV412_(user);
+
+  writeWorkspaceDataSheetV414_(ss, 'مشتریان', SHEETS.customers, scoped.customers, user);
+  writeWorkspaceDataSheetV414_(ss, 'پرونده‌ها', SHEETS.cases, scoped.cases, user);
+  writeWorkspaceDataSheetV414_(ss, 'تسک‌ها', SHEETS.tasks, scoped.tasks, user);
+  writeWorkspaceDataSheetV414_(ss, 'سرنخ‌ها', SHEETS.leads, scoped.leads, user);
+  writeWorkspaceDataSheetV414_(ss, 'تسک‌های مشتریان', SHEETS.customerTasks, scoped.customerTasks, user);
+  writeWorkspaceDataSheetV414_(ss, 'اسناد پرونده', SHEETS.caseDocumentsV2, scoped.caseDocuments, user);
+
+  const roleUx = prepareRoleWorkspaceV424_(ss, user, scoped);
+  const dashboard = renderRoleDashboardV425_(ss, user);
+
+  const styling = styleSpreadsheetSemanticallyV429_(ss);
+  SpreadsheetApp.flush();
+
+  return {
+    customers:scoped.customers.length,
+    cases:scoped.cases.length,
+    tasks:scoped.tasks.length,
+    leads:scoped.leads.length,
+    customerTasks:scoped.customerTasks.length,
+    caseDocuments:scoped.caseDocuments.length,
+    personalDailyTasks:personalDaily.count,
+    personalDailyPulled:personalDaily.pulled.saved,
+    personalDailyConflicts:personalDaily.conflicts || 0,
+    roleWorkspace:roleUx,
+    roleDashboard:dashboard,
+    styling:styling
+  };
+}
