@@ -10144,7 +10144,6 @@ function getTelegramUserContextV419_(telegramId) {
 
   const sources = [SHEETS.usersRaw, SHEETS.users];
   let found = null;
-
   for (let s = 0; s < sources.length && !found; s++) {
     const rows = readRows(sources[s]);
     for (let i = 0; i < rows.length; i++) {
@@ -10171,12 +10170,41 @@ function getTelegramUserContextV419_(telegramId) {
   const userId = String(found['User ID'] || '').trim();
   if (!userId) return { authorized:false, isAdmin:false, reason:'missing_user_id', telegramId:telegramId, user:found };
 
-  if ((role === 'مدیر مشتری' || role === 'کارمند مشتری') &&
-      !String(found['Customer ID'] || '').trim()) {
-    return { authorized:false, isAdmin:false, reason:'missing_customer_scope', telegramId:telegramId, user:found };
+  const permission =
+    getRowById(SHEETS.permissions, 'PERM-' + userId) ||
+    readRows(SHEETS.permissions).find(function(r) {
+      return String(r['User ID'] || '').trim() === userId;
+    }) ||
+    null;
+
+  if (!permission || String(permission['وضعیت'] || '').trim() !== 'فعال') {
+    return { authorized:false, isAdmin:false, reason:'permission_inactive_or_missing', telegramId:telegramId, user:found };
   }
 
-  return { authorized:true, isAdmin:role === 'مدیر', role:role, user:found };
+  const permissionRole = normalizeRole(String(permission['Role'] || '').trim());
+  if (permissionRole && permissionRole !== role) {
+    return { authorized:false, isAdmin:false, reason:'permission_role_mismatch', telegramId:telegramId, user:found };
+  }
+
+  const scopeType = String(permission['Scope Type'] || '').trim();
+  const scopeId = String(permission['Scope ID'] || '').trim();
+
+  if (role === 'مدیر') {
+    if (scopeType !== 'ALL' || scopeId !== '*') {
+      return { authorized:false, isAdmin:false, reason:'invalid_admin_scope', telegramId:telegramId, user:found };
+    }
+  } else if (role === 'کارمند داخلی') {
+    if (scopeType !== 'ASSIGNED' || !scopeId) {
+      return { authorized:false, isAdmin:false, reason:'invalid_internal_scope', telegramId:telegramId, user:found };
+    }
+  } else {
+    const customerId = String(found['Customer ID'] || '').trim();
+    if (!customerId || scopeType !== 'CUSTOMER' || scopeId !== customerId) {
+      return { authorized:false, isAdmin:false, reason:'missing_customer_scope', telegramId:telegramId, user:found };
+    }
+  }
+
+  return { authorized:true, isAdmin:role === 'مدیر', role:role, user:found, permission:permission };
 }
 
 function bytesToHexV427_(bytes) {
