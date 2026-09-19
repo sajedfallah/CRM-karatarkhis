@@ -12183,6 +12183,7 @@ function styleUsedRangeV429_(sh) {
   const lastCol = Math.max(1, sh.getLastColumn());
   const palette = sheetPaletteV429_(sh);
   const whole = sh.getRange(1, 1, lastRow, lastCol);
+  const name = String(sh.getName() || '');
 
   whole
     .setFontFamily(VAZIR_FONT_FAMILY_V427)
@@ -12190,8 +12191,23 @@ function styleUsedRangeV429_(sh) {
     .setWrap(true);
 
   try { sh.setRightToLeft(true); } catch (_) {}
-  try { sh.setHiddenGridlines(true); } catch (_) {}
   try { if (!sh.getTabColor()) sh.setTabColor(palette.base); } catch (_) {}
+
+  // Dashboard canvas owns its visual hierarchy. Only enforce the global font
+  // so its deliberate card colors and merged regions are never overwritten.
+  if (name.indexOf('داشبورد') >= 0 || name.indexOf('Dashboard') >= 0) {
+    renderDashboardFontOnlyV429_(sh);
+    return {
+      ok:true,
+      sheet:name,
+      rows:lastRow,
+      columns:lastCol,
+      baseColor:palette.base,
+      dashboard:true
+    };
+  }
+
+  try { sh.setHiddenGridlines(true); } catch (_) {}
 
   const header = sh.getRange(1, 1, 1, lastCol);
   header
@@ -12235,12 +12251,6 @@ function styleUsedRangeV429_(sh) {
       SpreadsheetApp.BorderStyle.SOLID_MEDIUM
     );
   } catch (_) {}
-
-  // Do not override deliberate dashboard canvas formatting; its renderer owns it.
-  const name = String(sh.getName() || '');
-  if (name.indexOf('داشبورد') >= 0 || name.indexOf('Dashboard') >= 0) {
-    renderDashboardFontOnlyV429_(sh);
-  }
 
   return {
     ok:true,
