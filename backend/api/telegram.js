@@ -9,18 +9,19 @@ function safeEqual(a, b) {
   return crypto.timingSafeEqual(aBuf, bBuf);
 }
 
-function canonicalPayload(body) {
-  if (typeof body === 'string') {
-    try { return JSON.stringify(JSON.parse(body)); }
-    catch (_) { return body; }
+function canonicalUpdate(update) {
+  if (typeof update === 'string') {
+    try { return JSON.stringify(JSON.parse(update)); }
+    catch (_) { return update; }
   }
-  return JSON.stringify(body || {});
+  return JSON.stringify(update || {});
 }
 
-function signEnvelope(timestamp, nonce, payloadJson, secret) {
+function signEnvelope(timestamp, nonce, update, secret) {
+  const payloadJson = canonicalUpdate(update);
   return crypto
     .createHmac('sha256', secret)
-    .update(String(timestamp) + '\n' + String(nonce) + '\n' + String(payloadJson), 'utf8')
+    .update(String(timestamp) + '\n' + String(nonce) + '\n' + payloadJson, 'utf8')
     .digest('hex');
 }
 
@@ -47,19 +48,19 @@ async function handler(req, res) {
     return res.status(401).json({ ok:false, error:'unauthorized_source' });
   }
 
-  const payloadJson = canonicalPayload(req.body);
-  let update;
-  try { update = JSON.parse(payloadJson); }
-  catch (_) { return res.status(400).json({ ok:false, error:'invalid_json' }); }
+  let update = req.body;
+  if (typeof update === 'string') {
+    try { update = JSON.parse(update); }
+    catch (_) { return res.status(400).json({ ok:false, error:'invalid_json' }); }
+  }
 
   if (!update || typeof update !== 'object' || update.update_id == null) {
     return res.status(400).json({ ok:false, error:'invalid_telegram_update' });
   }
 
-  // Milliseconds are used deliberately; Apps Script validates max age/skew.
-  const timestamp = Date.now();
+  const timestamp = Math.floor(Date.now() / 1000);
   const nonce = crypto.randomUUID();
-  const signature = signEnvelope(timestamp, nonce, payloadJson, relaySecret);
+  const signature = signEnvelope(timestamp, nonce, update, relaySecret);
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 8000);
@@ -69,11 +70,8 @@ async function handler(req, res) {
       method:'POST',
       headers:{ 'content-type':'application/json; charset=utf-8' },
       body:JSON.stringify({
-        relay_version:1,
-        timestamp,
-        nonce,
-        payload_json:payloadJson,
-        signature
+        relay:{ timestamp, nonce, signature },
+        update
       }),
       signal:controller.signal
     });
@@ -102,4 +100,4 @@ async function handler(req, res) {
 }
 
 module.exports = handler;
-module.exports._test = { safeEqual, canonicalPayload, signEnvelope };
+module.exports._test = { safeEqual, canonicalUpdate, signEnvelope };
