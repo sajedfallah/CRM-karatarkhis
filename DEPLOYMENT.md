@@ -1,6 +1,6 @@
-# راهنمای Deployment کاراترخیص — V4.27
+# راهنمای Deployment کاراترخیص — V4.28
 
-این سند مسیر Development، Staging و Production برای نسخه V4.27 را تعریف می‌کند.
+این سند مسیر Development، Staging و Production برای نسخه V4.28 را تعریف می‌کند.
 
 > Production تا زمانی که تست‌های Staging و E2E این سند تکمیل نشده‌اند، آماده انتشار تلقی نمی‌شود.
 
@@ -33,7 +33,7 @@ WORKSPACE_FOLDER_CUSTOMER_MANAGER_ID
 WORKSPACE_FOLDER_CUSTOMER_EMPLOYEE_ID
 ```
 
-Folder IDهای تکمیلی V4.26/V4.27 نیز در صورت تفاوت محیط می‌توانند با Script Properties متناظر override شوند.
+Folder IDهای تکمیلی V4.26/V4.28 نیز در صورت تفاوت محیط می‌توانند با Script Properties متناظر override شوند.
 
 Secret واقعی نباید در Git Commit شود.
 
@@ -180,4 +180,4 @@ Schema یا اسناد عملیاتی با rollback خودکار پاک نمی�
 
 ## 8. وضعیت انتشار
 
-V4.27 روی شاخه audit/handoff اصلاح شده است، اما تا تکمیل E2E زنده Staging، inventory واقعی Trigger/Deployment و تست lifecycle دسترسی، Production-ready اعلام نمی‌شود.
+V4.28 روی شاخه audit/handoff اصلاح شده است، اما تا تکمیل E2E زنده Staging، inventory واقعی Trigger/Deployment و تست lifecycle دسترسی، Production-ready اعلام نمی‌شود.
