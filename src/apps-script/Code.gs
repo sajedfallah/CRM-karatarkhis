@@ -9967,24 +9967,7 @@ function looksLikeStableUserIdV427_(token) {
 }
 
 function assignmentFieldMatchesUserV427_(value, user) {
-  const tokens = splitAssignmentTokensV427_(value);
-  if (!tokens.length || !user) return false;
-
-  const userId = normalizeIdentityV427_(user['User ID']);
-  const fullName = normalizeIdentityV427_(user['نام کامل']);
-  const telegramId = normalizeIdentityV427_(user['Telegram User ID']);
-
-  const stableTokens = tokens.filter(looksLikeStableUserIdV427_);
-  if (stableTokens.length) {
-    return !!userId && stableTokens.some(function(t) { return t === userId; });
-  }
-
-  // Legacy fallback is exact equality only. Substring matching is forbidden.
-  return tokens.some(function(t) {
-    return (!!userId && t === userId) ||
-      (!!fullName && t === fullName) ||
-      (!!telegramId && t === telegramId);
-  });
+  return fieldMatchesUserIdentityV427_(value, user);
 }
 
 function textContainsAnyV412_(value, needles) {
@@ -10862,14 +10845,10 @@ function processProvisioningQueue(limit) {
         const syncCounts = syncWorkspaceDataV412_(workspace, user);
 
         // Share only after sanitize + scoped sync succeeded.
-        const shared = shareWorkspaceToUser_(
-          workspace,
-          user['Gmail / Email'],
-          user
-        );
-        workspace.shared = shared;
+        const accessResult = reconcileWorkspaceAccessV427_(workspace, user);
+        workspace.shared = !!accessResult.shared;
 
-        const access = shared ? 'فعال' : 'ایجاد شد';
+        const access = accessResult.shared ? 'فعال' : 'ایجاد شد';
 
         updateRowById(SHEETS.usersRaw, userId, {
           'Workspace URL':workspace.url,
@@ -10919,7 +10898,8 @@ function processProvisioningQueue(limit) {
           ok:true,
           recovered:!!workspace.source,
           workspaceUrl:workspace.url,
-          sync:syncCounts
+          sync:syncCounts,
+          access:accessResult
         });
 
       } catch (err) {
@@ -11526,7 +11506,7 @@ function syncAllActiveWorkspacesV412(limit) {
 
       try {
         if (String(user['وضعیت'] || '').trim() !== 'فعال') {
-          const access = revokeWorkspaceAccessForUserV427_(userId, user);
+          const access = reconcileWorkspaceAccessV427_(workspace, user);
 
           upsertObject(
             SHEETS.mapping,
@@ -11550,11 +11530,7 @@ function syncAllActiveWorkspacesV412(limit) {
         }
 
         const counts = syncWorkspaceDataV412_(workspace, user);
-        const shared = shareWorkspaceToUser_(
-          workspace,
-          user['Gmail / Email'],
-          user
-        );
+        const access = reconcileWorkspaceAccessV427_(workspace, user);
 
         upsertObject(
           SHEETS.mapping,
@@ -11572,7 +11548,8 @@ function syncAllActiveWorkspacesV412(limit) {
         report.results.push({
           userId:userId,
           ok:true,
-          counts:counts
+          counts:counts,
+          access:access
         });
 
       } catch (err) {
@@ -11899,101 +11876,157 @@ function testV427SecurityAndSyncHelpers() {
   };
 }
 
-
 /************************************************************
- * V4.28 — AUDIT CLOSURE OVERRIDES
+ * V4.28 — AUDIT CLOSURE HELPERS
  * ----------------------------------------------------------
- * Final branch-only compatibility/security layer:
- * - Relay envelope is aligned with backend/api/telegram.js.
- * - Timestamp is seconds since epoch, with 5 minute TTL.
- * - Replay is blocked before Telegram handlers are invoked.
- * - RELAY_SHARED_SECRET is canonical; WEBHOOK_RELAY_SECRET is
- *   accepted only as a temporary migration fallback.
+ * Exact identity directory + Google access reconciliation.
+ * No production-readiness claim; staging E2E remains mandatory.
  ************************************************************/
+let __IDENTITY_DIRECTORY_V427 = null;
 
-function relaySharedSecretV428_() {
-  return scriptPropertyV427_('RELAY_SHARED_SECRET') ||
-    scriptPropertyV427_('WEBHOOK_RELAY_SECRET');
+function resetIdentityDirectoryV427_() {
+  __IDENTITY_DIRECTORY_V427 = null;
 }
 
-// Final relay validator. Expected envelope:
-// { relay:{timestamp, nonce, signature}, update:{...telegram update...} }
-function verifyRelayEnvelopeV427_(envelope, nowMs) {
-  const secret = relaySharedSecretV428_();
-  if (!secret) return { ok:false, reason:'relay_secret_missing' };
+function identityDirectoryV427_() {
+  if (__IDENTITY_DIRECTORY_V427) return __IDENTITY_DIRECTORY_V427;
 
-  if (!envelope || !envelope.relay || !envelope.update) {
-    return { ok:false, reason:'invalid_relay_envelope' };
+  let rows = [];
+  try { rows = readRows(SHEETS.usersRaw) || []; } catch (_) {}
+
+  const byId = {};
+  const byTelegram = {};
+  const nameCounts = {};
+
+  rows.forEach(function(r) {
+    const id = normalizeIdentityV427_(r['User ID']);
+    const name = normalizeIdentityV427_(r['نام کامل']);
+    const tg = normalizeIdentityV427_(r['Telegram User ID']);
+
+    if (id) byId[id] = (byId[id] || 0) + 1;
+    if (tg) byTelegram[tg] = (byTelegram[tg] || 0) + 1;
+    if (name) nameCounts[name] = (nameCounts[name] || 0) + 1;
+  });
+
+  __IDENTITY_DIRECTORY_V427 = {
+    byId:byId,
+    byTelegram:byTelegram,
+    nameCounts:nameCounts
+  };
+  return __IDENTITY_DIRECTORY_V427;
+}
+
+function fieldMatchesUserIdentityV427_(value, user) {
+  const tokens = splitAssignmentTokensV427_(value);
+  if (!tokens.length || !user) return false;
+
+  const userId = normalizeIdentityV427_(user['User ID']);
+  const fullName = normalizeIdentityV427_(user['نام کامل']);
+  const telegramId = normalizeIdentityV427_(user['Telegram User ID']);
+  const dir = identityDirectoryV427_();
+
+  return tokens.some(function(token) {
+    // Stable IDs are authoritative and exact.
+    if (looksLikeStableUserIdV427_(token)) {
+      return !!userId && token === userId;
+    }
+
+    // Numeric Telegram identifiers are exact and must be unique when known.
+    if (telegramId && token === telegramId) {
+      return !dir.byTelegram[telegramId] || dir.byTelegram[telegramId] === 1;
+    }
+
+    // Legacy names are accepted only when exact AND unambiguous.
+    if (fullName && token === fullName) {
+      return !dir.nameCounts[fullName] || dir.nameCounts[fullName] === 1;
+    }
+
+    return false;
+  });
+}
+
+function reconcileWorkspaceAccessV427_(workspace, user) {
+  if (!workspace || !workspace.url || !user) {
+    return { ok:false, shared:false, reason:'missing_workspace_or_user' };
   }
 
-  const relay = envelope.relay;
-  const timestamp = Number(relay.timestamp);
-  const nonce = String(relay.nonce || '');
-  const signature = String(relay.signature || '').toLowerCase();
-  const update = envelope.update;
-  const nowSeconds = Math.floor(Number(nowMs || Date.now()) / 1000);
-
-  if (!timestamp || !nonce || !signature) {
-    return { ok:false, reason:'relay_fields_missing' };
+  const fileId = workspace.fileId || parseDriveFileId_(workspace.url);
+  if (!fileId) {
+    return { ok:false, shared:false, reason:'missing_file_id' };
   }
 
-  if (!/^[A-Za-z0-9_-]{8,128}$/.test(nonce)) {
-    return { ok:false, reason:'invalid_nonce' };
+  const file = DriveApp.getFileById(fileId);
+  const userId = String(user['User ID'] || '').trim();
+  const desiredEmail = String(user['Gmail / Email'] || '').trim().toLowerCase();
+  const active = String(user['وضعیت'] || '').trim() === 'فعال';
+  const mapping = mappingForWorkspaceV427_(workspace, userId);
+  const previousEmail = mapping
+    ? String(mapping['Gmail مشترک‌شده'] || '').trim().toLowerCase()
+    : '';
+
+  const revoked = [];
+
+  if (previousEmail && (!active || previousEmail !== desiredEmail)) {
+    if (removeWorkspacePrincipalV427_(file, previousEmail)) revoked.push(previousEmail);
   }
 
-  if (timestamp > nowSeconds + 60) {
-    return { ok:false, reason:'timestamp_in_future' };
+  if (!active) {
+    if (desiredEmail && desiredEmail !== previousEmail) {
+      if (removeWorkspacePrincipalV427_(file, desiredEmail)) revoked.push(desiredEmail);
+    }
+    return {
+      ok:true,
+      shared:false,
+      active:false,
+      previousEmail:previousEmail,
+      desiredEmail:desiredEmail,
+      revoked:revoked
+    };
   }
 
-  if (nowSeconds - timestamp > WEBHOOK_MAX_AGE_SECONDS_V427) {
-    return { ok:false, reason:'expired_request' };
+  if (!desiredEmail || desiredEmail.indexOf('@') <= 0) {
+    return {
+      ok:false,
+      shared:false,
+      active:true,
+      reason:'invalid_email',
+      previousEmail:previousEmail,
+      desiredEmail:desiredEmail,
+      revoked:revoked
+    };
   }
 
-  let payloadJson;
   try {
-    payloadJson = JSON.stringify(update);
-  } catch (_) {
-    return { ok:false, reason:'payload_json_invalid' };
+    file.addEditor(desiredEmail);
+  } catch (err) {
+    return {
+      ok:false,
+      shared:false,
+      active:true,
+      reason:'share_failed',
+      error:String(err && err.message ? err.message : err),
+      previousEmail:previousEmail,
+      desiredEmail:desiredEmail,
+      revoked:revoked
+    };
   }
-
-  const expected = relaySignatureV427_(
-    timestamp,
-    nonce,
-    payloadJson,
-    secret
-  );
-
-  if (!constantTimeEqualsV427_(expected, signature)) {
-    return { ok:false, reason:'bad_signature' };
-  }
-
-  const replayKey = WEBHOOK_REPLAY_PREFIX_V427 + nonce;
-  const cache = CacheService.getScriptCache();
-
-  if (cache.get(replayKey)) {
-    return { ok:false, reason:'replay' };
-  }
-
-  cache.put(
-    replayKey,
-    '1',
-    WEBHOOK_MAX_AGE_SECONDS_V427 + 60
-  );
 
   return {
     ok:true,
-    update:update,
-    timestamp:timestamp,
-    nonce:nonce
+    shared:true,
+    active:true,
+    previousEmail:previousEmail,
+    desiredEmail:desiredEmail,
+    revoked:revoked
   };
 }
 
 function testV428AuditClosureHelpers() {
   return {
     version:APP_VERSION,
-    relaySecretConfigured:!!relaySharedSecretV428_(),
-    font:VAZIR_FONT_FAMILY_V427,
+    font:UI_FONT_FAMILY_V427,
     productionReady:false,
     note:'Live staging E2E remains required before production approval.'
   };
 }
+
