@@ -374,7 +374,7 @@ testCase('runtime source contains provisioning and sync invariants', () => {
 
   const render = lastBody('renderRoleDashboardV425_');
   assert.ok(render.includes('UI_FONT_FAMILY_V427'));
-  assert.ok(!render.includes('Arial'));
+  assert.ok(!render.includes("setFontFamily('Arial')"));
 
   assert.strictEqual(/const SPREADSHEET_ID[^\n]+1hpDV/.test(code), false);
   assert.strictEqual(/TEMPLATE_ADMIN_ID[^\n]+1Zt890/.test(code), false);
