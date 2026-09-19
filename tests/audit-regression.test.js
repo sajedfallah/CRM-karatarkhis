@@ -77,6 +77,13 @@ test('provisioning persists before sync and shares after sync', () => {
   assert.doesNotMatch(provision, /addEditor|addViewer/);
 });
 
+test('provisioning recovers copy created before queue persistence', () => {
+  const fn = extractLastFunction('provisionWorkspace');
+  assert.match(fn, /findWorkspaceCopyByDeterministicNameV428_/);
+  assert.match(fn, /reusedExistingCopy/);
+  assert.doesNotMatch(fn, /addEditor|addViewer/);
+});
+
 test('workspace sync rotates and never writes admin personal data to RAW template', () => {
   const fn = extractLastFunction('syncAllActiveWorkspacesV412');
   assert.match(fn, /selectMappingsRoundRobinV427_/);
