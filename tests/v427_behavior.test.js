@@ -101,7 +101,7 @@ function testCase(name, fn) {
 
 function resetIdentity(users) {
   sandbox.readRows = () => users;
-  sandbox.resetIdentityDirectoryV427_();
+  vm.runInContext('resetIdentityDirectoryV427_()', sandbox);
 }
 
 const ali = {
@@ -138,7 +138,7 @@ testCase('same-name legacy ownership fails closed', () => {
     { 'User ID':'USR-001', 'نام کامل':'Ali', 'Telegram User ID':'100' },
     { 'User ID':'USR-002', 'نام کامل':'Ali', 'Telegram User ID':'200' }
   ];
-  sandbox.resetIdentityDirectoryV427_();
+  vm.runInContext('resetIdentityDirectoryV427_()', sandbox);
   assert.strictEqual(sandbox.fieldMatchesUserIdentityV427_('Ali', ali), false);
 });
 
@@ -204,54 +204,55 @@ testCase('active Telegram user requires active complete permission', () => {
 });
 
 testCase('signed relay matches Vercel signer and rejects replay', () => {
-  const timestamp = Date.now();
+  const nowMs = Date.now();
+  const timestamp = Math.floor(nowMs / 1000);
   const nonce = '12345678-1234-1234-1234-123456789012';
-  const payloadJson = JSON.stringify({ update_id:42, message:{ text:'/start' } });
+  const update = { update_id:42, message:{ text:'/start' } };
   const signature = relay._test.signEnvelope(
     timestamp,
     nonce,
-    payloadJson,
+    update,
     'relay-secret'
   );
 
   const envelope = {
-    relay_version:1,
-    timestamp,
-    nonce,
-    payload_json:payloadJson,
-    signature
+    relay:{ timestamp, nonce, signature },
+    update
   };
 
-  const first = sandbox.verifyRelayEnvelopeV427_(envelope, timestamp + 10);
-  const second = sandbox.verifyRelayEnvelopeV427_(envelope, timestamp + 20);
+  const first = sandbox.verifyRelayEnvelopeV427_(envelope, nowMs + 10);
+  const second = sandbox.verifyRelayEnvelopeV427_(envelope, nowMs + 20);
 
   assert.strictEqual(first.ok, true);
   assert.strictEqual(first.update.update_id, 42);
   assert.strictEqual(second.ok, false);
-  assert.strictEqual(second.reason, 'relay_replay');
+  assert.strictEqual(second.reason, 'replay');
 });
 
 testCase('relay rejects expired and bad signature', () => {
-  const now = Date.now();
-  const payloadJson = JSON.stringify({ update_id:43 });
+  const nowMs = Date.now();
+  const nowSeconds = Math.floor(nowMs / 1000);
+  const update = { update_id:43 };
 
   const expired = sandbox.verifyRelayEnvelopeV427_({
-    relay_version:1,
-    timestamp:now - (6 * 60 * 1000),
-    nonce:'12345678-1234-1234-1234-123456789013',
-    payload_json:payloadJson,
-    signature:'00'.repeat(32)
-  }, now);
+    relay:{
+      timestamp:nowSeconds - 600,
+      nonce:'12345678-1234-1234-1234-123456789013',
+      signature:'00'.repeat(32)
+    },
+    update
+  }, nowMs);
   assert.strictEqual(expired.ok, false);
-  assert.strictEqual(expired.reason, 'relay_expired');
+  assert.strictEqual(expired.reason, 'expired_request');
 
   const bad = sandbox.verifyRelayEnvelopeV427_({
-    relay_version:1,
-    timestamp:now,
-    nonce:'12345678-1234-1234-1234-123456789014',
-    payload_json:payloadJson,
-    signature:'00'.repeat(32)
-  }, now);
+    relay:{
+      timestamp:nowSeconds,
+      nonce:'12345678-1234-1234-1234-123456789014',
+      signature:'00'.repeat(32)
+    },
+    update
+  }, nowMs);
   assert.strictEqual(bad.ok, false);
   assert.strictEqual(bad.reason, 'bad_signature');
 });
@@ -382,7 +383,7 @@ testCase('runtime source contains provisioning and sync invariants', () => {
   assert.ok(post.includes('verifyRelayEnvelopeV427_'));
 
   const render = lastBody('renderRoleDashboardV425_');
-  assert.ok(render.includes('UI_FONT_FAMILY_V427'));
+  assert.ok(render.includes('VAZIR_FONT_FAMILY_V427'));
   assert.ok(!render.includes("setFontFamily('Arial')"));
 
   assert.strictEqual(/const SPREADSHEET_ID[^\n]+1hpDV/.test(code), false);
