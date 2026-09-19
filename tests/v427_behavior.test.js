@@ -224,7 +224,7 @@ testCase('signed relay matches Vercel signer and rejects replay', () => {
   const second = sandbox.verifyRelayEnvelopeV427_(envelope, nowMs + 20);
 
   assert.strictEqual(first.ok, true);
-  assert.strictEqual(first.update.update_id, 42);
+  assert.strictEqual(first.payload.update_id, 42);
   assert.strictEqual(second.ok, false);
   assert.strictEqual(second.reason, 'replay');
 });
