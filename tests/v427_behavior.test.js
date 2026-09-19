@@ -133,6 +133,15 @@ testCase('same-name legacy assignment fails closed', () => {
   assert.strictEqual(sandbox.fieldMatchesUserIdentityV427_('USR-001', ali), true);
 });
 
+testCase('same-name legacy ownership fails closed', () => {
+  sandbox.readRows = () => [
+    { 'User ID':'USR-001', 'نام کامل':'Ali', 'Telegram User ID':'100' },
+    { 'User ID':'USR-002', 'نام کامل':'Ali', 'Telegram User ID':'200' }
+  ];
+  sandbox.resetIdentityDirectoryV427_();
+  assert.strictEqual(sandbox.fieldMatchesUserIdentityV427_('Ali', ali), false);
+});
+
 testCase('PERSONAL source is authoritative', () => {
   resetIdentity([ali]);
   assert.strictEqual(
@@ -386,4 +395,12 @@ testCase('required runtime configuration is complete in test environment', () =>
   assert.deepStrictEqual(Array.from(result.missing), []);
 });
 
-console.log('V4.27 behavioral regression tests passed:', passed);
+testCase('daily task conflict resolver reports conflict', () => {
+  const baseline = { localHash:'base', centralHash:'base' };
+  assert.strictEqual(
+    sandbox.resolveDailyTaskConflictV427_(baseline, 'local-new', 'central-new'),
+    'conflict'
+  );
+});
+
+console.log('V4.28 behavioral regression tests passed:', passed);
