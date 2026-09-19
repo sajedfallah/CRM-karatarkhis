@@ -10006,8 +10006,8 @@ function getScopedWorkspaceDataV412_(user) {
 
   if (role === 'کارمند داخلی') {
     cases = src.cases.filter(function(r) {
-      return fieldMatchesUserIdentityV427_(r['مسئول داخلی اصلی'], user) ||
-        fieldMatchesUserIdentityV427_(r['همکاران داخلی'], user);
+      return assignmentFieldMatchesUserV427_(r['مسئول داخلی اصلی'], user) ||
+        assignmentFieldMatchesUserV427_(r['همکاران داخلی'], user);
     });
 
     const caseIds = cases.map(function(r){ return String(r['Case ID'] || '').trim(); }).filter(Boolean);
@@ -10018,17 +10018,17 @@ function getScopedWorkspaceDataV412_(user) {
     });
 
     tasks = src.tasks.filter(function(r) {
-      return fieldMatchesUserIdentityV427_(r['مسئول'], user) ||
+      return assignmentFieldMatchesUserV427_(r['مسئول'], user) ||
         (String(r['نوع ارتباط'] || '').trim() === 'پرونده' &&
           caseIds.indexOf(String(r['شناسه مرتبط'] || '').trim()) >= 0);
     });
 
     leads = src.leads.filter(function(r) {
-      return fieldMatchesUserIdentityV427_(r['مسئول'], user);
+      return assignmentFieldMatchesUserV427_(r['مسئول'], user);
     });
 
     customerTasks = src.customerTasks.filter(function(r) {
-      return fieldMatchesUserIdentityV427_(r['مسئول'], user) ||
+      return assignmentFieldMatchesUserV427_(r['مسئول'], user) ||
         caseIds.indexOf(String(r['شناسه پرونده'] || '').trim()) >= 0;
     });
 
@@ -10065,11 +10065,11 @@ function getScopedWorkspaceDataV412_(user) {
       });
     } else {
       tasks = customerScopedTasks.filter(function(r) {
-        return fieldMatchesUserIdentityV427_(r['مسئول'], user);
+        return assignmentFieldMatchesUserV427_(r['مسئول'], user);
       });
       customerTasks = src.customerTasks.filter(function(r) {
         return String(r['مشتری ID'] || '').trim() === customerId &&
-          fieldMatchesUserIdentityV427_(r['مسئول'], user);
+          assignmentFieldMatchesUserV427_(r['مسئول'], user);
       });
     }
 
@@ -10355,45 +10355,77 @@ function setTelegramWebhook() {
 // Internal actions remain on their pre-existing, separately authenticated path.
 function doPost(e) {
   let updateId = '';
+
   try {
     if (!e || !e.postData || !e.postData.contents) {
-      return jsonResponse({ ok:false, error:'missing_body', version:APP_VERSION });
+      return jsonResponse({
+        ok:false,
+        rejected:true,
+        reason:'empty_request',
+        version:APP_VERSION
+      });
     }
 
     const raw = JSON.parse(e.postData.contents);
 
-    // Internal API has its own secret validation in handleInternalActionV414_.
     if (raw && raw.internal_action) {
       return jsonResponse(handleInternalActionV414_(raw));
     }
 
     const verified = verifyRelayEnvelopeV427_(raw);
     if (!verified.ok) {
-      try { logSystem('telegram_webhook_rejected', verified.reason); } catch (_) {}
-      return jsonResponse({ ok:false, error:verified.reason, version:APP_VERSION });
+      try {
+        logSystem(
+          'telegram_webhook_rejected',
+          String(verified.reason || 'relay_verification_failed')
+        );
+      } catch (_) {}
+
+      return jsonResponse({
+        ok:false,
+        rejected:true,
+        reason:verified.reason || 'relay_verification_failed',
+        version:APP_VERSION
+      });
     }
 
-    const update = verified.update;
+    const update = verified.payload || {};
     updateId = String(update.update_id || '');
 
     if (updateId && isDuplicateUpdate(updateId)) {
-      return jsonResponse({ ok:true, duplicate:true, version:APP_VERSION });
+      return jsonResponse({
+        ok:true,
+        duplicate:true,
+        version:APP_VERSION
+      });
     }
 
     if (update.callback_query) {
       if (!handleEssentialCallbackV423_(update.callback_query)) {
-        if (!handleFastNavigationV422_(update.callback_query)) handleCallback(update.callback_query);
+        if (!handleFastNavigationV422_(update.callback_query)) {
+          handleCallback(update.callback_query);
+        }
       }
     } else if (update.message) {
       handleMessage(update.message);
     }
 
     return jsonResponse({ ok:true, version:APP_VERSION });
+
   } catch (err) {
     if (updateId) {
-      try { CacheService.getScriptCache().remove('TG_UPDATE_' + updateId); } catch (_) {}
+      try {
+        CacheService.getScriptCache().remove('TG_UPDATE_' + updateId);
+      } catch (_) {}
     }
-    try { logSystem('telegram_v427_error', String(err && err.stack ? err.stack : err)); } catch (_) {}
+
+    try {
+      logSystem(
+        'telegram_v427_error',
+        String(err && err.stack ? err.stack : err)
+      );
+    } catch (_) {}
+
     return jsonResponse({
       ok:false,
       handled_error:true,
@@ -10455,15 +10487,28 @@ function removeWorkspacePrincipalV427_(file, email) {
 
 // Final share implementation removes stale mapped email before granting the new one.
 function shareWorkspaceToUser_(workspace, email, user) {
-  if (user) return reconcileWorkspaceAccessV427_(workspace, user).ok;
-
-  // Compatibility path: no revocation context. New code must pass user.
   const mail = String(email || '').trim();
   if (!workspace || !workspace.url || !mail || mail.indexOf('@') <= 0) return false;
+
   const fileId = workspace.fileId || parseDriveFileId_(workspace.url);
   if (!fileId) return false;
-  DriveApp.getFileById(fileId).addEditor(mail);
-  return true;
+
+  const file = DriveApp.getFileById(fileId);
+  const userId = String(user && user['User ID'] || '').trim();
+  const mapping = mappingForWorkspaceV427_(workspace, userId);
+  const oldEmail = mapping ? String(mapping['Gmail مشترک‌شده'] || '').trim() : '';
+
+  emailsToRevokeV427_(oldEmail, mail).forEach(function(staleEmail) {
+    removeWorkspacePrincipalV427_(file, staleEmail);
+  });
+
+  try {
+    file.addEditor(mail);
+    return true;
+  } catch (err) {
+    try { logSystem('workspace_share_error', String(err)); } catch (_) {}
+    return false;
+  }
 }
 
 function revokeWorkspaceAccessForUserV427_(userId, user) {
@@ -10808,7 +10853,7 @@ function processProvisioningQueue(limit) {
         const requestOwnsWorkspace =
           String(req['Workspace File ID'] || '').trim() ||
           String(req['Workspace URL'] || '').trim() ||
-          !findWorkspaceMappingByUserIdV427_(userId);
+          !mappingForWorkspaceV427_(workspace, userId);
 
         if (requestOwnsWorkspace) {
           sanitizeNewWorkspaceV427_(workspace);
@@ -10817,13 +10862,14 @@ function processProvisioningQueue(limit) {
         const syncCounts = syncWorkspaceDataV412_(workspace, user);
 
         // Share only after sanitize + scoped sync succeeded.
-        const accessResult = reconcileWorkspaceAccessV427_(workspace, user);
-        workspace.shared = !!accessResult.shared;
+        const shared = shareWorkspaceToUser_(
+          workspace,
+          user['Gmail / Email'],
+          user
+        );
+        workspace.shared = shared;
 
-        const access =
-          accessResult.shared
-            ? 'فعال'
-            : 'ایجاد شد';
+        const access = shared ? 'فعال' : 'ایجاد شد';
 
         updateRowById(SHEETS.usersRaw, userId, {
           'Workspace URL':workspace.url,
@@ -10873,8 +10919,7 @@ function processProvisioningQueue(limit) {
           ok:true,
           recovered:!!workspace.source,
           workspaceUrl:workspace.url,
-          sync:syncCounts,
-          access:accessResult
+          sync:syncCounts
         });
 
       } catch (err) {
@@ -11073,10 +11118,11 @@ function personalTaskBelongsToUserV420_(row, user) {
     return source === 'PERSONAL:' + userId;
   }
 
-  // Legacy rows without PERSONAL:<User ID> may match only exact identities.
   const owner = normalizeTextV420_(row && row['مسئول']);
   if (!owner) return false;
-  return fieldMatchesUserIdentityV427_(owner, user);
+
+  // Legacy fallback is exact equality only; substring ownership is forbidden.
+  return assignmentFieldMatchesUserV427_(owner, user);
 }
 
 function localTaskRowsByIdV427_(sh) {
@@ -11480,7 +11526,7 @@ function syncAllActiveWorkspacesV412(limit) {
 
       try {
         if (String(user['وضعیت'] || '').trim() !== 'فعال') {
-          const access = reconcileWorkspaceAccessV427_(workspace, user);
+          const access = revokeWorkspaceAccessForUserV427_(userId, user);
 
           upsertObject(
             SHEETS.mapping,
@@ -11498,14 +11544,17 @@ function syncAllActiveWorkspacesV412(limit) {
           report.results.push({
             userId:userId,
             ok:true,
-            revoked:true,
-            access:access
-          });
+            revoked:true
+        });
           return;
         }
 
         const counts = syncWorkspaceDataV412_(workspace, user);
-        const access = reconcileWorkspaceAccessV427_(workspace, user);
+        const shared = shareWorkspaceToUser_(
+          workspace,
+          user['Gmail / Email'],
+          user
+        );
 
         upsertObject(
           SHEETS.mapping,
@@ -11523,8 +11572,7 @@ function syncAllActiveWorkspacesV412(limit) {
         report.results.push({
           userId:userId,
           ok:true,
-          counts:counts,
-          access:access
+          counts:counts
         });
 
       } catch (err) {
@@ -11850,369 +11898,3 @@ function testV427SecurityAndSyncHelpers() {
     provisioningSettingsDryRun:repairProvisioningSettingsV427_(true)
   };
 }
-
-
-
-
-/************************************************************
- * V4.27 — SECURITY / SYNC / PROVISIONING AUDIT HARDENING
- * Branch-only hardening. Production rollout still requires staging E2E.
- ************************************************************/
-const VAZIR_FONT_FAMILY_V427 = 'Vazirmatn';
-const WORKSPACE_SYNC_CURSOR_KEY_V427 = 'WORKSPACE_SYNC_CURSOR_V427';
-const WEBHOOK_RELAY_SECRET_KEY_V427 = 'WEBHOOK_RELAY_SECRET';
-const WEBHOOK_REPLAY_PREFIX_V427 = 'WEBHOOK_REPLAY_V427_';
-const WEBHOOK_MAX_AGE_SECONDS_V427 = 300;
-
-function normalizeIdentityTokenV427_(value) {
-  return String(value == null ? '' : value)
-    .replace(/\u200c/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-function splitIdentityListV427_(value) {
-  const raw = normalizeIdentityTokenV427_(value);
-  if (!raw) return [];
-  return raw.split(/[\n,،;|]+/)
-    .map(normalizeIdentityTokenV427_)
-    .filter(Boolean);
-}
-
-let __IDENTITY_DIRECTORY_V427 = null;
-
-function identityDirectoryV427_() {
-  if (__IDENTITY_DIRECTORY_V427) return __IDENTITY_DIRECTORY_V427;
-
-  const directory = {
-    names:{},
-    telegram:{}
-  };
-
-  let users = [];
-  try { users = readRows(SHEETS.usersRaw); } catch (_) {}
-
-  users.forEach(function(u) {
-    const userId = normalizeIdentityTokenV427_(u['User ID']);
-    if (!userId) return;
-
-    const name = normalizeIdentityTokenV427_(u['نام کامل']);
-    const tg = normalizeIdentityTokenV427_(u['Telegram User ID']);
-
-    if (name) {
-      if (!directory.names[name]) directory.names[name] = [];
-      if (directory.names[name].indexOf(userId) < 0) directory.names[name].push(userId);
-    }
-
-    if (tg) {
-      if (!directory.telegram[tg]) directory.telegram[tg] = [];
-      if (directory.telegram[tg].indexOf(userId) < 0) directory.telegram[tg].push(userId);
-    }
-  });
-
-  __IDENTITY_DIRECTORY_V427 = directory;
-  return directory;
-}
-
-function resetIdentityDirectoryV427_() {
-  __IDENTITY_DIRECTORY_V427 = null;
-}
-
-
-function fieldMatchesUserIdentityV427_(value, user) {
-  const parts = splitIdentityListV427_(value);
-  if (!parts.length || !user) return false;
-
-  const stableId = normalizeIdentityTokenV427_(user['User ID']);
-  const legacyName = normalizeIdentityTokenV427_(user['نام کامل']);
-  const telegramId = normalizeIdentityTokenV427_(user['Telegram User ID']);
-
-  if (!stableId) return false;
-
-  // If the assignment contains any stable User ID, only exact User ID
-  // membership is authoritative. Never fall through to name matching.
-  const stableParts = parts.filter(function(part) {
-    return /^(USR[-_][A-Z0-9_-]+|CRM_ADMIN)$/i.test(part);
-  });
-
-  if (stableParts.length) {
-    return stableParts.indexOf(stableId) >= 0;
-  }
-
-  const directory = identityDirectoryV427_();
-
-  // Telegram ID fallback is exact and must map uniquely to this User ID.
-  if (telegramId && parts.indexOf(telegramId) >= 0) {
-    const ids = directory.telegram[telegramId] || [];
-    if (ids.length === 1 && ids[0] === stableId) return true;
-  }
-
-  // Legacy name fallback is exact AND unique. Same-name users fail closed.
-  if (legacyName && parts.indexOf(legacyName) >= 0) {
-    const ids = directory.names[legacyName] || [];
-    if (ids.length === 1 && ids[0] === stableId) return true;
-  }
-
-  return false;
-}
-
-function bytesToHexV427_(bytes) {
-  return (bytes || []).map(function(b) {
-    const v = b < 0 ? b + 256 : b;
-    return ('0' + v.toString(16)).slice(-2);
-  }).join('');
-}
-
-function constantTimeEqualsV427_(a, b) {
-  a = String(a || '');
-  b = String(b || '');
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return diff === 0;
-}
-
-function relaySignatureV427_(timestamp, nonce, payloadJson, secret) {
-  const material =
-    String(timestamp) + '\n' +
-    String(nonce) + '\n' +
-    String(payloadJson);
-
-  const bytes = Utilities.computeHmacSha256Signature(
-    material,
-    secret,
-    Utilities.Charset.UTF_8
-  );
-
-  return bytesToHexV427_(bytes);
-}
-
-function verifyRelayEnvelopeV427_(envelope, nowMs) {
-  const secret = String(
-    PropertiesService.getScriptProperties().getProperty('RELAY_SHARED_SECRET') || ''
-  ).trim();
-
-  if (!secret) return { ok:false, reason:'relay_secret_missing' };
-  if (!envelope || Number(envelope.relay_version) !== 1) {
-    return { ok:false, reason:'invalid_relay_version' };
-  }
-
-  const timestamp = Number(envelope.timestamp);
-  const nonce = String(envelope.nonce || '');
-  const payloadJson = String(envelope.payload_json || '');
-  const signature = String(envelope.signature || '').toLowerCase();
-  const now = Number(nowMs || Date.now());
-
-  if (!timestamp || !nonce || !payloadJson || !signature) {
-    return { ok:false, reason:'relay_fields_missing' };
-  }
-
-  if (!/^[A-Za-z0-9_-]{16,128}$/.test(nonce)) {
-    return { ok:false, reason:'invalid_nonce' };
-  }
-
-  if (timestamp > now + RELAY_FUTURE_SKEW_MS_V427) {
-    return { ok:false, reason:'timestamp_in_future' };
-  }
-
-  if (now - timestamp > RELAY_MAX_AGE_MS_V427) {
-    return { ok:false, reason:'relay_expired' };
-  }
-
-  const expected = relaySignatureV427_(
-    timestamp,
-    nonce,
-    payloadJson,
-    secret
-  );
-
-  if (!constantTimeEqualsV427_(expected, signature)) {
-    return { ok:false, reason:'bad_signature' };
-  }
-
-  const replayKey = 'RELAY_NONCE_V427_' + nonce;
-  const cache = CacheService.getScriptCache();
-
-  if (cache.get(replayKey)) {
-    return { ok:false, reason:'relay_replay' };
-  }
-
-  cache.put(replayKey, '1', 600);
-
-  let update;
-  try {
-    update = JSON.parse(payloadJson);
-  } catch (_) {
-    return { ok:false, reason:'payload_json_invalid' };
-  }
-
-  return {
-    ok:true,
-    update:update,
-    timestamp:timestamp,
-    nonce:nonce
-  };
-}
-
-function findWorkspaceMappingByUserIdV427_(userId) {
-  userId = String(userId || '').trim();
-  return readRows(SHEETS.mapping).find(function(r) {
-    return String(r['User ID'] || '').trim() === userId;
-  }) || null;
-}
-
-function revokeWorkspaceEmailV427_(file, email) {
-  email = String(email || '').trim();
-  if (!email || email.indexOf('@') <= 0) return false;
-  try { file.removeEditor(email); return true; } catch (_) {}
-  try { file.removeViewer(email); return true; } catch (_) {}
-  return false;
-}
-
-
-function workspacePrincipalEmailsV427_(file) {
-  const out = {};
-  try {
-    (file.getEditors() || []).forEach(function(u) {
-      const mail = String(u.getEmail ? u.getEmail() : '').trim().toLowerCase();
-      if (mail) out[mail] = true;
-    });
-  } catch (_) {}
-  try {
-    (file.getViewers() || []).forEach(function(u) {
-      const mail = String(u.getEmail ? u.getEmail() : '').trim().toLowerCase();
-      if (mail) out[mail] = true;
-    });
-  } catch (_) {}
-  return out;
-}
-
-function ensureWorkspacePrincipalRemovedV427_(file, email) {
-  email = String(email || '').trim().toLowerCase();
-  if (!email) return true;
-
-  try { file.removeEditor(email); } catch (_) {}
-  try { file.removeViewer(email); } catch (_) {}
-
-  const remaining = workspacePrincipalEmailsV427_(file);
-  return !remaining[email];
-}
-
-
-function reconcileWorkspaceAccessV427_(workspace, user) {
-  if (!workspace || !workspace.url || !user) {
-    return { ok:false, reason:'missing_workspace_or_user' };
-  }
-
-  const fileId = workspace.fileId || parseDriveFileId_(workspace.url);
-  if (!fileId) return { ok:false, reason:'missing_file_id' };
-
-  const file = DriveApp.getFileById(fileId);
-  const userId = String(user['User ID'] || '').trim();
-  const desiredEmail = String(user['Gmail / Email'] || '').trim().toLowerCase();
-  const active = String(user['وضعیت'] || '').trim() === 'فعال';
-  const previous = findWorkspaceMappingByUserIdV427_(userId);
-  const previousEmail = previous
-    ? String(previous['Gmail مشترک‌شده'] || '').trim().toLowerCase()
-    : '';
-
-  const removed = [];
-
-  // Revoke the old mapped email before granting the new one.
-  if (previousEmail && (!active || previousEmail !== desiredEmail)) {
-    if (!ensureWorkspacePrincipalRemovedV427_(file, previousEmail)) {
-      throw new Error('workspace_access_revoke_failed: ' + previousEmail);
-    }
-    removed.push(previousEmail);
-  }
-
-  // Inactive user: also revoke the currently configured email.
-  if (!active) {
-    if (desiredEmail && desiredEmail !== previousEmail) {
-      if (!ensureWorkspacePrincipalRemovedV427_(file, desiredEmail)) {
-        throw new Error('workspace_access_revoke_failed: ' + desiredEmail);
-      }
-      removed.push(desiredEmail);
-    }
-
-    return {
-      ok:true,
-      active:false,
-      shared:false,
-      desiredEmail:desiredEmail,
-      previousEmail:previousEmail,
-      removed:removed
-    };
-  }
-
-  // Active user without Gmail: keep the file private and provisioning can
-  // remain at "ایجاد شد" rather than failing.
-  if (!desiredEmail) {
-    return {
-      ok:true,
-      active:true,
-      shared:false,
-      desiredEmail:'',
-      previousEmail:previousEmail,
-      removed:removed
-    };
-  }
-
-  file.addEditor(desiredEmail);
-
-  const principals = workspacePrincipalEmailsV427_(file);
-  // Some Drive contexts may not expose principals immediately; only fail if
-  // metadata is available and explicitly does not contain the granted mail.
-  const principalKeys = Object.keys(principals);
-  if (principalKeys.length && !principals[desiredEmail]) {
-    throw new Error('workspace_access_grant_not_visible: ' + desiredEmail);
-  }
-
-  return {
-    ok:true,
-    active:true,
-    shared:true,
-    desiredEmail:desiredEmail,
-    previousEmail:previousEmail,
-    removed:removed
-  };
-}
-
-function dailyTaskComparableV427_(row) {
-  const keys = [
-    'تاریخ','کار روزانه','دسته‌بندی','اولویت','موعد','وضعیت',
-    'نتیجه','کار فردا','مرتبط با شرکت','شماره پرونده','یادداشت مدیریتی'
-  ];
-  const o = {};
-  keys.forEach(function(k) {
-    o[k] = normalizeTextV420_(row && row[k]);
-  });
-  return o;
-}
-
-function dailyTaskHashV427_(row) {
-  const json = JSON.stringify(dailyTaskComparableV427_(row));
-  const bytes = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, json, Utilities.Charset.UTF_8);
-  return bytesToHexV427_(bytes);
-}
-
-function dailyTaskBaselineKeyV427_(userId, taskId) {
-  return 'DAILY_TASK_BASELINE_V427_' + String(userId || '') + '_' + String(taskId || '');
-}
-
-function getDailyTaskBaselineV427_(userId, taskId) {
-  const raw = PropertiesService.getScriptProperties().getProperty(
-    dailyTaskBaselineKeyV427_(userId, taskId)
-  );
-  if (!raw) return '';
-  return String(raw);
-}
-
-function setDailyTaskBaselineV427_(userId, taskId, hash) {
-  if (!userId || !taskId || !hash) return;
-  PropertiesService.getScriptProperties().setProperty(
-    dailyTaskBaselineKeyV427_(userId, taskId),
-    String(hash)
-  );
-}
-
