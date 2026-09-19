@@ -10225,27 +10225,41 @@ function relaySignatureV427_(timestamp, nonce, payloadJson, secret) {
 function verifyRelayEnvelopeV427_(envelope, nowMs) {
   const secret = scriptPropertyV427_('RELAY_SHARED_SECRET');
   if (!secret) return { ok:false, reason:'relay_secret_missing' };
-  if (!envelope || Number(envelope.relay_version) !== 1) {
-    return { ok:false, reason:'invalid_relay_version' };
+
+  if (!envelope || !envelope.relay || !envelope.update) {
+    return { ok:false, reason:'invalid_relay_envelope' };
   }
 
-  const timestamp = Number(envelope.timestamp);
-  const nonce = String(envelope.nonce || '');
-  const payloadJson = String(envelope.payload_json || '');
-  const signature = String(envelope.signature || '').toLowerCase();
-  const now = Number(nowMs || Date.now());
+  const relay = envelope.relay;
+  const timestamp = Number(relay.timestamp || 0);
+  const nonce = String(relay.nonce || '');
+  const signature = String(relay.signature || '').toLowerCase();
+  const update = envelope.update;
+  const nowSeconds = Math.floor(Number(nowMs || Date.now()) / 1000);
+  const maxAgeSeconds = Math.floor(RELAY_MAX_AGE_MS_V427 / 1000);
+  const futureSkewSeconds = Math.floor(RELAY_FUTURE_SKEW_MS_V427 / 1000);
 
-  if (!timestamp || !nonce || !payloadJson || !signature) {
+  if (!timestamp || !nonce || !signature) {
     return { ok:false, reason:'relay_fields_missing' };
   }
+
   if (!/^[A-Za-z0-9_-]{16,128}$/.test(nonce)) {
     return { ok:false, reason:'invalid_nonce' };
   }
-  if (timestamp > now + RELAY_FUTURE_SKEW_MS_V427) {
+
+  if (timestamp > nowSeconds + futureSkewSeconds) {
     return { ok:false, reason:'timestamp_in_future' };
   }
-  if (now - timestamp > RELAY_MAX_AGE_MS_V427) {
-    return { ok:false, reason:'relay_expired' };
+
+  if (nowSeconds - timestamp > maxAgeSeconds) {
+    return { ok:false, reason:'expired_request' };
+  }
+
+  let payloadJson;
+  try {
+    payloadJson = JSON.stringify(update);
+  } catch (_) {
+    return { ok:false, reason:'payload_json_invalid' };
   }
 
   const expected = relaySignatureV427_(
@@ -10261,21 +10275,17 @@ function verifyRelayEnvelopeV427_(envelope, nowMs) {
 
   const replayKey = 'RELAY_NONCE_V427_' + nonce;
   const cache = CacheService.getScriptCache();
-  if (cache.get(replayKey)) {
-    return { ok:false, reason:'relay_replay' };
-  }
-  cache.put(replayKey, '1', 600);
 
-  let payload;
-  try {
-    payload = JSON.parse(payloadJson);
-  } catch (_) {
-    return { ok:false, reason:'payload_json_invalid' };
+  if (cache.get(replayKey)) {
+    return { ok:false, reason:'replay' };
   }
+
+  cache.put(replayKey, '1', maxAgeSeconds + futureSkewSeconds + 60);
 
   return {
     ok:true,
-    payload:payload,
+    payload:update,
+    update:update,
     timestamp:timestamp,
     nonce:nonce
   };
