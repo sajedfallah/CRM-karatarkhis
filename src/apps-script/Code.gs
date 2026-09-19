@@ -8,24 +8,24 @@
 const BOT_TOKEN = PropertiesService.getScriptProperties().getProperty('BOT_TOKEN') || '';
 const ADMIN_TELEGRAM_ID = PropertiesService.getScriptProperties().getProperty('ADMIN_TELEGRAM_ID') || '';
 const WEB_APP_URL = PropertiesService.getScriptProperties().getProperty('WEB_APP_URL') || '';
-const SPREADSHEET_ID = PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID') || '1hpDV0ikEldIqnnICnfzULhmxABHxQLS9A3gXG9loeUM';
-const CRM_FOLDER_ID = PropertiesService.getScriptProperties().getProperty('CRM_FOLDER_ID') || '17LGzt2z04D9KhlXrW1YJc_AmEtA1g-ZM';
-const CRM_DOCUMENTS_ROOT_FOLDER_ID = PropertiesService.getScriptProperties().getProperty('CRM_DOCUMENTS_ROOT_FOLDER_ID') || '13h-NyW6CQgJAAB3EtBGjowNypHLZn2-s';
+const SPREADSHEET_ID = PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID') || '';
+const CRM_FOLDER_ID = PropertiesService.getScriptProperties().getProperty('CRM_FOLDER_ID') || '';
+const CRM_DOCUMENTS_ROOT_FOLDER_ID = PropertiesService.getScriptProperties().getProperty('CRM_DOCUMENTS_ROOT_FOLDER_ID') || '';
 const APP_VERSION = 'V4.27-2026-09-19';
 
 const DASHBOARD_TEMPLATES = {
-  'مدیر': PropertiesService.getScriptProperties().getProperty('TEMPLATE_ADMIN_ID') || '1Zt890HbsaHUS20ldmzWSrH0rRIEAuDgpavr8dqxxHBw',
-  'کارمند داخلی': PropertiesService.getScriptProperties().getProperty('TEMPLATE_INTERNAL_EMPLOYEE_ID') || '1o3gttxWKKwLdJ8tbR5JShbLy7uC5UcIYdGjFvxLdqJ0',
-  'کارمند': PropertiesService.getScriptProperties().getProperty('TEMPLATE_INTERNAL_EMPLOYEE_ID') || '1o3gttxWKKwLdJ8tbR5JShbLy7uC5UcIYdGjFvxLdqJ0',
-  'مدیر مشتری': PropertiesService.getScriptProperties().getProperty('TEMPLATE_CUSTOMER_MANAGER_ID') || '1m_Ao7XQMVlhhsMx4AR82b60GCK0XHKXhTW_S5BxKIAI',
-  'کارمند مشتری': PropertiesService.getScriptProperties().getProperty('TEMPLATE_CUSTOMER_EMPLOYEE_ID') || '1eesSiyEhUr4qJkp4rK3qtRnt3w3X0yXH08dfZ08cXiE'
+  'مدیر': PropertiesService.getScriptProperties().getProperty('TEMPLATE_ADMIN_ID') || '',
+  'کارمند داخلی': PropertiesService.getScriptProperties().getProperty('TEMPLATE_INTERNAL_EMPLOYEE_ID') || '',
+  'کارمند': PropertiesService.getScriptProperties().getProperty('TEMPLATE_INTERNAL_EMPLOYEE_ID') || '',
+  'مدیر مشتری': PropertiesService.getScriptProperties().getProperty('TEMPLATE_CUSTOMER_MANAGER_ID') || '',
+  'کارمند مشتری': PropertiesService.getScriptProperties().getProperty('TEMPLATE_CUSTOMER_EMPLOYEE_ID') || ''
 };
 
 const LIVE_DASHBOARDS = {
-  admin: 'https://docs.google.com/spreadsheets/d/1RADxHUGzEfwrW76qb10ip-YcG6mogSXjhRVOyRGeImE/edit',
-  employee: 'https://docs.google.com/spreadsheets/d/1WzMyJbjSuUlTwjM6VSqK63UdEUY9x_vSK3tQPRNCbng/edit',
-  customerManager: 'https://docs.google.com/spreadsheets/d/1I2VsxnAHUOYrQyLGBqNblLR3u_oPKeh7URou2ocUxTc/edit',
-  customerEmployee: 'https://docs.google.com/spreadsheets/d/17o0uZVC1__LRQZiGRvM-oVeFrm9fHxo3a8TUAZ4JFBM/edit'
+  admin: PropertiesService.getScriptProperties().getProperty('LIVE_DASHBOARD_ADMIN_URL') || '',
+  employee: PropertiesService.getScriptProperties().getProperty('LIVE_DASHBOARD_INTERNAL_URL') || '',
+  customerManager: PropertiesService.getScriptProperties().getProperty('LIVE_DASHBOARD_CUSTOMER_MANAGER_URL') || '',
+  customerEmployee: PropertiesService.getScriptProperties().getProperty('LIVE_DASHBOARD_CUSTOMER_EMPLOYEE_URL') || ''
 };
 
 const SHEETS = {
@@ -9753,20 +9753,20 @@ function testV425DashboardTemplates() {
  * role-specific Workspace folder.
  ************************************************************/
 
-const CRM_CORE_FOLDER_ID_V426 = PropertiesService.getScriptProperties().getProperty('CRM_CORE_FOLDER_ID') || '1INrIWIfBlsygSaJi9q0koPP5-FvVQK4h';
-const CRM_TEMPLATE_FOLDER_ID_V426 = PropertiesService.getScriptProperties().getProperty('CRM_TEMPLATE_FOLDER_ID') || '1Ufj-W77Krk_9CSbSwCADe5U5_fBbKCrT';
-const CRM_LIVE_DASHBOARDS_FOLDER_ID_V426 = PropertiesService.getScriptProperties().getProperty('CRM_LIVE_DASHBOARDS_FOLDER_ID') || '1CAGRK3ITGt44J_mI44C9FoPPXM-DMjml';
-const CRM_WORKSPACES_ROOT_FOLDER_ID_V426 = PropertiesService.getScriptProperties().getProperty('CRM_WORKSPACES_ROOT_FOLDER_ID') || '1xBbzdLdDOxfZaa_8Yq-GGV2sgsJfFxf4';
-const CRM_REPORTS_FOLDER_ID_V426 = PropertiesService.getScriptProperties().getProperty('CRM_REPORTS_FOLDER_ID') || '1SYpbQUg5SyJ29HbhayqcSNg43tQ279nR';
-const CRM_ARCHIVE_FOLDER_ID_V426 = PropertiesService.getScriptProperties().getProperty('CRM_ARCHIVE_FOLDER_ID') || '1Xc5ueDdOnO7dgQj_LerP4jkesXbY2HN7';
-const CRM_GUIDES_FOLDER_ID_V426 = PropertiesService.getScriptProperties().getProperty('CRM_GUIDES_FOLDER_ID') || '1QVDZhDfReBDjIcQ1XpsZzCwgCxdh2R98';
+const CRM_CORE_FOLDER_ID_V426 = PropertiesService.getScriptProperties().getProperty('CRM_CORE_FOLDER_ID') || '';
+const CRM_TEMPLATE_FOLDER_ID_V426 = PropertiesService.getScriptProperties().getProperty('CRM_TEMPLATE_FOLDER_ID') || '';
+const CRM_LIVE_DASHBOARDS_FOLDER_ID_V426 = PropertiesService.getScriptProperties().getProperty('CRM_LIVE_DASHBOARDS_FOLDER_ID') || '';
+const CRM_WORKSPACES_ROOT_FOLDER_ID_V426 = PropertiesService.getScriptProperties().getProperty('CRM_WORKSPACES_ROOT_FOLDER_ID') || '';
+const CRM_REPORTS_FOLDER_ID_V426 = PropertiesService.getScriptProperties().getProperty('CRM_REPORTS_FOLDER_ID') || '';
+const CRM_ARCHIVE_FOLDER_ID_V426 = PropertiesService.getScriptProperties().getProperty('CRM_ARCHIVE_FOLDER_ID') || '';
+const CRM_GUIDES_FOLDER_ID_V426 = PropertiesService.getScriptProperties().getProperty('CRM_GUIDES_FOLDER_ID') || '';
 
 const ROLE_WORKSPACE_FOLDERS_V426 = {
-  'مدیر': PropertiesService.getScriptProperties().getProperty('WORKSPACE_FOLDER_ADMIN_ID') || '1hOvd6yR15DFJW69_yDP9jKP0LBRjG_fV',
-  'کارمند داخلی': PropertiesService.getScriptProperties().getProperty('WORKSPACE_FOLDER_INTERNAL_ID') || '15wH_gDtXcyZKpcQwABYAM5zEoujpuKNl',
-  'کارمند': PropertiesService.getScriptProperties().getProperty('WORKSPACE_FOLDER_INTERNAL_ID') || '15wH_gDtXcyZKpcQwABYAM5zEoujpuKNl',
-  'مدیر مشتری': PropertiesService.getScriptProperties().getProperty('WORKSPACE_FOLDER_CUSTOMER_MANAGER_ID') || '1HmWgBFQi0TCaqbA993OGRhD2TEGVVF6U',
-  'کارمند مشتری': PropertiesService.getScriptProperties().getProperty('WORKSPACE_FOLDER_CUSTOMER_EMPLOYEE_ID') || '1eg6hK4W7Pxsg4_nYxd9MUuxRAO7rsXw4'
+  'مدیر': PropertiesService.getScriptProperties().getProperty('WORKSPACE_FOLDER_ADMIN_ID') || '',
+  'کارمند داخلی': PropertiesService.getScriptProperties().getProperty('WORKSPACE_FOLDER_INTERNAL_ID') || '',
+  'کارمند': PropertiesService.getScriptProperties().getProperty('WORKSPACE_FOLDER_INTERNAL_ID') || '',
+  'مدیر مشتری': PropertiesService.getScriptProperties().getProperty('WORKSPACE_FOLDER_CUSTOMER_MANAGER_ID') || '',
+  'کارمند مشتری': PropertiesService.getScriptProperties().getProperty('WORKSPACE_FOLDER_CUSTOMER_EMPLOYEE_ID') || ''
 };
 
 const RAW_TEMPLATE_NAMES_V426 = {
@@ -10653,38 +10653,61 @@ function isProvisioningStaleV427_(requestId, nowMs) {
 
 function provisioningQueueCandidatesV427_(limit) {
   const now = Date.now();
+
   return readRows(SHEETS.provisioningQueue)
     .filter(function(r) {
       const status = String(r['وضعیت'] || '').trim();
+
       if (status === 'در صف') return true;
-      if (status === 'در حال پردازش' || status === 'در حال ساخت') {
+
+      if (
+        status === 'در حال پردازش' ||
+        status === 'در حال ساخت' ||
+        status === 'Workspace ساخته شد'
+      ) {
         return isProvisioningStaleV427_(r['Request ID'], now);
       }
+
       return false;
     })
     .slice(0, limit);
 }
 
-// Final idempotent provisioning worker.
 function processProvisioningQueue(limit) {
   limit = Math.max(1, Math.min(Number(limit) || 3, 10));
   const lock = LockService.getScriptLock();
-  if (!lock.tryLock(5000)) return { ok:false, busy:true, version:APP_VERSION };
 
-  const report = { ok:true, version:APP_VERSION, processed:0, succeeded:0, failed:0, results:[] };
+  if (!lock.tryLock(5000)) {
+    return { ok:false, busy:true, version:APP_VERSION };
+  }
+
+  const report = {
+    ok:true,
+    version:APP_VERSION,
+    processed:0,
+    succeeded:0,
+    failed:0,
+    recovered:0,
+    results:[]
+  };
 
   try {
     __WORKSPACE_SOURCE_SNAPSHOT_V412 = null;
-    const queue = readRows(SHEETS.provisioningQueue)
-      .filter(function(r){ return String(r['وضعیت'] || '').trim() === 'در صف'; })
-      .slice(0, limit);
+    resetIdentityDirectoryV427_();
+
+    const queue = provisioningQueueCandidatesV427_(limit);
 
     queue.forEach(function(req) {
       const requestId = String(req['Request ID'] || '').trim();
       const userId = String(req['User ID'] || '').trim();
-      report.processed++;
+      const requestType = String(req['نوع درخواست'] || '').trim();
 
-      let user = null, workspace = null;
+      let user = null;
+      let workspace = null;
+
+      report.processed++;
+      touchProvisioningHeartbeatV427_(requestId);
+
       try {
         patchProvisioningRequestV412_(requestId, {
           'وضعیت':'در حال پردازش',
@@ -10693,52 +10716,114 @@ function processProvisioningQueue(limit) {
 
         user = getRowById(SHEETS.usersRaw, userId);
         if (!user) throw new Error('User در Users پیدا نشد: ' + userId);
+
+        appendProvisioningLogV412_(
+          requestId,
+          user,
+          'PROCESS',
+          String(req['وضعیت'] || ''),
+          'در حال پردازش',
+          null,
+          'worker_start'
+        );
+
+        if (requestType === 'غیرفعال‌سازی دسترسی') {
+          const revoked = revokeWorkspaceAccessForUserV427_(userId, user);
+
+          patchProvisioningRequestV412_(requestId, {
+            'وضعیت':'انجام شد',
+            'خطا/یادداشت':'Access revoked'
+          });
+
+          appendProvisioningLogV412_(
+            requestId,
+            user,
+            'ACCESS_REVOKE',
+            'در حال پردازش',
+            'انجام شد',
+            null,
+            JSON.stringify(revoked)
+          );
+
+          clearProvisioningHeartbeatV427_(requestId);
+          report.succeeded++;
+          report.results.push({
+            requestId:requestId,
+            userId:userId,
+            ok:true,
+            action:'access_revoked'
+          });
+          return;
+        }
+
         if (String(user['وضعیت'] || '').trim() !== 'فعال') {
           throw new Error('User is not active: ' + userId);
         }
 
-        appendProvisioningLogV412_(requestId, user, 'PROCESS', 'در صف', 'در حال پردازش', null, 'worker_start');
+        workspace = recoverWorkspaceForRequestV427_(req, user);
 
-        // Idempotency source #1: persist/reuse workspace on the request itself.
-        const persistedFileId = String(req['Workspace File ID'] || '').trim();
-        const persistedUrl = String(req['Workspace URL'] || '').trim();
-        if (persistedFileId || persistedUrl) {
-          workspace = {
-            fileId:persistedFileId || parseDriveFileId_(persistedUrl),
-            url:persistedUrl || ('https://docs.google.com/spreadsheets/d/' + persistedFileId + '/edit'),
-            type:normalizeRole(user['نقش'])
-          };
-        }
-
-        // Idempotency source #2: mapping/user lookup.
-        if (!workspace || !workspace.fileId) workspace = findExistingWorkspaceForUser_(userId, user);
-        if (workspace && workspace.type && normalizeRole(workspace.type) !== normalizeRole(user['نقش'])) {
-          workspace = null;
-        }
-
-        if (!workspace) {
+        if (workspace) {
+          report.recovered++;
+        } else {
           workspace = provisionWorkspace(user);
-          if (!workspace || !workspace.url) throw new Error('ساخت Workspace ناموفق بود.');
-          workspace.fileId = workspace.fileId || parseDriveFileId_(workspace.url);
+
+          if (!workspace || !workspace.url) {
+            throw new Error('ساخت Workspace ناموفق بود.');
+          }
+
+          workspace.fileId =
+            workspace.fileId ||
+            parseDriveFileId_(workspace.url);
+
           workspace.type = normalizeRole(user['نقش']);
 
-          // Persist immediately, BEFORE sync/share. Retry must reuse this file.
+          // Persist identity immediately. Any retry must reuse this file.
           patchProvisioningRequestV412_(requestId, {
             'وضعیت':'Workspace ساخته شد',
             'Workspace File ID':workspace.fileId,
             'Workspace URL':workspace.url,
-            'خطا/یادداشت':'workspace_persisted_before_sync'
+            'خطا/یادداشت':'Workspace created privately; pending sanitize/sync'
           });
-          appendProvisioningLogV412_(requestId, user, 'WORKSPACE_CREATED',
-            'در حال پردازش', 'Workspace ساخته شد', workspace, 'persisted_before_sync');
+
+          appendProvisioningLogV412_(
+            requestId,
+            user,
+            'WORKSPACE_CREATED',
+            'در حال پردازش',
+            'Workspace ساخته شد',
+            workspace,
+            'persisted_before_sync'
+          );
+        }
+
+        workspace.fileId =
+          workspace.fileId ||
+          parseDriveFileId_(workspace.url);
+
+        workspace.type = normalizeRole(user['نقش']);
+
+        // A request-owned workspace may have failed immediately after copy.
+        // Always sanitize it before scoped sync. Existing mapped workspaces
+        // without a request-owned file ID are not destructively sanitized.
+        const requestOwnsWorkspace =
+          String(req['Workspace File ID'] || '').trim() ||
+          String(req['Workspace URL'] || '').trim() ||
+          !findWorkspaceMappingByUserIdV427_(userId);
+
+        if (requestOwnsWorkspace) {
+          sanitizeNewWorkspaceV427_(workspace);
         }
 
         const syncCounts = syncWorkspaceDataV412_(workspace, user);
 
-        // Share only after scoped data cleanup/sync succeeds.
+        // Share only after sanitize + scoped sync succeeded.
         const accessResult = reconcileWorkspaceAccessV427_(workspace, user);
-        workspace.shared = !!accessResult.ok;
-        const access = workspace.shared ? 'فعال' : 'ایجاد شد';
+        workspace.shared = !!accessResult.shared;
+
+        const access =
+          accessResult.shared
+            ? 'فعال'
+            : 'ایجاد شد';
 
         updateRowById(SHEETS.usersRaw, userId, {
           'Workspace URL':workspace.url,
@@ -10747,6 +10832,7 @@ function processProvisioningQueue(limit) {
           'آخرین بروزرسانی':nowFa(),
           'آخرین فعالیت':nowFa()
         });
+
         updateRowById(SHEETS.users, userId, {
           'Workspace':workspace.url,
           'Google Access':access,
@@ -10756,7 +10842,10 @@ function processProvisioningQueue(limit) {
         });
 
         upsertWorkspaceMappingForUser_(user, workspace);
-        if (normalizeRole(user['نقش']) === 'مدیر مشتری') linkCustomerManager(user, workspace);
+
+        if (normalizeRole(user['نقش']) === 'مدیر مشتری') {
+          linkCustomerManager(user, workspace);
+        }
 
         patchProvisioningRequestV412_(requestId, {
           'وضعیت':'انجام شد',
@@ -10765,37 +10854,81 @@ function processProvisioningQueue(limit) {
           'خطا/یادداشت':'Sync: ' + JSON.stringify(syncCounts)
         });
 
-        appendProvisioningLogV412_(requestId, user, 'DONE',
-          'در حال پردازش', 'انجام شد', workspace, JSON.stringify(syncCounts));
+        appendProvisioningLogV412_(
+          requestId,
+          user,
+          'DONE',
+          'در حال پردازش',
+          'انجام شد',
+          workspace,
+          JSON.stringify(syncCounts)
+        );
 
+        clearProvisioningHeartbeatV427_(requestId);
         report.succeeded++;
+
         report.results.push({
-          requestId:requestId, userId:userId, ok:true,
-          workspaceUrl:workspace.url, sync:syncCounts, access:accessResult
+          requestId:requestId,
+          userId:userId,
+          ok:true,
+          recovered:!!workspace.source,
+          workspaceUrl:workspace.url,
+          sync:syncCounts,
+          access:accessResult
         });
 
       } catch (err) {
         report.failed++;
         report.ok = false;
-        const persistedPatch = {
-          'وضعیت':'خطا',
-          'خطا/یادداشت':String(err && err.message ? err.message : err)
-        };
-        if (workspace && workspace.fileId) persistedPatch['Workspace File ID'] = workspace.fileId;
-        if (workspace && workspace.url) persistedPatch['Workspace URL'] = workspace.url;
-        patchProvisioningRequestV412_(requestId, persistedPatch);
 
-        if (user) updateRowById(SHEETS.users, userId, {
-          'Provisioning':'خطا',
-          'آخرین فعالیت':nowFa()
+        patchProvisioningRequestV412_(requestId, {
+          'وضعیت':'خطا',
+          'Workspace File ID':
+            workspace
+              ? (workspace.fileId || '')
+              : String(req['Workspace File ID'] || ''),
+          'Workspace URL':
+            workspace
+              ? (workspace.url || '')
+              : String(req['Workspace URL'] || ''),
+          'خطا/یادداشت':String(err && err.message ? err.message : err)
         });
 
-        appendProvisioningLogV412_(requestId, user || {'User ID':userId},
-          'ERROR', 'در حال پردازش', 'خطا', workspace, String(err));
-        try { logSystem('provision_worker_error', requestId + ' | ' + String(err && err.stack ? err.stack : err)); } catch (_) {}
-        report.results.push({ requestId:requestId, userId:userId, ok:false, error:String(err) });
+        if (user) {
+          updateRowById(SHEETS.users, userId, {
+            'Provisioning':'خطا',
+            'آخرین فعالیت':nowFa()
+          });
+        }
+
+        appendProvisioningLogV412_(
+          requestId,
+          user || {'User ID':userId},
+          'ERROR',
+          'در حال پردازش',
+          'خطا',
+          workspace,
+          String(err)
+        );
+
+        clearProvisioningHeartbeatV427_(requestId);
+
+        try {
+          logSystem(
+            'provision_worker_error',
+            requestId + ' | ' + String(err && err.stack ? err.stack : err)
+          );
+        } catch (_) {}
+
+        report.results.push({
+          requestId:requestId,
+          userId:userId,
+          ok:false,
+          error:String(err)
+        });
       }
     });
+
   } finally {
     try { lock.releaseLock(); } catch (_) {}
   }
@@ -11144,33 +11277,73 @@ function taskMatrixRowV427_(r) {
   ];
 }
 
-function pushPersonalDailyTasksToWorkspaceV420_(sh, user) {
+function pushPersonalDailyTasksToWorkspaceV420_(sh, user, ss, preserveLocalById) {
+  preserveLocalById = preserveLocalById || {};
+
+  const oldState = readDailyTaskSyncStateV427_(ss);
   const tasks = getPersonalDailyTasksV420_(user);
-  const maxRowsToClear = Math.max(1, sh.getMaxRows() - 1);
-  sh.getRange(2, 1, maxRowsToClear, PERSONAL_DAILY_HEADERS_V420.length).clearContent();
+  const clearRows = Math.max(1, sh.getMaxRows() - 1);
 
-  if (tasks.length) {
-    const matrix = tasks.map(function(r) {
-      return [
-        r['شناسه کار'] || '', r['تاریخ'] || '', r['کار روزانه'] || '',
-        r['دسته‌بندی'] || '', r['اولویت'] || 'متوسط', r['موعد'] || '',
-        r['وضعیت'] || 'باز', r['نتیجه'] || '', r['کار فردا'] || '',
-        r['مرتبط با شرکت'] || '', r['شماره پرونده'] || '', r['یادداشت مدیریتی'] || ''
-      ];
-    });
-    sh.getRange(2, 1, matrix.length, PERSONAL_DAILY_HEADERS_V420.length).setValues(matrix);
-  }
+  sh.getRange(
+    2,
+    1,
+    clearRows,
+    PERSONAL_DAILY_HEADERS_V420.length
+  ).clearContent();
 
-  const userId = normalizeTextV420_(user && user['User ID']);
+  const matrix = [];
+  const nextState = {};
+
   tasks.forEach(function(r) {
-    const taskId = normalizeTextV420_(r['شناسه کار']);
-    if (userId && taskId) setDailyTaskBaselineV427_(userId, taskId, dailyTaskHashV427_(r));
+    const id = normalizeTextV420_(r['شناسه کار']);
+
+    if (id && preserveLocalById[id]) {
+      matrix.push(preserveLocalById[id]);
+      if (oldState[id]) nextState[id] = oldState[id];
+      return;
+    }
+
+    matrix.push(taskMatrixRowV427_(r));
+
+    if (id) {
+      const hash = dailyTaskHashV427_(r);
+      nextState[id] = {
+        localHash:hash,
+        centralHash:hash,
+        lastSyncAt:nowFa()
+      };
+    }
   });
 
-  return { count:tasks.length };
+  // Preserve local-only conflicting rows that are no longer returned by the
+  // central query rather than silently deleting them.
+  Object.keys(preserveLocalById).forEach(function(id) {
+    const already = tasks.some(function(r) {
+      return normalizeTextV420_(r['شناسه کار']) === id;
+    });
+    if (already) return;
+
+    matrix.push(preserveLocalById[id]);
+    if (oldState[id]) nextState[id] = oldState[id];
+  });
+
+  if (matrix.length) {
+    sh.getRange(
+      2,
+      1,
+      matrix.length,
+      PERSONAL_DAILY_HEADERS_V420.length
+    ).setValues(matrix);
+  }
+
+  writeDailyTaskSyncStateV427_(ss, nextState);
+
+  return {
+    count:tasks.length,
+    preservedConflicts:Object.keys(preserveLocalById).length
+  };
 }
 
-// Final daily-task sync with optimistic conflict detection.
 function syncPersonalDailyTasksV420_(ss, user) {
   const sh = ensurePersonalDailySheetV420_(ss);
 
@@ -11224,41 +11397,70 @@ function selectMappingsForSyncV427_(mappings, limit) {
 function syncAllActiveWorkspacesV412(limit) {
   limit = Math.max(1, Math.min(Number(limit) || 20, 50));
   const lock = LockService.getScriptLock();
-  if (!lock.tryLock(3000)) return { ok:false, busy:true, version:APP_VERSION };
+
+  if (!lock.tryLock(3000)) {
+    return { ok:false, busy:true, version:APP_VERSION };
+  }
 
   const report = {
-    ok:true, version:APP_VERSION, processed:0, synced:0, failed:0,
-    revoked:0, cursorStart:0, cursorNext:0, results:[]
+    ok:true,
+    version:APP_VERSION,
+    processed:0,
+    synced:0,
+    failed:0,
+    revoked:0,
+    cursorStart:0,
+    cursorNext:0,
+    results:[]
   };
 
   try {
     __WORKSPACE_SOURCE_SNAPSHOT_V412 = null;
+    resetIdentityDirectoryV427_();
+
     const mappings = readRows(SHEETS.mapping)
-      .filter(function(r){ return String(r['Workspace URL'] || '').trim(); });
+      .filter(function(r) {
+        return String(r['Workspace URL'] || '').trim();
+      });
 
     if (!mappings.length) return report;
 
     const props = PropertiesService.getScriptProperties();
-    let cursor = Number(props.getProperty(WORKSPACE_SYNC_CURSOR_KEY_V427) || 0);
+    let cursor = Number(
+      props.getProperty(WORKSPACE_SYNC_CURSOR_KEY_V427) || 0
+    );
+
     if (!isFinite(cursor) || cursor < 0) cursor = 0;
     cursor = cursor % mappings.length;
     report.cursorStart = cursor;
 
     const selected = [];
     for (let i = 0; i < Math.min(limit, mappings.length); i++) {
-      selected.push(mappings[(cursor + i) % mappings.length]);
+      selected.push(
+        mappings[(cursor + i) % mappings.length]
+      );
     }
-    const nextCursor = (cursor + selected.length) % mappings.length;
-    props.setProperty(WORKSPACE_SYNC_CURSOR_KEY_V427, String(nextCursor));
+
+    const nextCursor =
+      (cursor + selected.length) % mappings.length;
+
+    props.setProperty(
+      WORKSPACE_SYNC_CURSOR_KEY_V427,
+      String(nextCursor)
+    );
+
     report.cursorNext = nextCursor;
 
     selected.forEach(function(m) {
       const userId = String(m['User ID'] || '').trim();
       const user = getRowById(SHEETS.usersRaw, userId);
+
       if (!user) return;
 
       const workspace = {
-        fileId:String(m['Spreadsheet ID'] || '') || parseDriveFileId_(m['Workspace URL']),
+        fileId:
+          String(m['Spreadsheet ID'] || '') ||
+          parseDriveFileId_(m['Workspace URL']),
         url:String(m['Workspace URL'] || ''),
         type:m['نوع Workspace'] || user['نقش']
       };
@@ -11267,38 +11469,88 @@ function syncAllActiveWorkspacesV412(limit) {
 
       try {
         if (String(user['وضعیت'] || '').trim() !== 'فعال') {
-          const access = reconcileWorkspaceAccessV427_(workspace, user);
-          upsertObject(SHEETS.mapping, 'User ID', userId, Object.assign({}, m, {
-            'User ID':userId,
-            'وضعیت Provisioning':'غیرفعال',
-            'آخرین Sync':nowFa()
-          }));
+          const access =
+            reconcileWorkspaceAccessV427_(
+              workspace,
+              user
+            );
+
+          upsertObject(
+            SHEETS.mapping,
+            'User ID',
+            userId,
+            Object.assign({}, m, {
+              'User ID':userId,
+              'Gmail مشترک‌شده':'',
+              'وضعیت Provisioning':'غیرفعال',
+              'آخرین Sync':nowFa()
+            })
+          );
+
           report.revoked++;
-          report.results.push({ userId:userId, ok:true, revoked:true, access:access });
+          report.results.push({
+            userId:userId,
+            ok:true,
+            revoked:true,
+            access:access
+          });
           return;
         }
 
-        const counts = syncWorkspaceDataV412_(workspace, user);
-        const access = reconcileWorkspaceAccessV427_(workspace, user);
+        const counts =
+          syncWorkspaceDataV412_(
+            workspace,
+            user
+          );
 
-        upsertObject(SHEETS.mapping, 'User ID', userId, Object.assign({}, m, {
-          'User ID':userId,
-          'Gmail مشترک‌شده':String(user['Gmail / Email'] || '').trim(),
-          'آخرین Sync':nowFa(),
-          'وضعیت Provisioning':'انجام شد'
-        }));
+        const access =
+          reconcileWorkspaceAccessV427_(
+            workspace,
+            user
+          );
+
+        upsertObject(
+          SHEETS.mapping,
+          'User ID',
+          userId,
+          Object.assign({}, m, {
+            'User ID':userId,
+            'Gmail مشترک‌شده':
+              String(user['Gmail / Email'] || '').trim(),
+            'آخرین Sync':nowFa(),
+            'وضعیت Provisioning':'انجام شد'
+          })
+        );
 
         report.synced++;
-        report.results.push({ userId:userId, ok:true, counts:counts, access:access });
+        report.results.push({
+          userId:userId,
+          ok:true,
+          counts:counts,
+          access:access
+        });
+
       } catch (err) {
         report.failed++;
         report.ok = false;
-        try { logSystem('workspace_sync_error', userId + ' | ' + String(err)); } catch (_) {}
-        report.results.push({ userId:userId, ok:false, error:String(err) });
+
+        try {
+          logSystem(
+            'workspace_sync_error',
+            userId + ' | ' + String(err)
+          );
+        } catch (_) {}
+
+        report.results.push({
+          userId:userId,
+          ok:false,
+          error:String(err)
+        });
       }
     });
 
-    // RAW templates are NEVER operational sync destinations.
+    // RAW templates are never operational data destinations.
+
   } finally {
     try { lock.releaseLock(); } catch (_) {}
   }
@@ -11416,9 +11668,20 @@ function validateRuntimeConfigV427_() {
     'BOT_TOKEN',
     'ADMIN_TELEGRAM_ID',
     'WEB_APP_URL',
+    'SPREADSHEET_ID',
+    'CRM_FOLDER_ID',
+    'CRM_DOCUMENTS_ROOT_FOLDER_ID',
     'TELEGRAM_RELAY_URL',
     'TELEGRAM_WEBHOOK_SECRET',
-    'RELAY_SHARED_SECRET'
+    'RELAY_SHARED_SECRET',
+    'TEMPLATE_ADMIN_ID',
+    'TEMPLATE_INTERNAL_EMPLOYEE_ID',
+    'TEMPLATE_CUSTOMER_MANAGER_ID',
+    'TEMPLATE_CUSTOMER_EMPLOYEE_ID',
+    'WORKSPACE_FOLDER_ADMIN_ID',
+    'WORKSPACE_FOLDER_INTERNAL_ID',
+    'WORKSPACE_FOLDER_CUSTOMER_MANAGER_ID',
+    'WORKSPACE_FOLDER_CUSTOMER_EMPLOYEE_ID'
   ];
 
   const missing = required.filter(function(key) {
@@ -11619,17 +11882,81 @@ function splitIdentityListV427_(value) {
     .filter(Boolean);
 }
 
+let __IDENTITY_DIRECTORY_V427 = null;
+
+function identityDirectoryV427_() {
+  if (__IDENTITY_DIRECTORY_V427) return __IDENTITY_DIRECTORY_V427;
+
+  const directory = {
+    names:{},
+    telegram:{}
+  };
+
+  let users = [];
+  try { users = readRows(SHEETS.usersRaw); } catch (_) {}
+
+  users.forEach(function(u) {
+    const userId = normalizeIdentityTokenV427_(u['User ID']);
+    if (!userId) return;
+
+    const name = normalizeIdentityTokenV427_(u['نام کامل']);
+    const tg = normalizeIdentityTokenV427_(u['Telegram User ID']);
+
+    if (name) {
+      if (!directory.names[name]) directory.names[name] = [];
+      if (directory.names[name].indexOf(userId) < 0) directory.names[name].push(userId);
+    }
+
+    if (tg) {
+      if (!directory.telegram[tg]) directory.telegram[tg] = [];
+      if (directory.telegram[tg].indexOf(userId) < 0) directory.telegram[tg].push(userId);
+    }
+  });
+
+  __IDENTITY_DIRECTORY_V427 = directory;
+  return directory;
+}
+
+function resetIdentityDirectoryV427_() {
+  __IDENTITY_DIRECTORY_V427 = null;
+}
+
+
 function fieldMatchesUserIdentityV427_(value, user) {
   const parts = splitIdentityListV427_(value);
   if (!parts.length || !user) return false;
+
   const stableId = normalizeIdentityTokenV427_(user['User ID']);
   const legacyName = normalizeIdentityTokenV427_(user['نام کامل']);
   const telegramId = normalizeIdentityTokenV427_(user['Telegram User ID']);
-  return parts.some(function(part) {
-    return (stableId && part === stableId) ||
-      (legacyName && part === legacyName) ||
-      (telegramId && part === telegramId);
+
+  if (!stableId) return false;
+
+  // If the assignment contains any stable User ID, only exact User ID
+  // membership is authoritative. Never fall through to name matching.
+  const stableParts = parts.filter(function(part) {
+    return /^(USR[-_][A-Z0-9_-]+|CRM_ADMIN)$/i.test(part);
   });
+
+  if (stableParts.length) {
+    return stableParts.indexOf(stableId) >= 0;
+  }
+
+  const directory = identityDirectoryV427_();
+
+  // Telegram ID fallback is exact and must map uniquely to this User ID.
+  if (telegramId && parts.indexOf(telegramId) >= 0) {
+    const ids = directory.telegram[telegramId] || [];
+    if (ids.length === 1 && ids[0] === stableId) return true;
+  }
+
+  // Legacy name fallback is exact AND unique. Same-name users fail closed.
+  if (legacyName && parts.indexOf(legacyName) >= 0) {
+    const ids = directory.names[legacyName] || [];
+    if (ids.length === 1 && ids[0] === stableId) return true;
+  }
+
+  return false;
 }
 
 function bytesToHexV427_(bytes) {
@@ -11648,40 +11975,86 @@ function constantTimeEqualsV427_(a, b) {
   return diff === 0;
 }
 
-function relaySignatureV427_(secret, timestamp, nonce, update) {
-  const payload = String(timestamp) + '\n' + String(nonce) + '\n' + JSON.stringify(update);
-  const bytes = Utilities.computeHmacSha256Signature(payload, secret, Utilities.Charset.UTF_8);
+function relaySignatureV427_(timestamp, nonce, payloadJson, secret) {
+  const material =
+    String(timestamp) + '\n' +
+    String(nonce) + '\n' +
+    String(payloadJson);
+
+  const bytes = Utilities.computeHmacSha256Signature(
+    material,
+    secret,
+    Utilities.Charset.UTF_8
+  );
+
   return bytesToHexV427_(bytes);
 }
 
-function verifyRelayEnvelopeV427_(raw) {
+function verifyRelayEnvelopeV427_(envelope, nowMs) {
   const secret = String(
-    PropertiesService.getScriptProperties().getProperty(WEBHOOK_RELAY_SECRET_KEY_V427) || ''
-  );
-  if (!secret) return { ok:false, reason:'webhook_security_not_configured' };
-  if (!raw || !raw.relay || !raw.update) return { ok:false, reason:'unsigned_request' };
+    PropertiesService.getScriptProperties().getProperty('RELAY_SHARED_SECRET') || ''
+  ).trim();
 
-  const timestamp = Number(raw.relay.timestamp || 0);
-  const nonce = String(raw.relay.nonce || '');
-  const signature = String(raw.relay.signature || '').toLowerCase();
-  if (!timestamp || !nonce || !signature) return { ok:false, reason:'invalid_relay_envelope' };
-
-  const nowSeconds = Math.floor(Date.now() / 1000);
-  if (Math.abs(nowSeconds - timestamp) > WEBHOOK_MAX_AGE_SECONDS_V427) {
-    return { ok:false, reason:'expired_request' };
+  if (!secret) return { ok:false, reason:'relay_secret_missing' };
+  if (!envelope || Number(envelope.relay_version) !== 1) {
+    return { ok:false, reason:'invalid_relay_version' };
   }
 
-  const cache = CacheService.getScriptCache();
-  const replayKey = WEBHOOK_REPLAY_PREFIX_V427 + nonce;
-  if (cache.get(replayKey)) return { ok:false, reason:'replay' };
+  const timestamp = Number(envelope.timestamp);
+  const nonce = String(envelope.nonce || '');
+  const payloadJson = String(envelope.payload_json || '');
+  const signature = String(envelope.signature || '').toLowerCase();
+  const now = Number(nowMs || Date.now());
 
-  const expected = relaySignatureV427_(secret, timestamp, nonce, raw.update);
+  if (!timestamp || !nonce || !payloadJson || !signature) {
+    return { ok:false, reason:'relay_fields_missing' };
+  }
+
+  if (!/^[A-Za-z0-9_-]{16,128}$/.test(nonce)) {
+    return { ok:false, reason:'invalid_nonce' };
+  }
+
+  if (timestamp > now + RELAY_FUTURE_SKEW_MS_V427) {
+    return { ok:false, reason:'timestamp_in_future' };
+  }
+
+  if (now - timestamp > RELAY_MAX_AGE_MS_V427) {
+    return { ok:false, reason:'relay_expired' };
+  }
+
+  const expected = relaySignatureV427_(
+    timestamp,
+    nonce,
+    payloadJson,
+    secret
+  );
+
   if (!constantTimeEqualsV427_(expected, signature)) {
     return { ok:false, reason:'bad_signature' };
   }
 
-  cache.put(replayKey, '1', WEBHOOK_MAX_AGE_SECONDS_V427 * 2);
-  return { ok:true, update:raw.update };
+  const replayKey = 'RELAY_NONCE_V427_' + nonce;
+  const cache = CacheService.getScriptCache();
+
+  if (cache.get(replayKey)) {
+    return { ok:false, reason:'relay_replay' };
+  }
+
+  cache.put(replayKey, '1', 600);
+
+  let update;
+  try {
+    update = JSON.parse(payloadJson);
+  } catch (_) {
+    return { ok:false, reason:'payload_json_invalid' };
+  }
+
+  return {
+    ok:true,
+    update:update,
+    timestamp:timestamp,
+    nonce:nonce
+  };
 }
 
 function findWorkspaceMappingByUserIdV427_(userId) {
@@ -11699,42 +12072,112 @@ function revokeWorkspaceEmailV427_(file, email) {
   return false;
 }
 
+
+function workspacePrincipalEmailsV427_(file) {
+  const out = {};
+  try {
+    (file.getEditors() || []).forEach(function(u) {
+      const mail = String(u.getEmail ? u.getEmail() : '').trim().toLowerCase();
+      if (mail) out[mail] = true;
+    });
+  } catch (_) {}
+  try {
+    (file.getViewers() || []).forEach(function(u) {
+      const mail = String(u.getEmail ? u.getEmail() : '').trim().toLowerCase();
+      if (mail) out[mail] = true;
+    });
+  } catch (_) {}
+  return out;
+}
+
+function ensureWorkspacePrincipalRemovedV427_(file, email) {
+  email = String(email || '').trim().toLowerCase();
+  if (!email) return true;
+
+  try { file.removeEditor(email); } catch (_) {}
+  try { file.removeViewer(email); } catch (_) {}
+
+  const remaining = workspacePrincipalEmailsV427_(file);
+  return !remaining[email];
+}
+
+
 function reconcileWorkspaceAccessV427_(workspace, user) {
-  if (!workspace || !workspace.url || !user) return { ok:false, reason:'missing_workspace_or_user' };
+  if (!workspace || !workspace.url || !user) {
+    return { ok:false, reason:'missing_workspace_or_user' };
+  }
+
   const fileId = workspace.fileId || parseDriveFileId_(workspace.url);
   if (!fileId) return { ok:false, reason:'missing_file_id' };
 
   const file = DriveApp.getFileById(fileId);
   const userId = String(user['User ID'] || '').trim();
-  const desiredEmail = String(user['Gmail / Email'] || '').trim();
+  const desiredEmail = String(user['Gmail / Email'] || '').trim().toLowerCase();
   const active = String(user['وضعیت'] || '').trim() === 'فعال';
   const previous = findWorkspaceMappingByUserIdV427_(userId);
-  const previousEmail = previous ? String(previous['Gmail مشترک‌شده'] || '').trim() : '';
+  const previousEmail = previous
+    ? String(previous['Gmail مشترک‌شده'] || '').trim().toLowerCase()
+    : '';
 
-  let added = false, removedPrevious = false, removedCurrent = false;
+  const removed = [];
 
-  if (active && desiredEmail && desiredEmail.indexOf('@') > 0) {
-    try { file.addEditor(desiredEmail); added = true; } catch (err) {
-      throw new Error('workspace_share_failed: ' + String(err && err.message ? err.message : err));
+  // Revoke the old mapped email before granting the new one.
+  if (previousEmail && (!active || previousEmail !== desiredEmail)) {
+    if (!ensureWorkspacePrincipalRemovedV427_(file, previousEmail)) {
+      throw new Error('workspace_access_revoke_failed: ' + previousEmail);
     }
+    removed.push(previousEmail);
   }
 
-  if (previousEmail && (!active || previousEmail.toLowerCase() !== desiredEmail.toLowerCase())) {
-    removedPrevious = revokeWorkspaceEmailV427_(file, previousEmail);
+  // Inactive user: also revoke the currently configured email.
+  if (!active) {
+    if (desiredEmail && desiredEmail !== previousEmail) {
+      if (!ensureWorkspacePrincipalRemovedV427_(file, desiredEmail)) {
+        throw new Error('workspace_access_revoke_failed: ' + desiredEmail);
+      }
+      removed.push(desiredEmail);
+    }
+
+    return {
+      ok:true,
+      active:false,
+      shared:false,
+      desiredEmail:desiredEmail,
+      previousEmail:previousEmail,
+      removed:removed
+    };
   }
 
-  if (!active && desiredEmail) {
-    removedCurrent = revokeWorkspaceEmailV427_(file, desiredEmail);
+  // Active user without Gmail: keep the file private and provisioning can
+  // remain at "ایجاد شد" rather than failing.
+  if (!desiredEmail) {
+    return {
+      ok:true,
+      active:true,
+      shared:false,
+      desiredEmail:'',
+      previousEmail:previousEmail,
+      removed:removed
+    };
+  }
+
+  file.addEditor(desiredEmail);
+
+  const principals = workspacePrincipalEmailsV427_(file);
+  // Some Drive contexts may not expose principals immediately; only fail if
+  // metadata is available and explicitly does not contain the granted mail.
+  const principalKeys = Object.keys(principals);
+  if (principalKeys.length && !principals[desiredEmail]) {
+    throw new Error('workspace_access_grant_not_visible: ' + desiredEmail);
   }
 
   return {
-    ok: active ? added : true,
-    active: active,
-    desiredEmail: desiredEmail,
-    previousEmail: previousEmail,
-    added: added,
-    removedPrevious: removedPrevious,
-    removedCurrent: removedCurrent
+    ok:true,
+    active:true,
+    shared:true,
+    desiredEmail:desiredEmail,
+    previousEmail:previousEmail,
+    removed:removed
   };
 }
 
