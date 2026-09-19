@@ -105,3 +105,27 @@ Script Property موردنیاز Apps Script:
 - `RELAY_SHARED_SECRET` نام canonical secret در هر دو سمت است؛ نام قدیمی فقط fallback مهاجرتی است.
 - تست‌های regression برای exact identity، same-name fail-closed، relay signature/replay/expiry و conflict sync به‌روزرسانی شدند.
 - وضعیت انتشار همچنان **Not Production Ready** است تا E2E زنده Staging تکمیل شود.
+
+
+## شواهد اجرای شاخه — V4.28
+
+- GitHub Actions `Static validation` برای commit `da83ff953af360c8501192ecb9d3b91270217151` با نتیجه **success** کامل شد (run #89).
+- در همان pipeline، syntax Apps Script، اسکن الگوی توکن، behavioral regression، audit regression، syntax Relay و ساختار Vercel بررسی می‌شوند.
+- Vercel Preview برای branch `codex/final-audit-handoff-2026-09-19` و commit `da83ff953af360c8501192ecb9d3b91270217151` با وضعیت **READY** ساخته شد؛ بنابراین خطای قبلی `NOW_SANDBOX_WORKER_ROOTDIR_NOT_EXIST` در ساختار فعلی بازتولید نمی‌شود.
+- Health endpoint Relay روی Preview قبلی همین زنجیره با پاسخ HTTP 200 و `{"ok":true,"service":"karatarkhis-telegram-relay"}` تأیید شد. Preview نهایی دارای Vercel Authentication است و آزمون POST انجام نشد.
+- provisioning در V4.28 علاوه بر ثبت File ID پیش از sync، برای crash-window بین `makeCopy` و ثبت Queue از نام deterministic و reuse فایل موجود استفاده می‌کند.
+- هیچ merge به `main` و هیچ rollout Production در این ممیزی انجام نشده است.
+
+### مواردی که هنوز شرط Production را مسدود می‌کنند
+
+1. تطبیق نسخه واقعاً Deploy‌شده Apps Script با SHA شاخه.
+2. inventory زنده triggerها، deploymentها و webhook.
+3. E2E چهار Role با Bot/Sheet/Drive مستقل staging.
+4. تست واقعی تغییر Gmail، revoke/reactivate و تغییر Role روی فایل تست.
+5. failure injection provisioning و retry در staging.
+6. conflict هم‌زمان تسک روزانه در staging.
+7. cascade delete و rollback روی داده تستی.
+8. ممیزی کامل Validation، protected ranges، استایل مؤثر و KPIها.
+9. اندازه‌گیری واقعی latency تلگرام و زمان اجرای sync.
+
+تا زمانی که موارد بالا در staging با Evidence پاس نشوند، وضعیت انتشار **Not Production Ready** باقی می‌ماند.
