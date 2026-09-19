@@ -1,0 +1,76 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "api/index.py": {
+      "maxDuration": 60
+    }
+  },
+  "routes": [
+    {
+      "src": "/health",
+      "dest": "/api/index",
+      "transforms": [
+        {
+          "type": "request.path",
+          "op": "set",
+          "args": "/health"
+        }
+      ]
+    },
+    {
+      "src": "/health/db",
+      "dest": "/api/index",
+      "transforms": [
+        {
+          "type": "request.path",
+          "op": "set",
+          "args": "/health/db"
+        }
+      ]
+    },
+    {
+      "src": "/health/sheets",
+      "dest": "/api/index",
+      "transforms": [
+        {
+          "type": "request.path",
+          "op": "set",
+          "args": "/health/sheets"
+        }
+      ]
+    },
+    {
+      "src": "/api/v1/(.*)",
+      "dest": "/api/index",
+      "transforms": [
+        {
+          "type": "request.path",
+          "op": "set",
+          "args": "/api/v1/$1"
+        }
+      ]
+    },
+    {
+      "src": "/docs",
+      "dest": "/api/index",
+      "transforms": [
+        {
+          "type": "request.path",
+          "op": "set",
+          "args": "/docs"
+        }
+      ]
+    },
+    {
+      "src": "/openapi.json",
+      "dest": "/api/index",
+      "transforms": [
+        {
+          "type": "request.path",
+          "op": "set",
+          "args": "/openapi.json"
+        }
+      ]
+    }
+  ]
+}

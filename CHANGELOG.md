@@ -1,208 +1,130 @@
 # Changelog
 
-تمام تغییرات مهم کاراترخیص در این فایل ثبت می‌شوند. ساختار این فایل بر اساس ایده‌های Keep a Changelog تنظیم شده، اما پروژه در حال حاضر از Versioning عملیاتی داخلی استفاده می‌کند.
+تمام تغییرات مهم کاراترخیص در این فایل ثبت می‌شوند. ساختار این سند بر مبنای Keep a Changelog و وضعیت واقعی شاخه توسعه تنظیم شده است.
 
----
+## [5.0.0-dev] - 2026-09-17
 
-## [Unreleased]
+**Tracking:** Pull Request [#1](https://github.com/sajedfallah/CRM-karatarkhis/pull/1) — `feature/v5-backend-foundation` → `main`
 
-### Planned
-
-- یکپارچه‌سازی Scheduler گزارش‌های روزانه/هفتگی/ماهانه
-- هشدار خودکار انقضای وکالت‌نامه مشتری
-- Permission Matrix مستقل برای فروش و پشتیبان
-- Refactor هسته V5 و حذف Function Overrideهای Legacy
-- انتقال کامل سورس Apps Script به GitHub
-- تست خودکار Schema و Triggerها
-- گزارش جداگانه واردات و صادرات
-- Audit Trail کامل تغییر وضعیت Task
-- گزارش مدیریتی ماهانه
-
----
-
-## [4.9.2] — 2026-09-16
+> برای این مجموعه تغییرات Issue مستقل در GitHub ثبت نشده است؛ بنابراین Reference اصلی تمام موارد زیر PR #1 و commit history همان شاخه است.
 
 ### Added
 
-- اکشن واقعی «➕ پرونده جدید» در فرم `پرونده جدید`
-- Reset امن فرم پرونده بدون حذف رکورد قبلی
-- Mapping جدید فرم پرونده:
-  - مشتری / صاحب کالا
-  - نوع پرونده
-  - شماره پرونده واقعی
-  - کوتاژ/سند اختیاری
-  - وضعیت
-  - مسئول
-  - یادداشت
-- Routing پرونده بر اساس `واردات` و `صادرات`
-- ستون نوع پرونده در Master Case Table
-- Setup جدید `setupV492()`
-- Diagnostic فرم پرونده
+- Backend جدید V5 بر پایه FastAPI، SQLAlchemy 2، Alembic و PostgreSQL/Neon.
+- تنظیمات Typed با `pydantic-settings` و `.env.example` بدون Secret واقعی.
+- مدل‌های دامنه: `customers`, `users`, `permissions`, `cases`, `case_assignments`, `audit_logs`.
+- Migration اولیه `0001_initial_v5_schema`.
+- Metadata همگام‌سازی Case شامل `sync_version`, `sync_source`, `sync_updated_at` در Migration `0002_case_sync_metadata`.
+- APIهای Case CRUD و lifecycle تخصیص مسئول.
+- مدل و API Task و Task Message/Thread در Migration `0003_tasks`.
+- مدل و API Document metadata، approval/reject، expiry و Drive metadata در Migration `0004_documents`.
+- Endpointهای هویت DEV: `GET /api/v1/users/me` و `GET /api/v1/users/me/permissions`.
+- Controlled Manual Sync API: `POST /api/v1/sync/manual` با Dry Run و Audit.
+- Google Sheets adapters برای Customer/Case sync.
+- Customer resolver سخت‌گیرانه برای جلوگیری از حدس‌زدن مشتری در داده مبهم.
+- Health endpoints: `/health`, `/health/db`, `/health/sheets`.
+- Vercel serverless entrypoint و routing برای API/Docs/OpenAPI.
+- پشتیبانی Google credentials از سه مسیر: Base64 JSON، raw JSON secret و mounted file.
+- Audit logging برای عملیات اصلی Case، Assignment، Task، Message، Document و Sync.
+- ساختار permission profile و scopeهای `GLOBAL`, `CUSTOMER`, `ASSIGNED`.
+
+### Fixed
+
+- اصلاح Vercel routing تا FastAPI path اصلی هنگام rewrite حفظ شود و `/health` و `/api/v1/*` به endpoint صحیح برسند. Ref: PR #1.
+- اصلاح تبدیل مقدار Active مشتریان Sheet؛ رشته‌هایی مانند `FALSE` دیگر با `bool("FALSE")` به اشتباه True تلقی نمی‌شوند. Ref: PR #1.
+- resolver پرونده اکنون فقط مشتری فعال را می‌پذیرد و در حالت ambiguous/unknown از حدس‌زدن جلوگیری می‌کند. Ref: PR #1.
+- ترتیب Case sync اصلاح شد: Commit دیتابیس قبل از ثبت marker در Sheet انجام می‌شود تا marker موفقیت پیش از ذخیره DB نوشته نشود. Ref: PR #1.
+- sync metadata در import پرونده در خود DB persist می‌شود. Ref: PR #1.
+- role permissionها بر اساس `permission_profile` scope شدند تا profileهای متفاوت به اشتباه Permission مشترک نگیرند. Ref: PR #1.
+- semantics مسئول اصلی Case enforce شد تا بیش از یک Primary Internal Assignment فعال ایجاد نشود. Ref: PR #1.
+- Roleهای کاربر داخلی به مقادیر Backend نرمال شدند و Permission اردوان به Scope=`ASSIGNED` منتقل شد. Ref: PR #1.
 
 ### Changed
 
-- شماره پرونده تولیدشده داخلی کنار گذاشته شد و شماره ثبت‌شده توسط کاربر به‌عنوان شناسه اصلی پرونده استفاده می‌شود.
-- فرم پرونده با ساختار فعلی Sheet همگام شد.
+- جهت معماری از «Google Sheet به‌عنوان دیتاست مرکزی» به «PostgreSQL به‌عنوان Source of Truth و Sheet به‌عنوان operational interface» تغییر کرد.
+- Authorization از کنترل UI/Sheet به server-side policy منتقل شد.
+- Case ID، Customer ID و User ID به شناسه‌های immutable تبدیل شدند.
+- Customer-side access بر پایه tenant boundary و Customer ID طراحی شد.
+- Assignment و Task visibility بر اساس server-side permission checks انجام می‌شود.
+- V5 به‌صورت modular monolith پیاده‌سازی شده و از microservice، message queue یا cache مستقل استفاده نمی‌کند.
+- Deployment توسعه از Git branch به Vercel Preview متصل شد؛ Production V4.9.2 در این شاخه تغییر نکرده است.
 
-### Fixed
+### Database
 
-- مشکل بدون اکشن بودن Checkbox «➕ پرونده جدید»
-- ناسازگاری کد V4.9.0 با Layout جدید فرم پرونده
-- حفظ هم‌زمان اکشن‌های فرم مشتری و پرونده در Trigger واحد
+- `0001_initial_v5_schema`: ایجاد schema پایه.
+- `0002_case_sync_metadata`: اضافه‌شدن metadata همگام‌سازی Case.
+- `0003_tasks`: اضافه‌شدن `tasks` و `task_messages` و indexهای مربوطه.
+- `0004_documents`: اضافه‌شدن `documents` و indexهای customer/case/status/expiry.
+- Migrationهای `0003` و `0004` ابتدا روی Neon temporary branch تست و سپس با تأیید صریح روی DEV اعمال شدند.
+- در 2026-09-17 بنا به تصمیم عملیاتی، داده‌های DEV تخلیه شدند؛ Schema و `alembic_version=0004_documents` باقی ماندند.
 
----
+### Security
 
-## [4.9.1] — 2026-09-16
+- `X-User-ID` فقط DEV/STAGING identity adapter است.
+- در `APP_ENV=production` این adapter عمداً پاسخ `503 production_auth_not_configured` می‌دهد.
+- authorization chain شامل Active User، Role، Tenant Boundary، Permission Profile، Scope، Assignment و Action است.
+- Google Sheet validation/hidden tab به‌عنوان security boundary استفاده نمی‌شود.
+- Secretها، service-account JSON، customer exports و customer documents نباید Commit شوند.
+- Manual Sync به نقش Admin محدود شده است.
 
-### Added
+### Infrastructure
 
-- ثبت مشتری از فرم `مشتری جدید`
-- تولید شناسه مشتری با الگوی `CUS-###`
-- ایجاد پوشه اختصاصی مشتری در Google Drive
-- زیرپوشه‌های:
-  - وکالت‌نامه
-  - مجوزها
-  - مدارک ثبتی
-  - سایر
-- اکشن «➕ مشتری جدید» برای Reset امن فرم
-- اضافه شدن خودکار مشتری به فهرست شرکت‌ها
-- مدل داده شروع/پایان وکالت‌نامه
-- فرمول وضعیت و روزهای باقی‌مانده وکالت‌نامه
+- Neon PostgreSQL برای DEV.
+- Vercel Preview برای branch توسعه.
+- Vercel function `api/index.py` با `maxDuration=60`.
+- GitHub Actions در این نسخه تعریف نشده است.
+- Docker/Kubernetes در این نسخه وجود ندارد.
+- Redis/Message Queue وجود ندارد.
+- REST/JSON تنها protocol اپلیکیشن Backend است.
 
-### Fixed
+### Integration
 
-- فرم `مشتری جدید` در نسخه قبل Handler نداشت و Checkboxها اکشن واقعی اجرا نمی‌کردند.
+- Google Sheets: explicit adapters و Controlled Sync.
+- Google Drive: ساختار پوشه مشتری/پرونده و Document metadata در DB.
+- Telegram credentials در config پیش‌بینی شده‌اند، اما Telegram V5 integration کامل هنوز جزو work remaining است.
+- Runtime autonomous Google Sheets sync روی Vercel هنوز به credential backend-grade نیاز دارد؛ ChatGPT Google Drive connector credential اپلیکیشن Vercel نیست.
 
----
+### Dependencies
 
-## [4.9.0] — 2026-09-16
+قیود فعلی `backend/requirements.txt`:
 
-### Added
+- `fastapi>=0.128,<1.0`
+- `uvicorn[standard]>=0.40,<1.0`
+- `sqlalchemy>=2.0,<3.0`
+- `alembic>=1.18,<2.0`
+- `psycopg[binary]>=3.2,<4.0`
+- `pydantic-settings>=2.12,<3.0`
+- `python-dotenv>=1.2,<2.0`
+- `google-api-python-client>=2.190,<3.0`
+- `google-auth>=2.40,<3.0`
 
-- ثبت پرونده از Sheet
-- ایجاد/بازیابی پوشه Drive پرونده
-- زیرپوشه‌های استاندارد اسناد پرونده
-- Sync خودکار فایل‌های پرونده به شیت `اسناد پرونده‌ها`
-- Trigger پنج‌دقیقه‌ای Sync اسناد
-- لینک پوشه اسناد از فرم پرونده
+> نسخه resolve‌شده دقیق dependencyها در Repo lock نشده است؛ lockfile قبل از Production لازم است.
 
-### Known Issues
+### QA / Verification
 
-- فرم پرونده در این نسخه بر اساس Layout قبلی نوشته شده بود.
-- اکشن «پرونده جدید» کامل نبود.
+- Migrationهای `0002`, `0003`, `0004` روی Neon بررسی شده‌اند.
+- `/health` و `/health/db` روی Preview پاسخ موفق داشته‌اند.
+- OpenAPI روی Preview وجود Routeهای Case، Task، User، Manual Sync و Document را تأیید کرده است.
+- visibility Task برای Scope=`ASSIGNED` با داده واقعی DEV بررسی شد.
+- Deploymentهای branch به وضعیت `READY` رسیده‌اند.
+- GitHub Actions workflow برای HEAD این PR وجود ندارد؛ بنابراین CI automated test evidence نداریم.
+- Test coverage عددی ثبت نشده است.
+- HTTP E2E برای POST/PATCHهایی که نیازمند custom `X-User-ID` header هستند به‌صورت کامل از بیرون Vercel اجرا نشده است.
 
----
+### Known Limitations / Open Work
 
-## [4.8.0] — 2026-09-16
+- Production authentication هنوز پیاده‌سازی نشده است.
+- Runtime Google credential strategy روی Vercel نهایی نشده است.
+- Manual Sync duplicate-ID validation در payload باید سخت‌گیرانه‌تر شود.
+- DB→Sheet reconciliation/retry برای حالتی که DB commit موفق ولی Sheet marker write ناموفق شود باید تکمیل شود.
+- Automated unit/integration/E2E test suite و CI pipeline هنوز وجود ندارد.
+- Dependency locking/reproducible builds لازم است.
+- Telegram V5، Notifications، Partial Clearance و Customer Workspace end-to-end هنوز کامل نیستند.
+- Backup/restore و production migration rehearsal انجام نشده است.
 
-### Added
+### Breaking / Migration Notes
 
-- Generalize شدن Task Ownership از «فقط اردوان» به همه اعضای فعال
-- شناسه Task جدید `KRT-XXXXXXXX`
-- پشتیبانی Backward Compatible از `ARD-XXXXXXXX`
-- کارت Task با نام مسئول واقعی
-- Sender عمومی Task
-- Diagnostic برای Routing Task
-
-### Changed
-
-- مفهوم «ارسال به اردوان» به مدل عمومی «ارسال به کارمند» تغییر کرد.
-
----
-
-## [4.7.4] — 2026-09-16
-
-### Added
-
-- منوی دائمی Private Chat
-- Keyboard مجزا برای مدیر و کارمند
-- استفاده روزانه بدون نیاز به `/menu`
-- پنل Private با Update روی همان پیام تا حد امکان
-
----
-
-## [4.7.3] — 2026-09-16
-
-### Fixed
-
-- Webhook فقط `message` را دریافت می‌کرد و `callback_query` به Apps Script نمی‌رسید.
-- Subscription وب‌هوک برای `message` و `callback_query` اصلاح شد.
-- تابع Repair وب‌هوک برای حفظ URL Relay فعلی اضافه شد.
-
----
-
-## [4.7.2] — 2026-09-16
-
-### Fixed
-
-- توابع تستی با `_` انتهایی در Apps Script به‌عنوان Private تلقی می‌شدند و در Function Selector نمایش داده نمی‌شدند.
-- Diagnostic و Setup عمومی بدون underscore ایجاد شدند.
-- خطاهای `onTaskEdit` شفاف‌تر شدند.
-
----
-
-## [4.7.1]
-
-### Added
-
-- Sender Diagnostic
-- Pending Task Scanner
-
-### Known Issues
-
-- فایل انتقالی Drive در یک مرحله به‌اشتباه با محتوای نامعتبر/باینری مواجه شد و قابل استفاده نبود.
-
----
-
-## [4.7.0]
-
-### Added
-
-- Role-based Private UI
-- Pending Task Sender
-- پایه تفکیک Group و Private
-
----
-
-## [4.6.3]
-
-### Fixed
-
-- Routing جستجوی شرکت در Private/Menu
-- جلوگیری از مصرف اشتباه نام شرکت توسط Task Reply handler
-
----
-
-## [4.6.2]
-
-### Added
-
-- Pending Input State برای ورودی متنی بعد از انتخاب منو
-
----
-
-## [4.6.1]
-
-### Baseline
-
-- Task ↔ Telegram lifecycle
-- مدیریت لید و پیگیری
-- گزارش‌های پایه
-- Telegram webhook
-- Google Sheet integration
-
----
-
-## سیاست ثبت تغییرات
-
-برای هر Release جدید حداقل این موارد ثبت شوند:
-
-- Added
-- Changed
-- Fixed
-- Removed
-- Security
-- Migration
-- Known Issues
-
-Release نباید فقط با تغییر عدد `VERSION` انجام شود؛ باید Changelog و Deployment Guide نیز بررسی شوند.
+- V5 معماری Source of Truth را از Sheet به PostgreSQL منتقل می‌کند؛ integrationهایی که مستقیم Sheet را authoritative فرض می‌کنند باید به API/Sync Adapter منتقل شوند.
+- `X-User-ID` راهکار Production نیست.
+- Permission enforcement server-side است و دسترسی صرفاً بر مبنای visible rows یا tabs معتبر نیست.
+- Migration Guide کامل: [docs/V5_MIGRATION_GUIDE.md](docs/V5_MIGRATION_GUIDE.md).
