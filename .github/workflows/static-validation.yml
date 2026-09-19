@@ -42,3 +42,18 @@ jobs:
           else
             echo "No duplicate function declarations detected."
           fi
+
+      - name: V4.27 behavioral regression tests
+        run: node tests/v427_behavior.test.js
+
+      - name: Audit regression tests
+        run: node --test tests/audit-regression.test.js
+
+      - name: Telegram relay syntax check
+        run: node --check backend/api/telegram.js
+
+      - name: Vercel relay structure
+        run: |
+          test -f backend/package.json
+          test -f backend/vercel.json
+          test -f backend/api/telegram.js
