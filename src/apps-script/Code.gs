@@ -11393,6 +11393,34 @@ function selectMappingsForSyncV427_(mappings, limit) {
     .slice(0, limit);
 }
 
+
+function selectMappingsRoundRobinV427_(mappings, limit, cursor) {
+  const rows = (mappings || []).filter(function(r) {
+    return String(r['Workspace URL'] || '').trim();
+  });
+
+  if (!rows.length) {
+    return { selected:[], startCursor:0, nextCursor:0, total:0 };
+  }
+
+  limit = Math.max(1, Math.min(Number(limit) || 20, rows.length));
+  cursor = Number(cursor || 0);
+  if (!isFinite(cursor) || cursor < 0) cursor = 0;
+  cursor = cursor % rows.length;
+
+  const selected = [];
+  for (let i = 0; i < Math.min(limit, rows.length); i++) {
+    selected.push(rows[(cursor + i) % rows.length]);
+  }
+
+  return {
+    selected:selected,
+    startCursor:cursor,
+    nextCursor:(cursor + selected.length) % rows.length,
+    total:rows.length
+  };
+}
+
 // Final fair workspace scheduler. No RAW template receives operational data.
 function syncAllActiveWorkspacesV412(limit) {
   limit = Math.max(1, Math.min(Number(limit) || 20, 50));
@@ -11418,43 +11446,26 @@ function syncAllActiveWorkspacesV412(limit) {
     __WORKSPACE_SOURCE_SNAPSHOT_V412 = null;
     resetIdentityDirectoryV427_();
 
-    const mappings = readRows(SHEETS.mapping)
-      .filter(function(r) {
-        return String(r['Workspace URL'] || '').trim();
-      });
-
-    if (!mappings.length) return report;
-
     const props = PropertiesService.getScriptProperties();
-    let cursor = Number(
-      props.getProperty(WORKSPACE_SYNC_CURSOR_KEY_V427) || 0
+    const page = selectMappingsRoundRobinV427_(
+      readRows(SHEETS.mapping),
+      limit,
+      Number(props.getProperty(WORKSPACE_SYNC_CURSOR_KEY_V427) || 0)
     );
 
-    if (!isFinite(cursor) || cursor < 0) cursor = 0;
-    cursor = cursor % mappings.length;
-    report.cursorStart = cursor;
+    if (!page.total) return report;
 
-    const selected = [];
-    for (let i = 0; i < Math.min(limit, mappings.length); i++) {
-      selected.push(
-        mappings[(cursor + i) % mappings.length]
-      );
-    }
-
-    const nextCursor =
-      (cursor + selected.length) % mappings.length;
+    report.cursorStart = page.startCursor;
+    report.cursorNext = page.nextCursor;
 
     props.setProperty(
       WORKSPACE_SYNC_CURSOR_KEY_V427,
-      String(nextCursor)
+      String(page.nextCursor)
     );
 
-    report.cursorNext = nextCursor;
-
-    selected.forEach(function(m) {
+    page.selected.forEach(function(m) {
       const userId = String(m['User ID'] || '').trim();
       const user = getRowById(SHEETS.usersRaw, userId);
-
       if (!user) return;
 
       const workspace = {
@@ -11469,11 +11480,7 @@ function syncAllActiveWorkspacesV412(limit) {
 
       try {
         if (String(user['وضعیت'] || '').trim() !== 'فعال') {
-          const access =
-            reconcileWorkspaceAccessV427_(
-              workspace,
-              user
-            );
+          const access = reconcileWorkspaceAccessV427_(workspace, user);
 
           upsertObject(
             SHEETS.mapping,
@@ -11497,17 +11504,8 @@ function syncAllActiveWorkspacesV412(limit) {
           return;
         }
 
-        const counts =
-          syncWorkspaceDataV412_(
-            workspace,
-            user
-          );
-
-        const access =
-          reconcileWorkspaceAccessV427_(
-            workspace,
-            user
-          );
+        const counts = syncWorkspaceDataV412_(workspace, user);
+        const access = reconcileWorkspaceAccessV427_(workspace, user);
 
         upsertObject(
           SHEETS.mapping,
@@ -11515,8 +11513,7 @@ function syncAllActiveWorkspacesV412(limit) {
           userId,
           Object.assign({}, m, {
             'User ID':userId,
-            'Gmail مشترک‌شده':
-              String(user['Gmail / Email'] || '').trim(),
+            'Gmail مشترک‌شده':String(user['Gmail / Email'] || '').trim(),
             'آخرین Sync':nowFa(),
             'وضعیت Provisioning':'انجام شد'
           })
