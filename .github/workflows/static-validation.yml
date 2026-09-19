@@ -1,0 +1,44 @@
+name: Static validation
+
+on:
+  push:
+    branches: ["main", "codex/**"]
+  pull_request:
+
+jobs:
+  apps-script-static:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: JavaScript syntax check
+        run: |
+          cp src/apps-script/Code.gs /tmp/karatarkhis-code.js
+          node --check /tmp/karatarkhis-code.js
+
+      - name: Block obvious Telegram bot tokens
+        shell: bash
+        run: |
+          if grep -RInE '[0-9]{7,12}:[A-Za-z0-9_-]{25,}' --exclude-dir=.git .; then
+            echo "Potential Telegram bot token detected."
+            exit 1
+          fi
+
+      - name: Verify required engineering docs
+        run: |
+          test -f README.md
+          test -f CODEX_MASTER_PROMPT.md
+          test -f docs/PROJECT_EXECUTION_WORKFLOW.md
+          test -f docs/SHEETS_SCHEMA_AND_DEPENDENCIES.md
+          test -f docs/DRIVE_ARCHITECTURE.md
+
+      - name: Report duplicate function declarations
+        shell: bash
+        run: |
+          grep -Eo '^function[[:space:]]+[A-Za-z0-9_]+' src/apps-script/Code.gs             | awk '{print $2}' | sort | uniq -d > /tmp/duplicates.txt || true
+          if [ -s /tmp/duplicates.txt ]; then
+            echo "Historical duplicate function declarations detected (audit/refactor target):"
+            cat /tmp/duplicates.txt
+          else
+            echo "No duplicate function declarations detected."
+          fi
