@@ -11,7 +11,7 @@ const WEB_APP_URL = PropertiesService.getScriptProperties().getProperty('WEB_APP
 const SPREADSHEET_ID = PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID') || '';
 const CRM_FOLDER_ID = PropertiesService.getScriptProperties().getProperty('CRM_FOLDER_ID') || '';
 const CRM_DOCUMENTS_ROOT_FOLDER_ID = PropertiesService.getScriptProperties().getProperty('CRM_DOCUMENTS_ROOT_FOLDER_ID') || '';
-const APP_VERSION = 'V4.27-2026-09-19';
+const APP_VERSION = 'V4.28-2026-09-19';
 
 const DASHBOARD_TEMPLATES = {
   'مدیر': PropertiesService.getScriptProperties().getProperty('TEMPLATE_ADMIN_ID') || '',
@@ -9444,7 +9444,7 @@ function renderRoleDashboardV425_(ss, user) {
 
   // Base formatting
   canvas
-    .setFontFamily(UI_FONT_FAMILY_V427)
+    .setFontFamily(VAZIR_FONT_FAMILY_V427)
     .setFontSize(10)
     .setFontColor('#222222')
     .setVerticalAlignment('middle')
@@ -11609,7 +11609,7 @@ function applyVazirmatnToSpreadsheetV427_(ss) {
     const lastRow = Math.max(1, sh.getLastRow());
     const lastCol = Math.max(1, sh.getLastColumn());
     sh.getRange(1, 1, lastRow, lastCol)
-      .setFontFamily(UI_FONT_FAMILY_V427);
+      .setFontFamily(VAZIR_FONT_FAMILY_V427);
   });
   return true;
 }
@@ -11896,5 +11896,104 @@ function testV427SecurityAndSyncHelpers() {
     },
     config:validateRuntimeConfigV427_(),
     provisioningSettingsDryRun:repairProvisioningSettingsV427_(true)
+  };
+}
+
+
+/************************************************************
+ * V4.28 — AUDIT CLOSURE OVERRIDES
+ * ----------------------------------------------------------
+ * Final branch-only compatibility/security layer:
+ * - Relay envelope is aligned with backend/api/telegram.js.
+ * - Timestamp is seconds since epoch, with 5 minute TTL.
+ * - Replay is blocked before Telegram handlers are invoked.
+ * - RELAY_SHARED_SECRET is canonical; WEBHOOK_RELAY_SECRET is
+ *   accepted only as a temporary migration fallback.
+ ************************************************************/
+
+function relaySharedSecretV428_() {
+  return scriptPropertyV427_('RELAY_SHARED_SECRET') ||
+    scriptPropertyV427_('WEBHOOK_RELAY_SECRET');
+}
+
+// Final relay validator. Expected envelope:
+// { relay:{timestamp, nonce, signature}, update:{...telegram update...} }
+function verifyRelayEnvelopeV427_(envelope, nowMs) {
+  const secret = relaySharedSecretV428_();
+  if (!secret) return { ok:false, reason:'relay_secret_missing' };
+
+  if (!envelope || !envelope.relay || !envelope.update) {
+    return { ok:false, reason:'invalid_relay_envelope' };
+  }
+
+  const relay = envelope.relay;
+  const timestamp = Number(relay.timestamp);
+  const nonce = String(relay.nonce || '');
+  const signature = String(relay.signature || '').toLowerCase();
+  const update = envelope.update;
+  const nowSeconds = Math.floor(Number(nowMs || Date.now()) / 1000);
+
+  if (!timestamp || !nonce || !signature) {
+    return { ok:false, reason:'relay_fields_missing' };
+  }
+
+  if (!/^[A-Za-z0-9_-]{8,128}$/.test(nonce)) {
+    return { ok:false, reason:'invalid_nonce' };
+  }
+
+  if (timestamp > nowSeconds + 60) {
+    return { ok:false, reason:'timestamp_in_future' };
+  }
+
+  if (nowSeconds - timestamp > WEBHOOK_MAX_AGE_SECONDS_V427) {
+    return { ok:false, reason:'expired_request' };
+  }
+
+  let payloadJson;
+  try {
+    payloadJson = JSON.stringify(update);
+  } catch (_) {
+    return { ok:false, reason:'payload_json_invalid' };
+  }
+
+  const expected = relaySignatureV427_(
+    timestamp,
+    nonce,
+    payloadJson,
+    secret
+  );
+
+  if (!constantTimeEqualsV427_(expected, signature)) {
+    return { ok:false, reason:'bad_signature' };
+  }
+
+  const replayKey = WEBHOOK_REPLAY_PREFIX_V427 + nonce;
+  const cache = CacheService.getScriptCache();
+
+  if (cache.get(replayKey)) {
+    return { ok:false, reason:'replay' };
+  }
+
+  cache.put(
+    replayKey,
+    '1',
+    WEBHOOK_MAX_AGE_SECONDS_V427 + 60
+  );
+
+  return {
+    ok:true,
+    update:update,
+    timestamp:timestamp,
+    nonce:nonce
+  };
+}
+
+function testV428AuditClosureHelpers() {
+  return {
+    version:APP_VERSION,
+    relaySecretConfigured:!!relaySharedSecretV428_(),
+    font:VAZIR_FONT_FAMILY_V427,
+    productionReady:false,
+    note:'Live staging E2E remains required before production approval.'
   };
 }
