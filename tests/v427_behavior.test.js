@@ -340,6 +340,20 @@ testCase('round-robin scheduler reaches mapping 21 on second cycle', () => {
   assert.strictEqual(second.selected[0]['User ID'], 'U21');
 });
 
+testCase('provisionWorkspace reuses deterministic orphan copy after crash window', () => {
+  function lastBody(name) {
+    const pos = code.lastIndexOf('function ' + name + '(');
+    assert.ok(pos >= 0, 'missing function ' + name);
+    const next = code.indexOf('\nfunction ', pos + 20);
+    return code.slice(pos, next > 0 ? next : code.length);
+  }
+
+  const provision = lastBody('provisionWorkspace');
+  assert.ok(provision.includes('findWorkspaceCopyByDeterministicNameV428_'));
+  assert.ok(provision.includes('reusedExistingCopy'));
+  assert.ok(provision.indexOf('findWorkspaceCopyByDeterministicNameV428_') < provision.indexOf('makeCopy'));
+});
+
 testCase('persisted request workspace wins over another mapped workspace on retry', () => {
   const ref = sandbox.preferredWorkspaceRefV427_(
     {
