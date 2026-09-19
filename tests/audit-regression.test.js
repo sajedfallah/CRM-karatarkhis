@@ -113,3 +113,20 @@ test('relay backend and Vercel root exist', () => {
   assert.equal(fs.existsSync(path.join(__dirname, '..', 'backend', 'api', 'telegram.js')), true);
   assert.equal(fs.existsSync(path.join(__dirname, '..', 'backend', 'vercel.json')), true);
 });
+
+
+test('semantic sheet styling preserves per-sheet color identity and Vazirmatn', () => {
+  const fn = extractLastFunction('styleUsedRangeV429_');
+  assert.match(fn, /sheetPaletteV429_/);
+  assert.match(fn, /setFontFamily\(VAZIR_FONT_FAMILY_V427\)/);
+  assert.match(fn, /getTabColor/);
+  assert.match(fn, /SHEET_STYLE_GROUP_SIZE_V429/);
+
+  const repair = extractLastFunction('repairKnownSheetStylesV429_');
+  assert.match(repair, /DASHBOARD_TEMPLATES/);
+  assert.match(repair, /LIVE_DASHBOARDS/);
+  assert.match(repair, /SHEETS\.mapping/);
+
+  const sync = extractLastFunction('syncWorkspaceDataV412_');
+  assert.match(sync, /styleSpreadsheetSemanticallyV429_/);
+});
