@@ -33,7 +33,9 @@ function extractLastFunction(name) {
 
 test('scope matching uses exact identity helper', () => {
   const fn = extractLastFunction('getScopedWorkspaceDataV412_');
-  assert.match(fn, /fieldMatchesUserIdentityV427_/);
+  assert.match(fn, /assignmentFieldMatchesUserV427_|fieldMatchesUserIdentityV427_/);
+  const wrapper = extractLastFunction('assignmentFieldMatchesUserV427_');
+  assert.match(wrapper, /fieldMatchesUserIdentityV427_/);
   assert.doesNotMatch(fn, /textContainsAnyV412_/);
 
   const split = v => String(v || '').trim().split(/[\n,،;|]+/).map(x => x.trim()).filter(Boolean);
@@ -92,7 +94,7 @@ test('workspace sync rotates and never writes admin personal data to RAW templat
 
 test('role dashboard renderer uses Vazirmatn', () => {
   const fn = extractLastFunction('renderRoleDashboardV425_');
-  assert.match(fn, /UI_FONT_FAMILY_V427/);
+  assert.match(fn, /VAZIR_FONT_FAMILY_V427/);
   assert.doesNotMatch(fn, /setFontFamily\\('Arial'\\)/);
 });
 
