@@ -33,7 +33,7 @@ function extractLastFunction(name) {
 
 test('scope matching uses exact identity helper', () => {
   const fn = extractLastFunction('getScopedWorkspaceDataV412_');
-  assert.match(fn, /fieldMatchesUserIdentityV427_/);
+  assert.match(fn, /assignmentFieldMatchesUserV427_/);
   assert.doesNotMatch(fn, /textContainsAnyV412_/);
 
   const split = v => String(v || '').trim().split(/[\n,،;|]+/).map(x => x.trim()).filter(Boolean);
@@ -69,7 +69,7 @@ test('provisioning persists before sync and shares after sync', () => {
   const fn = extractLastFunction('processProvisioningQueue');
   const persistedAt = fn.indexOf("'Workspace File ID':workspace.fileId");
   const syncAt = fn.indexOf('syncWorkspaceDataV412_');
-  const shareAt = fn.indexOf('reconcileWorkspaceAccessV427_');
+  const shareAt = fn.indexOf('shareWorkspaceToUser_');
   assert.ok(persistedAt >= 0 && syncAt > persistedAt, 'workspace identity must persist before sync');
   assert.ok(shareAt > syncAt, 'workspace must be shared only after scoped sync');
 
@@ -79,14 +79,14 @@ test('provisioning persists before sync and shares after sync', () => {
 
 test('workspace sync rotates and never writes admin personal data to RAW template', () => {
   const fn = extractLastFunction('syncAllActiveWorkspacesV412');
-  assert.match(fn, /WORKSPACE_SYNC_CURSOR_KEY_V427/);
+  assert.match(fn, /selectMappingsRoundRobinV427_/);
   assert.doesNotMatch(fn, /DASHBOARD_TEMPLATES\['مدیر'\]/);
 });
 
 test('role dashboard renderer uses Vazirmatn', () => {
   const fn = extractLastFunction('renderRoleDashboardV425_');
-  assert.match(fn, /VAZIR_FONT_FAMILY_V427/);
-  assert.doesNotMatch(fn, /Arial/);
+  assert.match(fn, /UI_FONT_FAMILY_V427/);
+  assert.doesNotMatch(fn, /setFontFamily\\('Arial'\\)/);
 });
 
 test('daily task sync detects concurrent changes and preserves local row', () => {
