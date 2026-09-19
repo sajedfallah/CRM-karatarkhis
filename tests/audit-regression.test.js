@@ -69,7 +69,7 @@ test('provisioning persists before sync and shares after sync', () => {
   const fn = extractLastFunction('processProvisioningQueue');
   const persistedAt = fn.indexOf("'Workspace File ID':workspace.fileId");
   const syncAt = fn.indexOf('syncWorkspaceDataV412_');
-  const shareAt = fn.indexOf('reconcileWorkspaceAccessV427_');
+  const shareAt = fn.indexOf('reconcileWorkspaceAccessV427_', syncAt);
   assert.ok(persistedAt >= 0 && syncAt > persistedAt, 'workspace identity must persist before sync');
   assert.ok(shareAt > syncAt, 'workspace must be shared only after scoped sync');
 
@@ -85,7 +85,7 @@ test('workspace sync rotates and never writes admin personal data to RAW templat
 
 test('role dashboard renderer uses Vazirmatn', () => {
   const fn = extractLastFunction('renderRoleDashboardV425_');
-  assert.match(fn, /VAZIR_FONT_FAMILY_V427/);
+  assert.match(fn, /UI_FONT_FAMILY_V427/);
   assert.doesNotMatch(fn, /setFontFamily\\('Arial'\\)/);
 });
 
