@@ -4,7 +4,7 @@
 
 **Production readiness هنوز تأیید نشده است.** این شاخه فقط برای رفع ایراد و تست staging است. Merge به `main` و انتشار Production نیازمند تأیید صریح است.
 
-## اصلاحات انجام‌شده در V4.27
+## اصلاحات انجام‌شده در V4.28
 
 ### A — Scope و جداسازی کاربران
 - مجوز Scope دیگر بر اساس substring نام/شناسه صادر نمی‌شود.
@@ -23,7 +23,7 @@ Environment variables موردنیاز Relay:
 - `APPS_SCRIPT_WEB_APP_URL`
 
 Script Property موردنیاز Apps Script:
-- `WEBHOOK_RELAY_SECRET` = همان `RELAY_SHARED_SECRET`
+- `RELAY_SHARED_SECRET` = همان مقدار `RELAY_SHARED_SECRET` در Vercel
 
 ### C — Telegram access
 - دسترسی فقط برای وضعیت صریح `فعال` صادر می‌شود.
@@ -44,7 +44,7 @@ Script Property موردنیاز Apps Script:
 ### F — Daily task conflict
 - baseline hash از آخرین sync نگهداری می‌شود.
 - اگر هم مرکز و هم Workspace نسبت به baseline تغییر کرده باشند، `concurrent_change` ثبت و overwrite متوقف می‌شود.
-- این پیاده‌سازی فعلاً Script Properties-based است؛ migration آینده به revision column صریح پیشنهاد می‌شود.
+- این پیاده‌سازی از baseline hash در state مخفی Workspace استفاده می‌کند؛ migration آینده به revision column صریح در رکورد مرکزی پیشنهاد می‌شود.
 
 ### G — بیش از ۲۰ Workspace
 - cursor پایدار و چرخشی اضافه شد تا Mappingهای بعد از ۲۰ نیز در چرخه‌های بعدی پردازش شوند.
@@ -95,3 +95,13 @@ Script Property موردنیاز Apps Script:
 - validation/protection/style/KPI audit کامل
 
 تا تکمیل این موارد، نسخه Production-ready اعلام نمی‌شود.
+
+
+## اصلاح تکمیلی V4.28
+
+- فرمت envelope بین Vercel Relay و Apps Script یکسان شد: `{ relay:{timestamp, nonce, signature}, update }`.
+- timestamp بر حسب Unix seconds است و TTL پنج‌دقیقه‌ای با future-skew محدود اعمال می‌شود.
+- replay key پیش از ورود به handlerهای Telegram ثبت/بررسی می‌شود.
+- `RELAY_SHARED_SECRET` نام canonical secret در هر دو سمت است؛ نام قدیمی فقط fallback مهاجرتی است.
+- تست‌های regression برای exact identity، same-name fail-closed، relay signature/replay/expiry و conflict sync به‌روزرسانی شدند.
+- وضعیت انتشار همچنان **Not Production Ready** است تا E2E زنده Staging تکمیل شود.
