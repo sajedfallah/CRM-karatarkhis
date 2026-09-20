@@ -235,3 +235,21 @@ test('Telegram webhook does not expose internal exception text', () => {
   assert.match(fn, /error:'internal_error'/);
   assert.doesNotMatch(fn, /error:String\(err && err\.message/);
 });
+
+
+test('internal action requires exact manager actor identity and active permission', () => {
+  const fn = extractLastFunction('handleInternalActionV414_');
+  assert.match(fn, /constantTimeEqualsV427_/);
+  assert.match(fn, /actor_email_required/);
+  assert.match(fn, /email_scope_mismatch/);
+  assert.match(fn, /manager_user_inactive/);
+  assert.match(fn, /permission_inactive_or_missing/);
+});
+
+test('internal destructive action remains scope-limited', () => {
+  const fn = extractLastFunction('handleInternalActionV414_');
+  assert.match(fn, /\['cases','tasks'\]\.indexOf\(entity\) < 0/);
+  assert.match(fn, /managerRowBelongsToScopeV414_/);
+  assert.match(fn, /delete_scope_not_allowed/);
+  assert.match(fn, /record_out_of_scope/);
+});
