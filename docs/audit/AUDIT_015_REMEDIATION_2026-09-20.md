@@ -213,7 +213,7 @@ Remaining release evidence:
 
 Static Validation #150 passed after the proactive engine changes.
 
-A later CI run was triggered after canonical provisioning resolver changes and was still in progress at the time this report was prepared. Final release cannot use an in-progress run as PASS evidence.
+The first V4.29 resolver CI run exposed two regression-maintenance issues: duplicate-function debt growth and an obsolete template-source assertion. The V4.29 overrides were consolidated to preserve the AUDIT-008 debt ceiling, and the invariant test was updated to follow the canonical resolver.\n\nFinal observed run: **Static validation #164 — SUCCESS**. All current audit regression tests pass.
 
 ## Gate matrix after remediation
 
@@ -235,7 +235,7 @@ A later CI run was triggered after canonical provisioning resolver changes and w
 | Destructive recovery runtime drill | **OPEN** |
 | Credential/break-glass release evidence | **OPEN** |
 | Apps Script deployed revision pin | **OPEN** |
-| Main merge | BLOCKED |
+| Final CI after V4.29 remediation | **PASS — Static validation #164** |\n| Main merge | BLOCKED |
 
 ## Final remediation decision
 
@@ -244,3 +244,4 @@ A later CI run was triggered after canonical provisioning resolver changes and w
 The most important architectural provisioning defect is now corrected and the missing proactive-notification engine exists behind a fail-closed feature flag. The remaining blockers require runtime capabilities or permission/credential operations that were not safely available through the connected execution surface.
 
 No merge to `main` is authorized by this report.
+\n\n## Final CI remediation commits\n\n- Duplicate override consolidation: `3039f16c009b36f0f7c8ef9bbdddad21835ce3df`\n- V4.29 template-source regression alignment: `2b1ad04987c200e8303469fd765c65cdec01747b`\n- Static validation #164: **SUCCESS**\n
