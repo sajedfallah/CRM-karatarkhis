@@ -12756,3 +12756,110 @@ function installProactiveNotificationTriggerV429_() {
   const trigger = ScriptApp.newTrigger(handler).timeBased().everyHours(1).create();
   return { ok:true, installed:true, triggerId:trigger.getUniqueId() };
 }
+
+
+/************************************************************
+ * V4.29 — CANONICAL PROVISIONING TEMPLATE RESOLVER
+ * Provisioning Settings is the canonical runtime template map.
+ * Script Properties remain fallback only when the table is unavailable.
+ ************************************************************/
+
+function provisioningTemplateMapV429_() {
+  const map = {};
+  try {
+    const rows = readRows({ name:'Provisioning Settings', headerRow:1, idHeader:'Role' }) || [];
+    rows.forEach(function(r) {
+      if (String(r['Active'] || '').trim() === 'خیر') return;
+      const role = normalizeRole(String(r['Role'] || '').trim());
+      const id = String(r['Template File ID'] || '').trim();
+      if (role && id) map[role] = id;
+    });
+  } catch (_) {}
+  return map;
+}
+
+function templateIdForRoleV429_(role) {
+  role = normalizeRole(role);
+  const map = provisioningTemplateMapV429_();
+  return String(map[role] || DASHBOARD_TEMPLATES[role] || '').trim();
+}
+
+// Final V4.29 override: validate/repair table without reverting verified
+// canonical IDs to stale Script Property values.
+function repairProvisioningSettingsV427_(dryRun) {
+  dryRun = dryRun !== false;
+  const ss = getCRMSpreadsheet();
+  const sh = ss.getSheetByName('Provisioning Settings');
+  if (!sh) return { ok:false, reason:'sheet_missing', dryRun:dryRun };
+
+  const values = sh.getDataRange().getValues();
+  if (values.length < 2) return { ok:true, dryRun:dryRun, changed:0, rows:[] };
+
+  const headers = values[0].map(function(v) { return String(v || '').trim(); });
+  const roleCol = headers.indexOf('Role');
+  const templateCol = headers.indexOf('Template File ID');
+  if (roleCol < 0 || templateCol < 0) return { ok:false, reason:'required_columns_missing', dryRun:dryRun };
+
+  const changes = [];
+  const invalid = [];
+  for (let i = 1; i < values.length; i++) {
+    const role = normalizeRole(String(values[i][roleCol] || '').trim());
+    let current = String(values[i][templateCol] || '').trim();
+    const fallback = String(DASHBOARD_TEMPLATES[role] || '').trim();
+
+    if (!current && fallback) {
+      changes.push({ row:i + 1, role:role, oldTemplateFileId:'', newTemplateFileId:fallback, reason:'blank_backfill' });
+      if (!dryRun) {
+        sh.getRange(i + 1, templateCol + 1).setValue(fallback);
+        current = fallback;
+      }
+    }
+
+    const candidate = current || fallback;
+    if (!candidate) {
+      invalid.push({ row:i + 1, role:role, reason:'missing_template_id' });
+      continue;
+    }
+
+    try {
+      const f = DriveApp.getFileById(candidate);
+      if (f.getMimeType() !== MimeType.GOOGLE_SHEETS) {
+        invalid.push({ row:i + 1, role:role, fileId:candidate, reason:'template_not_native_google_sheet' });
+      }
+    } catch (err) {
+      invalid.push({ row:i + 1, role:role, fileId:candidate, reason:'template_unavailable' });
+    }
+  }
+
+  return { ok:invalid.length === 0, dryRun:dryRun, changed:changes.length, rows:changes, invalid:invalid };
+}
+
+// Final V4.29 provisioning override: deterministic private copy from the
+// canonical Provisioning Settings template map.
+function provisionWorkspace(user) {
+  const role = normalizeRole(user['نقش']);
+  const templateId = templateIdForRoleV429_(role);
+  if (!templateId) return null;
+
+  const destinationFolderId = workspaceFolderIdForRoleV426_(role);
+  const folder = DriveApp.getFolderById(destinationFolderId);
+  const template = DriveApp.getFileById(templateId);
+  if (template.getMimeType() !== MimeType.GOOGLE_SHEETS) {
+    throw new Error('Canonical template must be a native Google Sheet: ' + role);
+  }
+
+  const name = 'Workspace | ' + role + ' | ' + user['نام کامل'] + ' | ' + user['User ID'];
+  let copy = findWorkspaceCopyByDeterministicNameV428_(folder, name);
+  const reusedExistingCopy = !!copy;
+  if (!copy) copy = template.makeCopy(name, folder);
+
+  return {
+    fileId:copy.getId(),
+    url:copy.getUrl(),
+    shared:false,
+    type:role,
+    templateId:templateId,
+    destinationFolderId:destinationFolderId,
+    reusedExistingCopy:reusedExistingCopy
+  };
+}
