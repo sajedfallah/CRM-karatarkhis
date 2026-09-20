@@ -11,7 +11,7 @@ const WEB_APP_URL = PropertiesService.getScriptProperties().getProperty('WEB_APP
 const SPREADSHEET_ID = PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID') || '';
 const CRM_FOLDER_ID = PropertiesService.getScriptProperties().getProperty('CRM_FOLDER_ID') || '';
 const CRM_DOCUMENTS_ROOT_FOLDER_ID = PropertiesService.getScriptProperties().getProperty('CRM_DOCUMENTS_ROOT_FOLDER_ID') || '';
-const APP_VERSION = 'V4.28-2026-09-19';
+const APP_VERSION = 'V4.29-2026-09-20';
 
 const DASHBOARD_TEMPLATES = {
   'مدیر': PropertiesService.getScriptProperties().getProperty('TEMPLATE_ADMIN_ID') || '',
