@@ -207,3 +207,17 @@ test('protected Drive IDs derive LIVE dashboard IDs from properties', () => {
   assert.match(fn, /parseDriveFileId_\(LIVE_DASHBOARDS\[k\]\)/);
   assert.doesNotMatch(fn, /1RADxHUGzEfwrW76qb10ip-YcG6mogSXjhRVOyRGeImE/);
 });
+
+
+test('duplicate override debt does not grow beyond audited baseline', () => {
+  const matches = [...code.matchAll(/function\s+([A-Za-z0-9_$]+)\s*\(/g)];
+  const counts = new Map();
+  for (const m of matches) counts.set(m[1], (counts.get(m[1]) || 0) + 1);
+  const duplicateNames = [...counts.entries()].filter(([, count]) => count > 1);
+  assert.ok(duplicateNames.length <= 44, 'duplicate function-name debt grew beyond AUDIT-008 baseline');
+  assert.ok((counts.get('repairBotInstallation') || 0) <= 12);
+  assert.ok((counts.get('installTelegramBot') || 0) <= 12);
+  assert.ok((counts.get('syncWorkspaceDataV412_') || 0) <= 7);
+  assert.ok((counts.get('doPost') || 0) <= 5);
+  assert.ok((counts.get('provisionWorkspace') || 0) <= 4);
+});
