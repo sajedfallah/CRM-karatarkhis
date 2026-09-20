@@ -11928,7 +11928,13 @@ function identityDirectoryV427_() {
   if (__IDENTITY_DIRECTORY_V427) return __IDENTITY_DIRECTORY_V427;
 
   let rows = [];
-  try { rows = readRows(SHEETS.usersRaw) || []; } catch (_) {}
+  let sourceAvailable = false;
+  try {
+    rows = readRows(SHEETS.usersRaw) || [];
+    sourceAvailable = true;
+  } catch (_) {
+    rows = [];
+  }
 
   const byId = {};
   const byTelegram = {};
@@ -11945,6 +11951,7 @@ function identityDirectoryV427_() {
   });
 
   __IDENTITY_DIRECTORY_V427 = {
+    sourceAvailable:sourceAvailable,
     byId:byId,
     byTelegram:byTelegram,
     nameCounts:nameCounts
@@ -11962,19 +11969,21 @@ function fieldMatchesUserIdentityV427_(value, user) {
   const dir = identityDirectoryV427_();
 
   return tokens.some(function(token) {
-    // Stable IDs are authoritative and exact.
+    // Stable IDs are authoritative and exact even if the identity directory is unavailable.
     if (looksLikeStableUserIdV427_(token)) {
       return !!userId && token === userId;
     }
 
-    // Numeric Telegram identifiers are exact and must be unique when known.
+    // Telegram/name matching depends on uniqueness evidence. Without the
+    // canonical Users directory, fail closed instead of assuming uniqueness.
+    if (!dir.sourceAvailable) return false;
+
     if (telegramId && token === telegramId) {
-      return !dir.byTelegram[telegramId] || dir.byTelegram[telegramId] === 1;
+      return dir.byTelegram[telegramId] === 1;
     }
 
-    // Legacy names are accepted only when exact AND unambiguous.
     if (fullName && token === fullName) {
-      return !dir.nameCounts[fullName] || dir.nameCounts[fullName] === 1;
+      return dir.nameCounts[fullName] === 1;
     }
 
     return false;
