@@ -390,3 +390,24 @@ test('proactive trigger is installed only when feature flag is enabled', () => {
   assert.match(fn, /installed:false/);
   assert.match(fn, /everyHours\(1\)/);
 });
+
+
+test('V4.29 provisioning resolves canonical table before Script Property fallback', () => {
+  const map = extractLastFunction('provisioningTemplateMapV429_');
+  const resolver = extractLastFunction('templateIdForRoleV429_');
+  const provision = extractLastFunction('provisionWorkspace');
+  assert.match(map, /Provisioning Settings/);
+  assert.match(map, /Template File ID/);
+  assert.match(resolver, /map\[role\] \|\| DASHBOARD_TEMPLATES\[role\]/);
+  assert.match(provision, /templateIdForRoleV429_\(role\)/);
+  assert.match(provision, /MimeType\.GOOGLE_SHEETS/);
+  assert.match(provision, /shared:false/);
+});
+
+test('V4.29 provisioning settings repair never overwrites a nonblank canonical ID with Script Properties', () => {
+  const fn = extractLastFunction('repairProvisioningSettingsV427_');
+  assert.match(fn, /if \(!current && fallback\)/);
+  assert.doesNotMatch(fn, /expected === current/);
+  assert.match(fn, /template_not_native_google_sheet/);
+  assert.match(fn, /invalid\.length === 0/);
+});
