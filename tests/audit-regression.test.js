@@ -166,3 +166,26 @@ test('provisioning enqueue treats recovery states as open requests', () => {
   assert.match(fn, /در حال پردازش/);
   assert.match(fn, /در صف/);
 });
+
+
+test('failed provisioning retry resets errors to queued', () => {
+  const retry = extractLastFunction('retryFailedProvisioningV412');
+  assert.match(retry, /=== 'خطا'/);
+  assert.match(retry, /'وضعیت': 'در صف'/);
+});
+
+test('provisioning failure preserves workspace identity for retry', () => {
+  const worker = extractLastFunction('processProvisioningQueue');
+  assert.match(worker, /'Workspace File ID':\s*workspace/);
+  assert.match(worker, /String\(req\['Workspace File ID'\]/);
+  assert.match(worker, /'Workspace URL':\s*workspace/);
+  assert.match(worker, /String\(req\['Workspace URL'\]/);
+});
+
+test('stale recoverable provisioning states are eligible for worker recovery', () => {
+  const candidates = extractLastFunction('provisioningQueueCandidatesV427_');
+  assert.match(candidates, /در حال پردازش/);
+  assert.match(candidates, /در حال ساخت/);
+  assert.match(candidates, /Workspace ساخته شد/);
+  assert.match(candidates, /isProvisioningStaleV427_/);
+});
