@@ -271,7 +271,7 @@ test('workspace access revocation fails closed when an existing principal cannot
 
 test('canonical CRM identity is pinned in executable source', () => {
   assert.match(code, /CRM \| ترخیص یزد \| V1\.5/);
-  assert.match(code, /APP_VERSION\s*=\s*'V4.29-2026-09-20'/);
+  assert.match(code, /APP_VERSION\s*=\s*'V4.30-2026-09-21'/);
 });
 
 test('runtime config requires canonical CRM and all role template/workspace properties', () => {
