@@ -263,3 +263,88 @@ test('workspace access revocation fails closed when an existing principal cannot
   assert.match(fn, /workspace_viewer_revoke_failed/);
   assert.match(fn, /workspace_access_revoke_incomplete/);
 });
+
+
+test('canonical CRM identity is pinned in executable source', () => {
+  assert.match(code, /CRM \| ترخیص یزد \| V1\.5/);
+  assert.match(code, /APP_VERSION\s*=\s*'V4\.28-2026-09-19'/);
+});
+
+test('runtime config requires canonical CRM and all role template/workspace properties', () => {
+  const fn = extractLastFunction('validateRuntimeConfigV427_');
+  [
+    'SPREADSHEET_ID',
+    'CRM_FOLDER_ID',
+    'CRM_DOCUMENTS_ROOT_FOLDER_ID',
+    'TEMPLATE_ADMIN_ID',
+    'TEMPLATE_INTERNAL_EMPLOYEE_ID',
+    'TEMPLATE_CUSTOMER_MANAGER_ID',
+    'TEMPLATE_CUSTOMER_EMPLOYEE_ID',
+    'WORKSPACE_FOLDER_ADMIN_ID',
+    'WORKSPACE_FOLDER_INTERNAL_ID',
+    'WORKSPACE_FOLDER_CUSTOMER_MANAGER_ID',
+    'WORKSPACE_FOLDER_CUSTOMER_EMPLOYEE_ID'
+  ].forEach(key => assert.match(fn, new RegExp(key)));
+});
+
+test('relay verifier enforces freshness, signature and nonce replay controls', () => {
+  const fn = extractLastFunction('verifyRelayEnvelopeV427_');
+  assert.match(fn, /timestamp_in_future/);
+  assert.match(fn, /expired_request/);
+  assert.match(fn, /constantTimeEqualsV427_/);
+  assert.match(fn, /RELAY_NONCE_V427_/);
+  assert.match(fn, /reason:'replay'/);
+});
+
+test('hard-delete dispatcher only exposes audited entity classes', () => {
+  const fn = extractLastFunction('deleteEntityCascadeV413_');
+  assert.match(fn, /entity === 'users'/);
+  assert.match(fn, /entity === 'customers'/);
+  assert.match(fn, /entity === 'cases'/);
+  assert.match(fn, /entity === 'tasks'/);
+  assert.match(fn, /throw new Error/);
+});
+
+test('Telegram hard delete requires state-bound confirmation token', () => {
+  const fn = extractLastFunction('handleDeleteConfirmV413');
+  assert.match(fn, /state\.mode !== 'delete_confirm'/);
+  assert.match(fn, /state\.entity !== entity/);
+  assert.match(fn, /String\(state\.token \|\| ''\) !== String\(token \|\| ''\)/);
+  assert.match(fn, /deleteEntityCascadeV413_/);
+});
+
+test('primary Telegram administrator cannot be deleted through user cascade', () => {
+  const fn = extractLastFunction('deleteUserCascadeV413_');
+  assert.match(fn, /ADMIN_TELEGRAM_ID/);
+  assert.match(fn, /حذف مدیر اصلی ربات مسدود است/);
+});
+
+test('destructive cascades emit delete audit records', () => {
+  ['deleteUserCascadeV413_','deleteCustomerCascadeV413_','deleteCaseCascadeV413_','deleteTaskCascadeV413_']
+    .forEach(name => assert.match(extractLastFunction(name), /safeLogDeleteV413_/));
+});
+
+test('workspace access revocation verifies principal absence after mutation', () => {
+  const fn = extractLastFunction('removeWorkspacePrincipalV427_');
+  const removeEditorAt = fn.indexOf('removeEditor');
+  const verifyEditorAt = fn.lastIndexOf('getEditors');
+  const removeViewerAt = fn.indexOf('removeViewer');
+  const verifyViewerAt = fn.lastIndexOf('getViewers');
+  assert.ok(removeEditorAt >= 0 && verifyEditorAt > removeEditorAt);
+  assert.ok(removeViewerAt >= 0 && verifyViewerAt > removeViewerAt);
+  assert.match(fn, /workspace_access_revoke_incomplete/);
+});
+
+test('public webhook route separates internal action from signed Telegram relay', () => {
+  const fn = extractLastFunction('doPost');
+  const internalAt = fn.indexOf('handleInternalActionV414_');
+  const relayAt = fn.indexOf('verifyRelayEnvelopeV427_');
+  assert.ok(internalAt >= 0);
+  assert.ok(relayAt > internalAt);
+  assert.match(fn, /internal_action/);
+});
+
+test('provisioning settings repair defaults to dry-run safe mode', () => {
+  const fn = extractLastFunction('repairProvisioningSettingsV427_');
+  assert.match(fn, /applyChanges === true/);
+});
