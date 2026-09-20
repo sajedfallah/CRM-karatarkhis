@@ -11765,7 +11765,7 @@ function syncWorkspaceDataV412_(workspace, user) {
   };
 }
 
-function repairProvisioningSettingsV427_(dryRun) {
+function repairProvisioningSettingsV427Legacy_(dryRun) {
   dryRun = dryRun !== false;
   const ss = getCRMSpreadsheet();
   const sh = ss.getSheetByName('Provisioning Settings');
@@ -12250,7 +12250,7 @@ function findWorkspaceCopyByDeterministicNameV428_(folder, name) {
 }
 
 // Final provisioning override: private, deterministic and retry-safe.
-function provisionWorkspace(user) {
+function provisionWorkspaceV428Legacy_(user) {
   const role = normalizeRole(user['نقش']);
   const templateId = DASHBOARD_TEMPLATES[role];
   if (!templateId) return null;
