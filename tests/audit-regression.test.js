@@ -157,3 +157,12 @@ test('workspace provisioning never uses LIVE dashboards as template source', () 
   assert.match(enqueue, /'Template File ID': DASHBOARD_TEMPLATES\[role\]/);
   assert.doesNotMatch(enqueue, /LIVE_DASHBOARDS/);
 });
+
+
+test('provisioning enqueue treats recovery states as open requests', () => {
+  const fn = extractLastFunction('findOpenProvisioningRequestV412_');
+  assert.match(fn, /Workspace ساخته شد/);
+  assert.match(fn, /در حال ساخت/);
+  assert.match(fn, /در حال پردازش/);
+  assert.match(fn, /در صف/);
+});
