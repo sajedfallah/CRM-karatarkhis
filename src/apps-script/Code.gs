@@ -10555,19 +10555,54 @@ function emailsToRevokeV427_(oldEmail, newEmail) {
 function removeWorkspacePrincipalV427_(file, email) {
   email = String(email || '').trim();
   if (!email || !file) return false;
-  let touched = false;
 
+  let editorPresent = false;
+  let viewerPresent = false;
   try {
-    file.removeEditor(email);
-    touched = true;
+    editorPresent = file.getEditors().some(function(user) {
+      return String(user.getEmail() || '').trim().toLowerCase() === email.toLowerCase();
+    });
+  } catch (_) {}
+  try {
+    viewerPresent = file.getViewers().some(function(user) {
+      return String(user.getEmail() || '').trim().toLowerCase() === email.toLowerCase();
+    });
   } catch (_) {}
 
-  try {
-    file.removeViewer(email);
-    touched = true;
-  } catch (_) {}
+  try { file.removeEditor(email); } catch (err) {
+    if (editorPresent) {
+      throw new Error('workspace_editor_revoke_failed:' + email + ':' + String(err && err.message ? err.message : err));
+    }
+  }
 
-  return touched;
+  try { file.removeViewer(email); } catch (err) {
+    if (viewerPresent) {
+      throw new Error('workspace_viewer_revoke_failed:' + email + ':' + String(err && err.message ? err.message : err));
+    }
+  }
+
+  let editorStillPresent = false;
+  let viewerStillPresent = false;
+  try {
+    editorStillPresent = file.getEditors().some(function(user) {
+      return String(user.getEmail() || '').trim().toLowerCase() === email.toLowerCase();
+    });
+  } catch (err) {
+    if (editorPresent) throw new Error('workspace_editor_revoke_verify_failed:' + email);
+  }
+  try {
+    viewerStillPresent = file.getViewers().some(function(user) {
+      return String(user.getEmail() || '').trim().toLowerCase() === email.toLowerCase();
+    });
+  } catch (err) {
+    if (viewerPresent) throw new Error('workspace_viewer_revoke_verify_failed:' + email);
+  }
+
+  if (editorStillPresent || viewerStillPresent) {
+    throw new Error('workspace_access_revoke_incomplete:' + email);
+  }
+
+  return editorPresent || viewerPresent;
 }
 
 // Final share implementation removes stale mapped email before granting the new one.
