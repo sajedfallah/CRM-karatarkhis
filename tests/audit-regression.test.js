@@ -346,5 +346,6 @@ test('public webhook route separates internal action from signed Telegram relay'
 
 test('provisioning settings repair defaults to dry-run safe mode', () => {
   const fn = extractLastFunction('repairProvisioningSettingsV427_');
-  assert.match(fn, /applyChanges === true/);
+  assert.match(fn, /dryRun\s*=\s*dryRun\s*!==\s*false/);
+  assert.match(fn, /if \(!dryRun\)/);
 });
