@@ -455,5 +455,12 @@ test('reminder trigger installation is gated by explicit release property', () =
   const fn = extractLastFunction('installReminderEscalationTriggerV430_');
   assert.match(fn, /reminderDeliveryEnabledV430_/);
   assert.match(fn, /blocked:true/);
+  assert.match(fn, /runReminderEscalationWorkerV430Live_/);
   assert.match(fn, /everyMinutes\(15\)/);
+});
+
+test('live reminder wrapper explicitly disables dry-run only after release gate', () => {
+  const fn = extractLastFunction('runReminderEscalationWorkerV430Live_');
+  assert.match(fn, /reminderDeliveryEnabledV430_/);
+  assert.match(fn, /runReminderEscalationWorkerV430_\(false\)/);
 });
