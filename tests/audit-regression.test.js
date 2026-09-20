@@ -349,3 +349,44 @@ test('provisioning settings repair defaults to dry-run safe mode', () => {
   assert.match(fn, /dryRun\s*=\s*dryRun\s*!==\s*false/);
   assert.match(fn, /if \(!dryRun\)/);
 });
+
+
+test('proactive notifications are disabled by default and fail closed', () => {
+  const enabled = extractLastFunction('proactiveNotificationsEnabledV429_');
+  const run = extractLastFunction('runProactiveNotificationsV429_');
+  assert.match(enabled, /PROACTIVE_NOTIFICATIONS_ENABLED/);
+  assert.match(enabled, /=== 'true'/);
+  assert.match(run, /dryRun = dryRun !== false/);
+  assert.match(run, /!dryRun && !proactiveNotificationsEnabledV429_\(\)/);
+  assert.match(run, /reason:'feature_disabled'/);
+});
+
+test('proactive notification idempotency is lock and cache protected', () => {
+  const fn = extractLastFunction('claimReminderV429_');
+  assert.match(fn, /LockService\.getScriptLock\(\)/);
+  assert.match(fn, /tryLock\(3000\)/);
+  assert.match(fn, /CacheService\.getScriptCache\(\)/);
+  assert.match(fn, /cache\.get\(key\)/);
+  assert.match(fn, /cache\.put\(key/);
+});
+
+test('proactive engine covers task lead and customer-task thresholds', () => {
+  const task = extractLastFunction('evaluateTaskRemindersV429_');
+  const lead = extractLastFunction('evaluateLeadRemindersV429_');
+  const customer = extractLastFunction('evaluateCustomerTaskRemindersV429_');
+  assert.match(task, /TASK_REMINDER_1_HOURS/);
+  assert.match(task, /TASK_REMINDER_2_HOURS/);
+  assert.match(task, /TASK_ESCALATION_HOURS/);
+  assert.match(lead, /LEAD_REMINDER_HOURS/);
+  assert.match(lead, /LEAD_ESCALATION_HOURS/);
+  assert.match(customer, /CUSTOMER_TASK_REMINDER_1_MIN/);
+  assert.match(customer, /CUSTOMER_TASK_REMINDER_2_MIN/);
+  assert.match(customer, /CUSTOMER_TASK_ESCALATE_MIN/);
+});
+
+test('proactive trigger is installed only when feature flag is enabled', () => {
+  const fn = extractLastFunction('installProactiveNotificationTriggerV429_');
+  assert.match(fn, /proactiveNotificationsEnabledV429_\(\)/);
+  assert.match(fn, /installed:false/);
+  assert.match(fn, /everyHours\(1\)/);
+});
