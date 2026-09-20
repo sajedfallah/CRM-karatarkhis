@@ -10130,9 +10130,10 @@ function getTelegramUserContextV419_(telegramId) {
   }
 
   const sources = [SHEETS.usersRaw, SHEETS.users];
-  let found = null;
   let readableSourceCount = 0;
-  for (let s = 0; s < sources.length && !found; s++) {
+  const matchesByUserId = {};
+
+  for (let s = 0; s < sources.length; s++) {
     let rows = null;
     try {
       rows = readRows(sources[s]);
@@ -10141,15 +10142,20 @@ function getTelegramUserContextV419_(telegramId) {
       rows = null;
     }
     if (!rows) continue;
+
     for (let i = 0; i < rows.length; i++) {
-      if (String(rows[i]['Telegram User ID'] || '').trim() === telegramId) {
-        found = rows[i];
-        break;
-      }
+      if (String(rows[i]['Telegram User ID'] || '').trim() !== telegramId) continue;
+      const uid = String(rows[i]['User ID'] || '').trim();
+      const key = uid || ('__ROW__' + s + '_' + i);
+      if (!matchesByUserId[key]) matchesByUserId[key] = rows[i];
     }
   }
 
-  if (!found) {
+  const matchedUsers = Object.keys(matchesByUserId).map(function(k) {
+    return matchesByUserId[k];
+  });
+
+  if (!matchedUsers.length) {
     return {
       authorized:false,
       isAdmin:false,
@@ -10158,6 +10164,16 @@ function getTelegramUserContextV419_(telegramId) {
     };
   }
 
+  if (matchedUsers.length !== 1) {
+    return {
+      authorized:false,
+      isAdmin:false,
+      reason:'duplicate_telegram_identity',
+      telegramId:telegramId
+    };
+  }
+
+  const found = matchedUsers[0];
   const status = String(found['وضعیت'] || '').trim();
   if (status !== 'فعال') {
     return { authorized:false, isAdmin:false, reason:'status_not_active', telegramId:telegramId, user:found };
@@ -10453,7 +10469,7 @@ function doPost(e) {
       ok:false,
       handled_error:true,
       version:APP_VERSION,
-      error:String(err && err.message ? err.message : err)
+      error:'internal_error'
     });
   }
 }
