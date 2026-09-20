@@ -31,6 +31,15 @@ function extractLastFunction(name) {
   throw new Error('unterminated function ' + name);
 }
 
+test('legacy identity matching requires an available canonical Users directory', () => {
+  const dir = extractLastFunction('identityDirectoryV427_');
+  const matcher = extractLastFunction('fieldMatchesUserIdentityV427_');
+  assert.match(dir, /sourceAvailable/);
+  assert.match(matcher, /if \(!dir\.sourceAvailable\) return false/);
+  assert.match(matcher, /dir\.byTelegram\[telegramId\] === 1/);
+  assert.match(matcher, /dir\.nameCounts\[fullName\] === 1/);
+});
+
 test('scope matching uses exact identity helper', () => {
   const fn = extractLastFunction('getScopedWorkspaceDataV412_');
   assert.match(fn, /assignmentFieldMatchesUserV427_|fieldMatchesUserIdentityV427_/);
