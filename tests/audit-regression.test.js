@@ -253,3 +253,13 @@ test('internal destructive action remains scope-limited', () => {
   assert.match(fn, /delete_scope_not_allowed/);
   assert.match(fn, /record_out_of_scope/);
 });
+
+
+test('workspace access revocation fails closed when an existing principal cannot be removed', () => {
+  const fn = extractLastFunction('removeWorkspacePrincipalV427_');
+  assert.match(fn, /getEditors\(\)/);
+  assert.match(fn, /getViewers\(\)/);
+  assert.match(fn, /workspace_editor_revoke_failed/);
+  assert.match(fn, /workspace_viewer_revoke_failed/);
+  assert.match(fn, /workspace_access_revoke_incomplete/);
+});
