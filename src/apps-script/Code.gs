@@ -2832,10 +2832,17 @@ function appendProvisioningLogV412_(requestId, user, action, oldStatus, newStatu
 
 function findOpenProvisioningRequestV412_(userId) {
   const rows = readRows(SHEETS.provisioningQueue).slice().reverse();
+  const openStatuses = [
+    'در صف',
+    'در حال پردازش',
+    'در حال ساخت',
+    'Workspace ساخته شد'
+  ];
+
   for (let i = 0; i < rows.length; i++) {
     if (String(rows[i]['User ID'] || '').trim() !== String(userId || '').trim()) continue;
     const st = String(rows[i]['وضعیت'] || '').trim();
-    if (st === 'در صف' || st === 'در حال پردازش') return rows[i];
+    if (openStatuses.indexOf(st) >= 0) return rows[i];
   }
   return null;
 }
