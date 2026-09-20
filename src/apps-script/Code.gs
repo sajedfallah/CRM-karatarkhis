@@ -4164,31 +4164,77 @@ function refreshCustomerManagerWorkspaceV414() {
 }
 
 function handleInternalActionV414_(payload) {
-  if (String(payload.secret || '') !== String(getInternalApiSecretV414_())) return { ok:false, error:'unauthorized' };
+  const suppliedSecret = String(payload.secret || '');
+  const expectedSecret = String(getInternalApiSecretV414_() || '');
+  if (!suppliedSecret || !expectedSecret || !constantTimeEqualsV427_(suppliedSecret, expectedSecret)) {
+    return { ok:false, error:'unauthorized' };
+  }
+
   const ctx = getWorkspaceContextV414_(payload.workspace_id);
-  if (!ctx || ctx.role !== 'مدیر مشتری') return { ok:false, error:'workspace_not_authorized' };
+  if (!ctx || ctx.role !== 'مدیر مشتری') {
+    return { ok:false, error:'workspace_not_authorized' };
+  }
+
   const actorEmail = String(payload.actor_email || '').trim().toLowerCase();
-  if (ctx.email && actorEmail && ctx.email !== actorEmail) return { ok:false, error:'email_scope_mismatch' };
+  const expectedEmail = String(ctx.email || '').trim().toLowerCase();
+
+  // Manager workspace actions require a concrete actor identity whenever
+  // the canonical mapping has an owner email. Missing identity fails closed.
+  if (expectedEmail && !actorEmail) {
+    return { ok:false, error:'actor_email_required' };
+  }
+  if (expectedEmail && actorEmail !== expectedEmail) {
+    return { ok:false, error:'email_scope_mismatch' };
+  }
+
   const user = getRowById(SHEETS.usersRaw, ctx.userId) || getRowById(SHEETS.users, ctx.userId);
   if (!user) return { ok:false, error:'manager_user_not_found' };
+  if (String(user['وضعیت'] || '').trim() !== 'فعال') {
+    return { ok:false, error:'manager_user_inactive' };
+  }
+
+  const permission = permissionForUserV427_(user);
+  if (!permission || String(permission['وضعیت'] || '').trim() !== 'فعال') {
+    return { ok:false, error:'permission_inactive_or_missing' };
+  }
 
   if (payload.internal_action === 'manager_refresh') {
-    const counts = syncWorkspaceDataV412_({ fileId:ctx.spreadsheetId, url:'https://docs.google.com/spreadsheets/d/' + ctx.spreadsheetId + '/edit', type:ctx.role }, user);
+    const counts = syncWorkspaceDataV412_(
+      {
+        fileId:ctx.spreadsheetId,
+        url:'https://docs.google.com/spreadsheets/d/' + ctx.spreadsheetId + '/edit',
+        type:ctx.role
+      },
+      user
+    );
     return { ok:true, counts:counts };
   }
+
   if (payload.internal_action === 'manager_delete') {
     const entity = String(payload.entity || '');
-    if (['cases','tasks'].indexOf(entity) < 0) return { ok:false, error:'delete_scope_not_allowed' };
+    if (['cases','tasks'].indexOf(entity) < 0) {
+      return { ok:false, error:'delete_scope_not_allowed' };
+    }
+
     const id = String(payload.id || '').trim();
     const cfg = SHEETS[entity];
     const row = getRowById(cfg, id);
-    if (!row || !managerRowBelongsToScopeV414_(entity, row, ctx)) return { ok:false, error:'record_out_of_scope' };
+    if (!row || !managerRowBelongsToScopeV414_(entity, row, ctx)) {
+      return { ok:false, error:'record_out_of_scope' };
+    }
+
     const result = deleteEntityCascadeV413_(entity, id, 'SHEET_CM:' + ctx.userId);
     clearFastCachesV413_();
     __WORKSPACE_SOURCE_SNAPSHOT_V412 = null;
     try { syncAllActiveWorkspacesV412(); } catch (_) {}
-    return { ok:true, rows:Number(result.rows || 0), driveTrashed:Number(result.driveTrashed || 0) };
+
+    return {
+      ok:true,
+      rows:Number(result.rows || 0),
+      driveTrashed:Number(result.driveTrashed || 0)
+    };
   }
+
   return { ok:false, error:'unknown_internal_action' };
 }
 
