@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "functions": {
+    "backend/api/telegram.js": {
+      "maxDuration": 10
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/telegram",
+      "destination": "/backend/api/telegram"
+    }
+  ]
+}
