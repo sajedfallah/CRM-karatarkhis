@@ -52,6 +52,14 @@ test('PERSONAL source is authoritative for personal task ownership', () => {
   assert.match(fn, /source === 'PERSONAL:' \+ userId/);
 });
 
+test('Telegram authorization fails closed when RBAC sheets are unavailable', () => {
+  const fn = extractLastFunction('getTelegramUserContextV419_');
+  assert.match(fn, /rbac_source_unavailable/);
+  assert.match(fn, /permission_source_unavailable/);
+  assert.match(fn, /try\s*\{/);
+  assert.match(fn, /catch\s*\(_\)/);
+});
+
 test('Telegram authorization is fail-closed', () => {
   const fn = extractLastFunction('getTelegramUserContextV419_');
   assert.match(fn, /status !== 'فعال'/);
