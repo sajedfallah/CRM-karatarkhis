@@ -12581,3 +12581,178 @@ function syncWorkspaceDataV412_(workspace, user) {
     styling:styling
   };
 }
+
+
+/************************************************************
+ * V4.29 — PROACTIVE REMINDER / ESCALATION ENGINE
+ * ----------------------------------------------------------
+ * Release-hardening implementation. Disabled by default.
+ * Set Script Property PROACTIVE_NOTIFICATIONS_ENABLED=true
+ * only after isolated Telegram E2E succeeds.
+ ************************************************************/
+
+function proactiveNotificationsEnabledV429_() {
+  return String(PropertiesService.getScriptProperties().getProperty('PROACTIVE_NOTIFICATIONS_ENABLED') || '').toLowerCase() === 'true';
+}
+
+function settingNumberV429_(key, fallback) {
+  try {
+    const rows = readRows({ name:'Settings', headerRow:1, idHeader:'Key' }) || [];
+    for (let i = 0; i < rows.length; i++) {
+      if (String(rows[i]['Key'] || '').trim() === String(key)) {
+        const n = Number(rows[i]['Value']);
+        return isFinite(n) ? n : fallback;
+      }
+    }
+  } catch (_) {}
+  return fallback;
+}
+
+function ageHoursV429_(value, nowMs) {
+  if (!value) return null;
+  const d = value instanceof Date ? value : new Date(value);
+  const ms = d.getTime();
+  if (!isFinite(ms)) return null;
+  return Math.max(0, (nowMs - ms) / 3600000);
+}
+
+function telegramForAssigneeV429_(assignee) {
+  const token = String(assignee || '').trim();
+  if (!token) return '';
+  const users = readRows(SHEETS.usersRaw) || [];
+  const matches = users.filter(function(u) {
+    if (String(u['وضعیت'] || '').trim() !== 'فعال') return false;
+    return [u['User ID'], u['نام کامل'], u['Telegram User ID']].some(function(v) {
+      return String(v || '').trim() === token;
+    });
+  });
+  if (matches.length !== 1) return '';
+  return String(matches[0]['Telegram User ID'] || '').trim();
+}
+
+function reminderKeyV429_(kind, id, level) {
+  return ['V429', kind, String(id || ''), String(level || '')].join(':');
+}
+
+function claimReminderV429_(key, ttlSeconds, dryRun) {
+  if (dryRun) return true;
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(3000)) return false;
+  try {
+    const cache = CacheService.getScriptCache();
+    if (cache.get(key)) return false;
+    cache.put(key, '1', Math.max(300, Math.min(21600, Number(ttlSeconds) || 3600)));
+    return true;
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function sendProactiveV429_(chatId, text, dryRun) {
+  if (!chatId) return { ok:false, reason:'missing_recipient' };
+  if (dryRun) return { ok:true, dryRun:true, chatId:String(chatId), text:String(text || '') };
+  sendMessage(String(chatId), String(text || ''));
+  return { ok:true, dryRun:false, chatId:String(chatId) };
+}
+
+function evaluateTaskRemindersV429_(dryRun, nowMs) {
+  const rows = readRows(SHEETS.tasks) || [];
+  const h1 = settingNumberV429_('TASK_REMINDER_1_HOURS', 24);
+  const h2 = settingNumberV429_('TASK_REMINDER_2_HOURS', 48);
+  const he = settingNumberV429_('TASK_ESCALATION_HOURS', 72);
+  const out = [];
+  rows.forEach(function(r) {
+    const status = String(r['وضعیت'] || '').trim();
+    if (['انجام شد','بسته','لغو شده'].indexOf(status) >= 0) return;
+    const age = ageHoursV429_(r['موعد'] || r['تاریخ ایجاد'], nowMs);
+    if (age === null) return;
+    const id = r['Task ID'];
+    let level = age >= he ? 'ESCALATE' : age >= h2 ? 'REMINDER_2' : age >= h1 ? 'REMINDER_1' : '';
+    if (!level) return;
+    const target = level === 'ESCALATE' ? ADMIN_TELEGRAM_ID : telegramForAssigneeV429_(r['مسئول']);
+    const key = reminderKeyV429_('TASK', id, level);
+    if (!claimReminderV429_(key, 21600, dryRun)) return;
+    const sent = sendProactiveV429_(target, '⏰ <b>یادآوری تسک</b>\n\nشناسه: <code>' + escapeHtml(String(id || '')) + '</code>\nموضوع: ' + escapeHtml(String(r['موضوع'] || '')) + '\nسطح: <b>' + level + '</b>', dryRun);
+    out.push({ kind:'TASK', id:id, level:level, recipient:target ? 'resolved' : 'missing', sent:sent.ok });
+  });
+  return out;
+}
+
+function evaluateLeadRemindersV429_(dryRun, nowMs) {
+  const rows = readRows(SHEETS.leads) || [];
+  const hr = settingNumberV429_('LEAD_REMINDER_HOURS', 48);
+  const he = settingNumberV429_('LEAD_ESCALATION_HOURS', 72);
+  const out = [];
+  rows.forEach(function(r) {
+    const status = String(r['وضعیت'] || '').trim();
+    if (['بسته','از دست رفته','تبدیل شده'].indexOf(status) >= 0) return;
+    const age = ageHoursV429_(r['Last Activity At'] || r['آخرین تماس'] || r['تاریخ ثبت'], nowMs);
+    if (age === null || age < hr) return;
+    const id = r['شناسه'];
+    const level = age >= he ? 'ESCALATE' : 'REMINDER';
+    const target = level === 'ESCALATE' ? ADMIN_TELEGRAM_ID : telegramForAssigneeV429_(r['مسئول']);
+    const key = reminderKeyV429_('LEAD', id, level);
+    if (!claimReminderV429_(key, 21600, dryRun)) return;
+    const sent = sendProactiveV429_(target, '📌 <b>یادآوری سرنخ</b>\n\nشناسه: <code>' + escapeHtml(String(id || '')) + '</code>\nشرکت: ' + escapeHtml(String(r['نام شرکت'] || '')) + '\nسطح: <b>' + level + '</b>', dryRun);
+    out.push({ kind:'LEAD', id:id, level:level, recipient:target ? 'resolved' : 'missing', sent:sent.ok });
+  });
+  return out;
+}
+
+function evaluateCustomerTaskRemindersV429_(dryRun, nowMs) {
+  const rows = readRows(SHEETS.customerTasks) || [];
+  const m1 = settingNumberV429_('CUSTOMER_TASK_REMINDER_1_MIN', 60);
+  const m2 = settingNumberV429_('CUSTOMER_TASK_REMINDER_2_MIN', 120);
+  const me = settingNumberV429_('CUSTOMER_TASK_ESCALATE_MIN', 180);
+  const out = [];
+  rows.forEach(function(r) {
+    const status = String(r['وضعیت'] || '').trim();
+    if (['بسته','انجام شد','پاسخ داده شد'].indexOf(status) >= 0) return;
+    const age = ageHoursV429_(r['تاریخ ایجاد'], nowMs);
+    if (age === null) return;
+    const mins = age * 60;
+    let level = mins >= me ? 'ESCALATE' : mins >= m2 ? 'REMINDER_2' : mins >= m1 ? 'REMINDER_1' : '';
+    if (!level) return;
+    const id = r['Task ID'];
+    const target = level === 'ESCALATE' ? ADMIN_TELEGRAM_ID : (telegramForAssigneeV429_(r['مسئول']) || String(r['Customer Chat ID'] || '').trim());
+    const key = reminderKeyV429_('CUSTOMER_TASK', id, level);
+    if (!claimReminderV429_(key, 10800, dryRun)) return;
+    const sent = sendProactiveV429_(target, '💬 <b>یادآوری درخواست مشتری</b>\n\nشناسه: <code>' + escapeHtml(String(id || '')) + '</code>\nسطح: <b>' + level + '</b>', dryRun);
+    out.push({ kind:'CUSTOMER_TASK', id:id, level:level, recipient:target ? 'resolved' : 'missing', sent:sent.ok });
+  });
+  return out;
+}
+
+function runProactiveNotificationsV429_(dryRun) {
+  dryRun = dryRun !== false;
+  if (!dryRun && !proactiveNotificationsEnabledV429_()) {
+    return { ok:false, blocked:true, reason:'feature_disabled', dryRun:false };
+  }
+  const nowMs = Date.now();
+  const report = {
+    ok:true,
+    dryRun:dryRun,
+    enabled:proactiveNotificationsEnabledV429_(),
+    tasks:evaluateTaskRemindersV429_(dryRun, nowMs),
+    leads:evaluateLeadRemindersV429_(dryRun, nowMs),
+    customerTasks:evaluateCustomerTaskRemindersV429_(dryRun, nowMs)
+  };
+  try { logSystem('proactive_notification_run', JSON.stringify({dryRun:dryRun,tasks:report.tasks.length,leads:report.leads.length,customerTasks:report.customerTasks.length})); } catch (_) {}
+  return report;
+}
+
+function proactiveNotificationWorkerV429() {
+  return runProactiveNotificationsV429_(false);
+}
+
+function installProactiveNotificationTriggerV429_() {
+  const handler = 'proactiveNotificationWorkerV429';
+  ScriptApp.getProjectTriggers().forEach(function(t) {
+    if (t.getHandlerFunction() === handler) ScriptApp.deleteTrigger(t);
+  });
+  if (!proactiveNotificationsEnabledV429_()) {
+    return { ok:true, installed:false, reason:'feature_disabled' };
+  }
+  const trigger = ScriptApp.newTrigger(handler).timeBased().everyHours(1).create();
+  return { ok:true, installed:true, triggerId:trigger.getUniqueId() };
+}
