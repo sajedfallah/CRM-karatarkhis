@@ -408,12 +408,13 @@ test('V4.29 provisioning resolves canonical table before Script Property fallbac
   assert.match(provision, /shared:false/);
 });
 
-test('V4.29 provisioning settings repair never overwrites a nonblank canonical ID with Script Properties', () => {
+test('V4.30 provisioning settings repair converges every role to verified canonical RAW template', () => {
   const fn = extractLastFunction('repairProvisioningSettingsV427_');
-  assert.match(fn, /if \(!current && fallback\)/);
-  assert.doesNotMatch(fn, /expected === current/);
-  assert.match(fn, /template_not_native_google_sheet/);
+  assert.match(fn, /const expected = String\(DASHBOARD_TEMPLATES\[role\]/);
+  assert.match(fn, /current !== expected/);
+  assert.match(fn, /expected_template_not_native_google_sheet/);
   assert.match(fn, /invalid\.length === 0/);
+  assert.match(fn, /if \(!dryRun\)/);
 });
 
 
