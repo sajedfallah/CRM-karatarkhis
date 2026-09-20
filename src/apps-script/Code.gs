@@ -12793,7 +12793,7 @@ function repairProvisioningSettingsV427_(dryRun) {
   if (!sh) return { ok:false, reason:'sheet_missing', dryRun:dryRun };
 
   const values = sh.getDataRange().getValues();
-  if (values.length < 2) return { ok:true, dryRun:dryRun, changed:0, rows:[] };
+  if (values.length < 2) return { ok:true, dryRun:dryRun, changed:0, rows:[], invalid:[] };
 
   const headers = values[0].map(function(v) { return String(v || '').trim(); });
   const roleCol = headers.indexOf('Role');
@@ -12802,36 +12802,47 @@ function repairProvisioningSettingsV427_(dryRun) {
 
   const changes = [];
   const invalid = [];
+
   for (let i = 1; i < values.length; i++) {
     const role = normalizeRole(String(values[i][roleCol] || '').trim());
-    let current = String(values[i][templateCol] || '').trim();
-    const fallback = String(DASHBOARD_TEMPLATES[role] || '').trim();
+    const current = String(values[i][templateCol] || '').trim();
+    const expected = String(DASHBOARD_TEMPLATES[role] || '').trim();
 
-    if (!current && fallback) {
-      changes.push({ row:i + 1, role:role, oldTemplateFileId:'', newTemplateFileId:fallback, reason:'blank_backfill' });
-      if (!dryRun) {
-        sh.getRange(i + 1, templateCol + 1).setValue(fallback);
-        current = fallback;
-      }
-    }
-
-    const candidate = current || fallback;
-    if (!candidate) {
-      invalid.push({ row:i + 1, role:role, reason:'missing_template_id' });
+    if (!expected) {
+      invalid.push({ row:i + 1, role:role, reason:'missing_expected_raw_template_id' });
       continue;
     }
 
     try {
-      const f = DriveApp.getFileById(candidate);
-      if (f.getMimeType() !== MimeType.GOOGLE_SHEETS) {
-        invalid.push({ row:i + 1, role:role, fileId:candidate, reason:'template_not_native_google_sheet' });
+      const expectedFile = DriveApp.getFileById(expected);
+      if (expectedFile.getMimeType() !== MimeType.GOOGLE_SHEETS) {
+        invalid.push({ row:i + 1, role:role, fileId:expected, reason:'expected_template_not_native_google_sheet' });
+        continue;
       }
     } catch (err) {
-      invalid.push({ row:i + 1, role:role, fileId:candidate, reason:'template_unavailable' });
+      invalid.push({ row:i + 1, role:role, fileId:expected, reason:'expected_template_unavailable' });
+      continue;
+    }
+
+    if (current !== expected) {
+      changes.push({
+        row:i + 1,
+        role:role,
+        oldTemplateFileId:current,
+        newTemplateFileId:expected,
+        reason:current ? 'replace_noncanonical_template' : 'blank_backfill'
+      });
+      if (!dryRun) sh.getRange(i + 1, templateCol + 1).setValue(expected);
     }
   }
 
-  return { ok:invalid.length === 0, dryRun:dryRun, changed:changes.length, rows:changes, invalid:invalid };
+  return {
+    ok:invalid.length === 0,
+    dryRun:dryRun,
+    changed:changes.length,
+    rows:changes,
+    invalid:invalid
+  };
 }
 
 // Final V4.29 provisioning override: deterministic private copy from the
@@ -12862,4 +12873,197 @@ function provisionWorkspace(user) {
     destinationFolderId:destinationFolderId,
     reusedExistingCopy:reusedExistingCopy
   };
+}
+
+
+/************************************************************
+ * V4.30 — PROACTIVE REMINDER / ESCALATION WORKER
+ * Safe-by-default: delivery is disabled unless
+ * RELEASE_REMINDERS_ENABLED=true in Script Properties.
+ ************************************************************/
+
+function reminderSettingMapV430_() {
+  const out = {};
+  const ss = getCRMSpreadsheet();
+  const sh = ss.getSheetByName('Settings');
+  if (!sh || sh.getLastRow() < 2) return out;
+  sh.getRange(2, 1, sh.getLastRow() - 1, Math.min(2, sh.getLastColumn())).getValues()
+    .forEach(function(r) {
+      const key = String(r[0] || '').trim();
+      if (key) out[key] = r[1];
+    });
+  return out;
+}
+
+function reminderDeliveryEnabledV430_() {
+  return String(scriptPropertyV427_('RELEASE_REMINDERS_ENABLED') || '').trim().toLowerCase() === 'true';
+}
+
+function reminderDateV430_(value) {
+  if (!value) return null;
+  if (Object.prototype.toString.call(value) === '[object Date]' && !isNaN(value.getTime())) return value;
+  const d = new Date(value);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+function reminderHoursSinceV430_(value, now) {
+  const d = reminderDateV430_(value);
+  if (!d) return null;
+  return Math.max(0, (now.getTime() - d.getTime()) / 3600000);
+}
+
+function reminderUserDirectoryV430_() {
+  const byId = {}, byName = {}, byTelegram = {};
+  readRows(SHEETS.usersRaw).forEach(function(u) {
+    if (String(u['وضعیت'] || '').trim() !== 'فعال') return;
+    const id = String(u['User ID'] || '').trim();
+    const name = String(u['نام کامل'] || '').trim();
+    const tg = String(u['Telegram User ID'] || '').trim();
+    if (id) byId[id] = u;
+    if (name) byName[name] = u;
+    if (tg) byTelegram[tg] = u;
+  });
+  return { byId:byId, byName:byName, byTelegram:byTelegram };
+}
+
+function reminderResolveUserV430_(value, directory) {
+  const key = String(value || '').trim();
+  if (!key) return null;
+  return directory.byId[key] || directory.byTelegram[key] || directory.byName[key] || null;
+}
+
+function reminderFingerprintV430_(kind, recordId, level) {
+  return 'REMINDER_V430_' + [kind, recordId, level].map(function(x) {
+    return String(x || '').replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 80);
+  }).join('_');
+}
+
+function reminderAlreadySentV430_(kind, recordId, level) {
+  return !!PropertiesService.getScriptProperties().getProperty(reminderFingerprintV430_(kind, recordId, level));
+}
+
+function reminderMarkSentV430_(kind, recordId, level) {
+  PropertiesService.getScriptProperties().setProperty(
+    reminderFingerprintV430_(kind, recordId, level),
+    new Date().toISOString()
+  );
+}
+
+function reminderSendV430_(user, text, kind, recordId, level, dryRun) {
+  const chatId = user ? String(user['Telegram User ID'] || '').trim() : '';
+  if (!chatId) return { ok:false, skipped:true, reason:'telegram_id_missing' };
+  if (reminderAlreadySentV430_(kind, recordId, level)) {
+    return { ok:true, skipped:true, reason:'already_sent' };
+  }
+  if (dryRun || !reminderDeliveryEnabledV430_()) {
+    return { ok:true, dryRun:true, chatIdPresent:true, kind:kind, recordId:recordId, level:level };
+  }
+
+  const result = sendMessage(chatId, text);
+  if (!result || !result.ok) {
+    throw new Error('telegram_reminder_send_failed:' + kind + ':' + recordId);
+  }
+  reminderMarkSentV430_(kind, recordId, level);
+  return { ok:true, sent:true, kind:kind, recordId:recordId, level:level };
+}
+
+function runReminderEscalationWorkerV430_(dryRun) {
+  dryRun = dryRun !== false;
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(5000)) return { ok:false, busy:true, dryRun:dryRun };
+
+  const report = { ok:true, version:APP_VERSION, dryRun:dryRun, deliveryEnabled:reminderDeliveryEnabledV430_(), candidates:0, sent:0, skipped:0, errors:[], results:[] };
+
+  try {
+    const settings = reminderSettingMapV430_();
+    const directory = reminderUserDirectoryV430_();
+    const now = new Date();
+    const admin = directory.byTelegram[String(ADMIN_TELEGRAM_ID || '').trim()] || null;
+
+    const taskR1 = Number(settings.TASK_REMINDER_1_HOURS || 24);
+    const taskR2 = Number(settings.TASK_REMINDER_2_HOURS || 48);
+    const taskEsc = Number(settings.TASK_ESCALATION_HOURS || 72);
+
+    readRows(SHEETS.tasks).forEach(function(row) {
+      const status = String(row['وضعیت'] || '').trim();
+      if (['انجام شد','بسته','لغو','تکمیل شده'].indexOf(status) >= 0) return;
+      const due = reminderDateV430_(row['موعد']);
+      if (!due || due.getTime() > now.getTime()) return;
+      const overdue = (now.getTime() - due.getTime()) / 3600000;
+      const id = String(row['Task ID'] || '').trim();
+      const assignee = reminderResolveUserV430_(row['مسئول'], directory);
+      let level = overdue >= taskEsc ? 'ESCALATE' : overdue >= taskR2 ? 'R2' : overdue >= taskR1 ? 'R1' : '';
+      if (!level || !id) return;
+      report.candidates++;
+      const target = level === 'ESCALATE' && admin ? admin : assignee;
+      const msg = '⏰ <b>یادآوری تسک</b>\n\nشناسه: <code>' + escapeHtml(id) + '</code>\nموضوع: ' + escapeHtml(String(row['موضوع'] || '')) + '\nسطح: <b>' + level + '</b>';
+      try {
+        const res = reminderSendV430_(target, msg, 'task', id, level, dryRun);
+        report.results.push(res);
+        if (res.sent) report.sent++; else report.skipped++;
+      } catch (err) { report.ok=false; report.errors.push(String(err)); }
+    });
+
+    const leadReminder = Number(settings.LEAD_REMINDER_HOURS || 48);
+    const leadEsc = Number(settings.LEAD_ESCALATION_HOURS || 72);
+    readRows(SHEETS.leads).forEach(function(row) {
+      const status = String(row['وضعیت'] || '').trim();
+      if (['بسته','موفق','ناموفق','لغو'].indexOf(status) >= 0) return;
+      const base = row['Last Activity At'] || row['آخرین تماس'] || row['Assigned At'] || row['تاریخ ثبت'];
+      const age = reminderHoursSinceV430_(base, now);
+      if (age == null) return;
+      const id = String(row['شناسه'] || '').trim();
+      const level = age >= leadEsc ? 'ESCALATE' : age >= leadReminder ? 'R1' : '';
+      if (!level || !id) return;
+      report.candidates++;
+      const assignee = reminderResolveUserV430_(row['مسئول'], directory);
+      const target = level === 'ESCALATE' && admin ? admin : assignee;
+      const msg = '📌 <b>یادآوری سرنخ</b>\n\nشناسه: <code>' + escapeHtml(id) + '</code>\nشرکت: ' + escapeHtml(String(row['نام شرکت'] || '')) + '\nسطح: <b>' + level + '</b>';
+      try {
+        const res = reminderSendV430_(target, msg, 'lead', id, level, dryRun);
+        report.results.push(res);
+        if (res.sent) report.sent++; else report.skipped++;
+      } catch (err) { report.ok=false; report.errors.push(String(err)); }
+    });
+
+    const ctR1 = Number(settings.CUSTOMER_TASK_REMINDER_1_MIN || 60) / 60;
+    const ctR2 = Number(settings.CUSTOMER_TASK_REMINDER_2_MIN || 120) / 60;
+    const ctEsc = Number(settings.CUSTOMER_TASK_ESCALATE_MIN || 180) / 60;
+    readRows(SHEETS.customerTasks).forEach(function(row) {
+      const status = String(row['وضعیت'] || '').trim();
+      if (['بسته','انجام شد','پاسخ داده شد','لغو'].indexOf(status) >= 0) return;
+      if (row['اولین پاسخ']) return;
+      const age = reminderHoursSinceV430_(row['تاریخ ایجاد'], now);
+      if (age == null) return;
+      const id = String(row['Task ID'] || '').trim();
+      const level = age >= ctEsc ? 'ESCALATE' : age >= ctR2 ? 'R2' : age >= ctR1 ? 'R1' : '';
+      if (!level || !id) return;
+      report.candidates++;
+      const assignee = reminderResolveUserV430_(row['مسئول'], directory);
+      const target = level === 'ESCALATE' && admin ? admin : assignee;
+      const msg = '💬 <b>یادآوری درخواست مشتری</b>\n\nشناسه: <code>' + escapeHtml(id) + '</code>\nدرخواست: ' + escapeHtml(String(row['درخواست مشتری'] || '')) + '\nسطح: <b>' + level + '</b>';
+      try {
+        const res = reminderSendV430_(target, msg, 'customer_task', id, level, dryRun);
+        report.results.push(res);
+        if (res.sent) report.sent++; else report.skipped++;
+      } catch (err) { report.ok=false; report.errors.push(String(err)); }
+    });
+
+    try { logSystem('reminder_worker_v430', JSON.stringify({dryRun:dryRun,candidates:report.candidates,sent:report.sent,skipped:report.skipped,errors:report.errors.length})); } catch (_) {}
+    return report;
+  } finally {
+    try { lock.releaseLock(); } catch (_) {}
+  }
+}
+
+function installReminderEscalationTriggerV430_() {
+  if (!reminderDeliveryEnabledV430_()) {
+    return { ok:false, blocked:true, reason:'RELEASE_REMINDERS_ENABLED_not_true' };
+  }
+  const handler = 'runReminderEscalationWorkerV430_';
+  ScriptApp.getProjectTriggers().forEach(function(t) {
+    if (t.getHandlerFunction() === handler) ScriptApp.deleteTrigger(t);
+  });
+  const trigger = ScriptApp.newTrigger(handler).timeBased().everyMinutes(15).create();
+  return { ok:true, handler:handler, triggerId:trigger.getUniqueId(), intervalMinutes:15 };
 }
