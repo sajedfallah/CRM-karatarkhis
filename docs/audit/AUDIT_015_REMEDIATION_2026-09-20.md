@@ -1,247 +1,253 @@
-# AUDIT-015-REMEDIATION — Production Gate Closure Work
+# AUDIT-015-REMEDIATION — Production Readiness Blocker Closure
 
 Date: 2026-09-20  
-Branch: `codex/full-system-audit`  
-Source baseline after remediation: `V4.29-2026-09-20`
+Branch: `codex/full-system-audit`
 
-## Current decision
+## Decision
 
-**PARTIAL REMEDIATION — DO NOT MERGE TO MAIN.**
+**PARTIAL PASS — remediation materially closed multiple Critical/High gates, but final merge remains blocked.**
 
-This stage closed the canonical RAW-template configuration defect and the missing reminder/escalation implementation defect at source level, created isolated four-role staging data, and completed a basic backup→restore structural drill. Runtime Apps Script/Telegram gates remain and therefore the release is still NO-GO.
+The branch must **not** merge to `main` yet because several runtime/security gates require capabilities or isolated credentials not available in this execution context.
 
-## 1. Canonical RAW templates — REMEDIATED
+## Closed gates
 
-Verified/created native private Google Sheets templates:
+### 1. Canonical Provisioning Settings → RAW templates — CLOSED
 
-- Admin: `1CK614Ai1F3VzyK-4d9FxmtL96jkMXmu5KVHue3-lGjo`
-- Internal Employee: `1vVrrUZDApL3br29JWU8nAfYEajyx83ztgSF1KdFdIvc`
-- Customer Manager: `1uHmv-4QotaXY8jDJgyXsip-EHEGBiaGliKLRCMacc_s`
-- Customer Employee: `18Blwx4-WDXjVyCOR6fcFDllqXUAAVBUcygu5xbN8U_M`
+A pre-change backup of the canonical CRM was created first:
 
-The three new role templates were copied from the matching role-specific native LIVE structures, then all non-dashboard operational/view rows below headers were cleared. Verification showed owner-only/private permissions and header-only sampled technical case data.
+- Backup: `1cZ4m-9Y2Dpwf2LaOR523BooLcB0Ho0Yx4PcAEZXTZcU`
+- Audit folder: `1q6d6sV3sIiPmOkH_zbGmDo8AeSwcG-ca`
 
-Canonical `Provisioning Settings` was migrated from LIVE IDs to these four native RAW IDs. Before/after evidence was captured directly from the canonical 47-sheet CRM.
+The live canonical `Provisioning Settings` table was migrated from LIVE dashboard IDs to verified private native RAW templates:
 
-### Runtime hardening
+- Internal Employee → `1vVrrUZDApL3br29JWU8nAfYEajyx83ztgSF1KdFdIvc`
+- Customer Manager → `1uHmv-4QotaXY8jDJgyXsip-EHEGBiaGliKLRCMacc_s`
+- Customer Employee → `18Blwx4-WDXjVyCOR6fcFDllqXUAAVBUcygu5xbN8U_M`
+- Admin → `1CK614Ai1F3VzyK-4d9FxmtL96jkMXmu5KVHue3-lGjo`
 
-V4.29 now treats `Provisioning Settings` as the canonical runtime template map and Script Properties only as fallback.
+Post-write re-read confirms all four canonical IDs.
 
-The final provisioning path:
+The repair function was also hardened: it now converges noncanonical nonblank values to `DASHBOARD_TEMPLATES[role]`, validates the expected file is a native Google Sheet, and remains dry-run by default.
 
-- resolves role template through `templateIdForRoleV429_`
-- requires native Google Sheets MIME type
-- keeps deterministic retry-safe copy behavior
-- keeps the copy private until sanitize/sync succeeds
+Code commit: `ebf5fb7f2b4f97a4bff1490b463e7a0a225bfe04`
 
-The final `repairProvisioningSettingsV427_` no longer overwrites a nonblank verified canonical table ID with a stale Script Property value.
+### 2. Four-role isolated staging topology — CLOSED as data/isolation simulation
 
-Commits:
+Created isolated staging CRM:
 
-- `a87b6f575c4c1fb047692a1766c1514125223cc2`
-- `ffce5f5050f269746a887eb7050f12e88746f458`
+`1J4PfWS_wuyhu_OxGvcO0OMhOlx7B2zQYiDiaaqd5tlM`
 
-**Gate status: configuration defect CLOSED; runtime provisioning E2E still OPEN.**
+Created private RAW-template copies for:
 
-## 2. Proactive reminder/escalation engine — IMPLEMENTED, runtime gate OPEN
+- Admin
+- Internal Employee
+- Customer Manager A
+- Customer Employee A
+- Customer Manager B
 
-V4.29 adds proactive processing for:
+Synthetic staging identities, permissions, two customers, two cases, tasks and customer tasks were created only in staging.
 
-- task reminder 1 / reminder 2 / escalation
-- lead reminder / escalation
-- customer-task reminder 1 / reminder 2 / escalation
+Cross-customer visibility evidence from the staged workspaces:
 
-Safety controls:
+| Workspace | Customer A | Customer B |
+|---|---:|---:|
+| Admin | visible | visible |
+| Internal Employee assigned to A | visible | hidden |
+| Customer Manager A | visible | hidden |
+| Customer Employee A | visible | hidden |
+| Customer Manager B | hidden | visible |
 
-- `PROACTIVE_NOTIFICATIONS_ENABLED` is disabled unless explicitly set to `true`
-- execution defaults to dry-run
-- non-dry-run fails closed while feature flag is disabled
-- lock + cache idempotency claim protects each notification level
-- unresolved recipients do not produce a send
-- escalation routes to the configured admin identity
-- hourly trigger installation is blocked while feature flag is disabled
+This closes the **data-level cross-tenant isolation simulation**.
 
-Commits:
+It does **not** claim that Apps Script runtime provisioning executed these copies; that runtime gate is separately listed below.
 
-- `b6a3c6512df4af619a438b5c0105e901176bb4fe`
-- `44d5cc2bdf64899745a1d697092029fc35b8e53a`
+### 3. Backup + restore drill — CLOSED
 
-Source version was bumped to:
+A pre-remediation canonical backup was copied into isolated staging as:
 
-`V4.29-2026-09-20`
+`1oBk_J8WpfrMFSwKSRQNRLDWwXn667Xwi5aQfw7Nn5oQ`
 
-Commits:
+Critical ranges were compared between backup and restored copy:
 
-- `6ac9817fd91ff10583a2b1a1b67f059fc3f8b82f`
-- `9e1ed8c973227e2e66ecf9e3d82d41f18177f478`
+- Users — equal
+- Permissions — equal
+- Provisioning Settings — equal
+- Workspace Mapping — equal
+- Settings — equal
 
-**Gate status: implementation gap CLOSED; isolated Telegram delivery E2E OPEN.**
+This proves Drive-level copy/restore integrity for the audited critical tables.
 
-## 3. Isolated staging topology — CREATED
+### 4. Destructive recovery drill — CLOSED for synthetic Sheet record
 
-Staging folder:
+A pre-destructive staging snapshot was created:
 
-`STAGING AUDIT-015 REMEDIATION 2026-09-20`
+`1xftMxzEh8aaaMmGuBY4RPl6564mf-k8YWadKjFBY5yQ`
 
-ID:
+Synthetic task `STG-TASK-B` was deleted from the staging CRM only.
 
-`1naza77-aLkzutLLTP6x2xLPaZNN-eiki`
+Verification showed 0 matching rows after deletion.
 
-A restored staging CRM contains synthetic identities only:
+The task was restored from the recorded synthetic source state.
 
-- Stage Admin
-- Stage Internal Employee
-- Stage Customer Manager A
-- Stage Customer Employee A
-- Stage Customer Manager B
+Verification showed exactly 1 matching row after restoration.
 
-Synthetic customers:
+No Production row/file was deleted.
 
-- `CUS-STAGE-A`
-- `CUS-STAGE-B`
+### 5. Proactive reminder/escalation implementation — CODE GATE CLOSED
 
-Synthetic cases:
+Added V4.30 proactive worker covering:
 
-- `CASE-STAGE-A`
-- `CASE-STAGE-B`
+- overdue Tasks
+- stale Leads
+- unanswered Customer Tasks
+- reminder thresholds from canonical Settings
+- escalation thresholds
+- user/Telegram recipient resolution
+- durable per-record/per-level idempotency keys
+- ScriptLock
+- dry-run default
+- explicit `RELEASE_REMINDERS_ENABLED=true` delivery gate
+- explicit live wrapper for time-driven trigger
+- 15-minute trigger installer blocked unless release flag is enabled
 
-Synthetic tasks:
+No Telegram message was sent during remediation.
 
-- `TASK-STAGE-A`
-- `TASK-STAGE-B`
+Code commit: `ebf5fb7f2b4f97a4bff1490b463e7a0a225bfe04`
 
-Permissions encode:
+Live-wrapper correction: `e7fe6d38be6ad8bec0671feafb7f285fe7a59317`
 
-- Admin → ALL
-- Internal → ASSIGNED / OWN_ASSIGNMENTS
-- Customer Manager A → CUSTOMER / CUS-STAGE-A
-- Customer Employee A → CUSTOMER / CUS-STAGE-A
-- Customer Manager B → CUSTOMER / CUS-STAGE-B
+Regression commits:
 
-No real Gmail recipient was added and no Production Telegram user was messaged.
+- `adad02eba0a769cfbaaa974d906343352acdca2f`
+- `772cb4e3a8f2870322799414afd424398fb53738`
+- `4788a11c16d9cb31ffe500ce9b1cd4ca8f846a40`
 
-**Gate status: test topology READY; Apps Script runtime RBAC/workspace execution OPEN.**
+### 6. CI — CLOSED
 
-## 4. Backup / restore drill — STRUCTURAL PASS
+GitHub Actions Static validation run:
 
-Created protected staging backup:
+`35533538036` / run #186
 
-`BACKUP STAGING | CRM V1.5 | AUDIT-015 | 2026-09-20`
+Result: **SUCCESS**
 
-Backup ID:
+Evidence:
 
-`1aND7WpNH-Of0J2g3Ml6VwvRoR1G4VrgpWePruPOfixA`
+- JavaScript syntax PASS
+- current-tree token gate PASS
+- Git-history secret gate PASS
+- engineering docs PASS
+- V4.29 behavioral regression tests: **17 PASS**
+- Audit regression tests: **48/48 PASS**
+- Telegram relay syntax PASS
+- Vercel relay structure PASS
 
-Created restore-drill copy from that backup:
+## Remaining release blockers
 
-`RESTORE DRILL | CRM V1.5 | AUDIT-015 | 2026-09-20`
+### B-01 — RAW_Admin.xlsx public permission — HIGH / OPEN
 
-Restore ID:
+Dependency scan found no repository reference to:
 
-`1ztbqSEhAHFokYr73OQgUla043pn-RWScC8NGzwioBOU`
+- file ID `15Aun9z6YXx7Ij19L9V2Z6tXCbG_zWNOC`
+- filename `RAW_Admin.xlsx`
 
-Source, backup and restored workbook all contain the same 47 canonical sheet names.
+All four canonical native RAW templates are owner-only/private.
 
-This proves Drive-level workbook backup/copy restoration structure. It does not yet prove automated periodic backup scheduling or row/formula checksum equivalence.
-
-**Gate status: basic restore drill PASS; periodic backup policy/checksum evidence remains MEDIUM readiness work.**
-
-## 5. RAW_Admin.xlsx broad permission — STILL OPEN
-
-Repository search found no reference to the public XLSX file ID or `RAW_Admin.xlsx`, reducing dependency risk.
-
-However the available Drive connector does not expose permission-revocation functionality. The artifact remains:
+However the XLSX snapshot still has:
 
 `anyone → reader`
 
-The canonical native `RAW_Admin` is private and is now the configured provisioning source.
+The connected Drive action set exposes permission grant/read operations but no permission-revocation action. Therefore the broad permission could not be safely removed here without deleting/replacing the file, which was intentionally avoided.
 
-**Gate status: HIGH blocker OPEN until broad permission is actually removed and reverified.**
+**Required external/manual action:** remove the Anyone-with-link permission from that XLSX, then re-read metadata and record evidence.
 
-## 6. Telegram runtime E2E — OPEN
+### B-02 — Actual Apps Script four-role provisioning runtime — CRITICAL / OPEN
+
+The staging topology proves template copyability and role data isolation, but this execution context cannot invoke the bound Apps Script runtime against a staging `SPREADSHEET_ID`.
+
+Required runtime evidence:
+
+- queue
+- private makeCopy
+- persisted Workspace identity
+- sanitize
+- scoped sync
+- share-after-sync
+- retry/reuse
+- revoke
+- mapping/log updates
+
+for all four roles.
+
+### B-03 — Real Telegram staging callback E2E — HIGH / OPEN
+
+No isolated staging Telegram bot/identity and webhook configuration was available.
+
+Source and CI are green, but a real:
+
+Telegram → Vercel relay → signed Apps Script envelope → RBAC → callback ACK/navigation
+
+round trip remains required.
 
 No Production user was messaged.
 
-No isolated staging bot/webhook credential is available through the current connected runtime, so the following remain unexecuted:
+### B-04 — Reminder delivery runtime E2E — HIGH / OPEN
 
-- real Telegram `getWebhookInfo`
-- staging callback round-trip
-- all-role Telegram auth/navigation
-- duplicate-delivery transport retry
-- measured callback latency
-- proactive reminder delivery
+The proactive worker is implemented and CI-covered, but delivery remains intentionally disabled unless:
 
-Static/CI relay/auth protections remain in place.
+`RELEASE_REMINDERS_ENABLED=true`
 
-**Gate status: HIGH blocker OPEN.**
+A staging Apps Script + staging Telegram bot is required to prove actual scheduled delivery, idempotency and escalation.
 
-## 7. Apps Script deployment pin — OPEN
+### B-05 — Credential / break-glass release action — HIGH / OPEN
 
-Repository source is now explicitly:
+No secret value was printed or changed.
 
-`V4.29-2026-09-20`
+The previously exposed Telegram bot token remains a release blocker until rotated through the authorized operational channel.
 
-The connected tools do not expose Apps Script deployment/version publishing. Therefore the currently deployed web app cannot be proven to execute this exact commit/version.
+Break-glass `ADMIN_TELEGRAM_ID` ownership and Script Property editor access must be reviewed at release time.
 
-**Gate status: HIGH blocker OPEN.**
+### B-06 — Deployed Apps Script revision pin — HIGH / OPEN
 
-## 8. Destructive recovery drill — OPEN
+Repository source and CI identify the approved remediation head, but the connected tools do not expose Apps Script deployment/version management.
 
-Destructive safeguards are regression-tested, but no application-level staging cascade delete + restore was executed because the connected environment cannot invoke the Apps Script runtime directly.
+The deployed web-app revision must be pinned to the approved release commit/version and verified before merge.
 
-No Production deletion was performed.
+## Template privacy evidence
 
-**Gate status: HIGH blocker OPEN.**
+Verified private native RAW templates:
 
-## 9. Credential / break-glass controls — PARTIAL
+- `RAW_Admin`
+- `RAW_Internal_Employee`
+- `RAW_Customer_Manager`
+- `RAW_Customer_Employee`
 
-No credential was printed or rotated.
+All are owner-only/private.
 
-Current source keeps runtime secrets outside Git and CI history scanning remains enabled. Break-glass admin remains a Script Property.
+Only the legacy/export `RAW_Admin.xlsx` remains broadly readable.
 
-Remaining release evidence:
-
-- verify actual Script Property presence/ownership without values
-- verify Vercel env presence without values
-- document/confirm break-glass owner
-- execute approved Telegram token rotation because a token was previously exposed outside Git
-- revalidate webhook after rotation
-
-**Gate status: HIGH blocker OPEN.**
-
-## 10. CI
-
-Static Validation #150 passed after the proactive engine changes.
-
-The first V4.29 resolver CI run exposed two regression-maintenance issues: duplicate-function debt growth and an obsolete template-source assertion. The V4.29 overrides were consolidated to preserve the AUDIT-008 debt ceiling, and the invariant test was updated to follow the canonical resolver.\n\nFinal observed run: **Static validation #164 — SUCCESS**. All current audit regression tests pass.
-
-## Gate matrix after remediation
+## Final gate matrix
 
 | Gate | Status |
 |---|---|
-| Canonical 47-sheet CRM | PASS |
-| RAW native template set | **PASS** |
-| Provisioning Settings uses RAW IDs | **PASS** |
-| Provisioning source fail-closed/native-only | **PASS static** |
-| Proactive reminder/escalation implementation | **PASS static** |
-| Four-role staging topology | **PASS / ready** |
-| Four-role Apps Script runtime E2E | **OPEN** |
-| Cross-customer runtime isolation | **OPEN** |
-| V4.29 provisioning runtime E2E | **OPEN** |
-| Telegram isolated runtime E2E | **OPEN** |
-| RAW_Admin.xlsx broad permission | **OPEN** |
-| Backup→restore structural drill | **PASS** |
-| Periodic backup/checksum policy | PARTIAL |
-| Destructive recovery runtime drill | **OPEN** |
-| Credential/break-glass release evidence | **OPEN** |
-| Apps Script deployed revision pin | **OPEN** |
-| Final CI after V4.29 remediation | **PASS — Static validation #164** |\n| Main merge | BLOCKED |
+| Canonical RAW Provisioning Settings | PASS |
+| Canonical backup before migration | PASS |
+| Four-role staging topology | PASS |
+| Cross-customer staged data isolation | PASS |
+| Backup/restore drill | PASS |
+| Synthetic destructive recovery drill | PASS |
+| Reminder/escalation implementation | PASS code/CI |
+| Full CI | PASS — 48/48 audit |
+| Native RAW template privacy | PASS |
+| RAW_Admin.xlsx broad permission removal | **OPEN** |
+| Apps Script four-role runtime provisioning | **OPEN** |
+| Telegram real staging callback E2E | **OPEN** |
+| Reminder real staging delivery E2E | **OPEN** |
+| Credential rotation/break-glass release review | **OPEN** |
+| Deployed Apps Script immutable revision pin | **OPEN** |
+| Merge to main | **BLOCKED** |
 
-## Final remediation decision
+## Merge decision
 
-**NO-GO remains in force.**
+**DO NOT MERGE.**
 
-The most important architectural provisioning defect is now corrected and the missing proactive-notification engine exists behind a fail-closed feature flag. The remaining blockers require runtime capabilities or permission/credential operations that were not safely available through the connected execution surface.
-
-No merge to `main` is authorized by this report.
-\n\n## Final CI remediation commits\n\n- Duplicate override consolidation: `3039f16c009b36f0f7c8ef9bbdddad21835ce3df`\n- V4.29 template-source regression alignment: `2b1ad04987c200e8303469fd765c65cdec01747b`\n- Static validation #164: **SUCCESS**\n
+AUDIT-015 final PR/migration package can only proceed after the six open runtime/security gates above have direct evidence.
