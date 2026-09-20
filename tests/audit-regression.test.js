@@ -467,7 +467,7 @@ test('live reminder wrapper explicitly disables dry-run only after release gate'
 
 
 test('root Vercel config exposes backend Telegram relay', () => {
-  const cfg = fs.readFileSync(path.join(ROOT, 'vercel.json'), 'utf8');
+  const cfg = fs.readFileSync(path.join(__dirname, '..', 'vercel.json'), 'utf8');
   assert.ok(cfg.includes('backend/api/telegram.js'));
   assert.ok(cfg.includes('"source": "/api/telegram"'));
   assert.ok(cfg.includes('"destination": "/backend/api/telegram"'));
