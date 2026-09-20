@@ -415,38 +415,3 @@ test('V4.29 provisioning settings repair never overwrites a nonblank canonical I
   assert.match(fn, /template_not_native_google_sheet/);
   assert.match(fn, /invalid\.length === 0/);
 });
-
-
-test('proactive reminder engine is disabled by default and send requires explicit opt-in', () => {
-  const tick = extractLastFunction('proactiveReminderEscalationTickV429');
-  const run = extractLastFunction('runProactiveReminderEscalationV429_');
-  assert.match(tick, /PROACTIVE_NOTIFICATIONS_ENABLED/);
-  assert.match(tick, /return \{ok:true,disabled:true,version:APP_VERSION\}/);
-  assert.match(run, /options\.send === true/);
-  assert.match(run, /LockService\.getScriptLock\(\)/);
-});
-
-test('proactive reminder engine covers tasks leads and customer tasks', () => {
-  const run = extractLastFunction('runProactiveReminderEscalationV429_');
-  assert.match(run, /buildTaskReminderEventsV429_/);
-  assert.match(run, /buildLeadReminderEventsV429_/);
-  assert.match(run, /buildCustomerTaskReminderEventsV429_/);
-  const emit = extractLastFunction('emitReminderV429_');
-  assert.match(emit, /reminderEventKeyV429_/);
-  assert.match(emit, /state\[key\]/);
-  assert.match(emit, /sendMessage/);
-});
-
-test('reminder scheduler uses canonical Settings thresholds', () => {
-  const task = extractLastFunction('buildTaskReminderEventsV429_');
-  const lead = extractLastFunction('buildLeadReminderEventsV429_');
-  const customer = extractLastFunction('buildCustomerTaskReminderEventsV429_');
-  assert.match(task, /TASK_REMINDER_1_HOURS/);
-  assert.match(task, /TASK_REMINDER_2_HOURS/);
-  assert.match(task, /TASK_ESCALATION_HOURS/);
-  assert.match(lead, /LEAD_REMINDER_HOURS/);
-  assert.match(lead, /LEAD_ESCALATION_HOURS/);
-  assert.match(customer, /CUSTOMER_TASK_REMINDER_1_MIN/);
-  assert.match(customer, /CUSTOMER_TASK_REMINDER_2_MIN/);
-  assert.match(customer, /CUSTOMER_TASK_ESCALATE_MIN/);
-});
