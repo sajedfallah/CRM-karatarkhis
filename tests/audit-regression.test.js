@@ -415,3 +415,44 @@ test('V4.29 provisioning settings repair never overwrites a nonblank canonical I
   assert.match(fn, /template_not_native_google_sheet/);
   assert.match(fn, /invalid\.length === 0/);
 });
+
+
+test('provisioning repair replaces noncanonical LIVE IDs with RAW template IDs', () => {
+  const fn = extractLastFunction('repairProvisioningSettingsV427_');
+  assert.match(fn, /replace_noncanonical_template/);
+  assert.match(fn, /current !== expected/);
+  assert.match(fn, /DASHBOARD_TEMPLATES/);
+  assert.match(fn, /if \(!dryRun\)/);
+});
+
+test('proactive reminder worker is delivery-disabled by default', () => {
+  const enabled = extractLastFunction('reminderDeliveryEnabledV430_');
+  const worker = extractLastFunction('runReminderEscalationWorkerV430_');
+  const sender = extractLastFunction('reminderSendV430_');
+  assert.match(enabled, /RELEASE_REMINDERS_ENABLED/);
+  assert.match(sender, /dryRun \|\| !reminderDeliveryEnabledV430_\(\)/);
+  assert.match(worker, /dryRun = dryRun !== false/);
+});
+
+test('reminder worker covers tasks leads and customer tasks', () => {
+  const worker = extractLastFunction('runReminderEscalationWorkerV430_');
+  assert.match(worker, /SHEETS\.tasks/);
+  assert.match(worker, /SHEETS\.leads/);
+  assert.match(worker, /SHEETS\.customerTasks/);
+  assert.match(worker, /TASK_ESCALATION_HOURS/);
+  assert.match(worker, /LEAD_ESCALATION_HOURS/);
+  assert.match(worker, /CUSTOMER_TASK_ESCALATE_MIN/);
+});
+
+test('reminder delivery is idempotent per record and level', () => {
+  const sender = extractLastFunction('reminderSendV430_');
+  assert.match(sender, /reminderAlreadySentV430_/);
+  assert.match(sender, /reminderMarkSentV430_/);
+});
+
+test('reminder trigger installation is gated by explicit release property', () => {
+  const fn = extractLastFunction('installReminderEscalationTriggerV430_');
+  assert.match(fn, /reminderDeliveryEnabledV430_/);
+  assert.match(fn, /blocked:true/);
+  assert.match(fn, /everyMinutes\(15\)/);
+});
