@@ -13056,11 +13056,16 @@ function runReminderEscalationWorkerV430_(dryRun) {
   }
 }
 
+function runReminderEscalationWorkerV430Live_() {
+  if (!reminderDeliveryEnabledV430_()) return { ok:false, blocked:true, reason:'RELEASE_REMINDERS_ENABLED_not_true' };
+  return runReminderEscalationWorkerV430_(false);
+}
+
 function installReminderEscalationTriggerV430_() {
   if (!reminderDeliveryEnabledV430_()) {
     return { ok:false, blocked:true, reason:'RELEASE_REMINDERS_ENABLED_not_true' };
   }
-  const handler = 'runReminderEscalationWorkerV430_';
+  const handler = 'runReminderEscalationWorkerV430Live_';
   ScriptApp.getProjectTriggers().forEach(function(t) {
     if (t.getHandlerFunction() === handler) ScriptApp.deleteTrigger(t);
   });
