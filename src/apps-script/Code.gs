@@ -9842,11 +9842,10 @@ function provisionWorkspace(user) {
 function protectedDriveIdsV413_() {
   const o = {};
 
-  o[SPREADSHEET_ID] = true;
-  o[CRM_FOLDER_ID] = true;
-  o[CRM_DOCUMENTS_ROOT_FOLDER_ID] = true;
-
   [
+    SPREADSHEET_ID,
+    CRM_FOLDER_ID,
+    CRM_DOCUMENTS_ROOT_FOLDER_ID,
     CRM_CORE_FOLDER_ID_V426,
     CRM_TEMPLATE_FOLDER_ID_V426,
     CRM_LIVE_DASHBOARDS_FOLDER_ID_V426,
@@ -9859,20 +9858,18 @@ function protectedDriveIdsV413_() {
   });
 
   Object.keys(ROLE_WORKSPACE_FOLDERS_V426).forEach(function(k) {
-    o[String(ROLE_WORKSPACE_FOLDERS_V426[k])] = true;
+    const id = String(ROLE_WORKSPACE_FOLDERS_V426[k] || '').trim();
+    if (id) o[id] = true;
   });
 
   Object.keys(DASHBOARD_TEMPLATES).forEach(function(k) {
-    o[String(DASHBOARD_TEMPLATES[k])] = true;
+    const id = String(DASHBOARD_TEMPLATES[k] || '').trim();
+    if (id) o[id] = true;
   });
 
-  [
-    '1RADxHUGzEfwrW76qb10ip-YcG6mogSXjhRVOyRGeImE',
-    '1WzMyJbjSuUlTwjM6VSqK63UdEUY9x_vSK3tQPRNCbng',
-    '1I2VsxnAHUOYrQyLGBqNblLR3u_oPKeh7URou2ocUxTc',
-    '17o0uZVC1__LRQZiGRvM-oVeFrm9fHxo3a8TUAZ4JFBM'
-  ].forEach(function(id) {
-    o[id] = true;
+  Object.keys(LIVE_DASHBOARDS).forEach(function(k) {
+    const id = parseDriveFileId_(LIVE_DASHBOARDS[k]);
+    if (id) o[id] = true;
   });
 
   return o;
@@ -11822,8 +11819,58 @@ function repairKnownFontsV427_(dryRun) {
 }
 
 // Safer final installer for staging/explicit administrator execution.
+function installerPreflightV430_() {
+  const requiredSheets = [
+    SHEETS.usersRaw && SHEETS.usersRaw.name,
+    SHEETS.users && SHEETS.users.name,
+    SHEETS.permissions && SHEETS.permissions.name,
+    SHEETS.mapping && SHEETS.mapping.name,
+    SHEETS.provisioningQueue && SHEETS.provisioningQueue.name,
+    SHEETS.provisioningLog && SHEETS.provisioningLog.name,
+    'Provisioning Settings'
+  ].filter(Boolean);
+
+  let ss = null;
+  try {
+    ss = getCRMSpreadsheet();
+  } catch (err) {
+    return {
+      ok:false,
+      reason:'spreadsheet_unavailable',
+      error:String(err && err.message ? err.message : err),
+      missingSheets:requiredSheets
+    };
+  }
+
+  const missingSheets = requiredSheets.filter(function(name) {
+    return !ss.getSheetByName(name);
+  });
+
+  return {
+    ok:missingSheets.length === 0,
+    reason:missingSheets.length ? 'required_sheets_missing' : '',
+    missingSheets:missingSheets
+  };
+}
+
 function repairBotInstallation() {
   const config = validateRuntimeConfigV427_();
+  const preflight = installerPreflightV430_();
+
+  // Fail closed before any destructive trigger mutation.
+  if (!preflight.ok) {
+    const blocked = {
+      ok:false,
+      blocked:true,
+      version:APP_VERSION,
+      reason:preflight.reason,
+      preflight:preflight,
+      config:config
+    };
+    Logger.log(JSON.stringify(blocked, null, 2));
+    return blocked;
+  }
+
   const beforeTriggers = listProjectTriggers();
   const removedTriggers = removeAllProjectTriggers();
 
@@ -11865,13 +11912,13 @@ function repairBotInstallation() {
   const rawUsersValidations = repairRawUsersValidationsV416_();
   const customerCompanyDropdown = repairCustomerCompanyDropdownV418_();
 
-  // Explicit installer execution is the migration point for canonical RAW IDs.
   const provisioningSettings = repairProvisioningSettingsV427_(false);
 
   const report = {
     ok:config.ok && webhookOk && provisioningSettings.ok,
     version:APP_VERSION,
     config:config,
+    preflight:preflight,
     webhookUrl:actualUrl,
     expectedWebhookUrl:expectedUrl,
     removedTriggers:removedTriggers.length,
