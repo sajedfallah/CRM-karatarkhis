@@ -221,3 +221,17 @@ test('duplicate override debt does not grow beyond audited baseline', () => {
   assert.ok((counts.get('doPost') || 0) <= 5);
   assert.ok((counts.get('provisionWorkspace') || 0) <= 4);
 });
+
+
+test('Telegram authorization rejects duplicate Telegram identity', () => {
+  const fn = extractLastFunction('getTelegramUserContextV419_');
+  assert.match(fn, /duplicate_telegram_identity/);
+  assert.match(fn, /matchesByUserId/);
+  assert.match(fn, /matchedUsers\.length !== 1/);
+});
+
+test('Telegram webhook does not expose internal exception text', () => {
+  const fn = extractLastFunction('doPost');
+  assert.match(fn, /error:'internal_error'/);
+  assert.doesNotMatch(fn, /error:String\(err && err\.message/);
+});
