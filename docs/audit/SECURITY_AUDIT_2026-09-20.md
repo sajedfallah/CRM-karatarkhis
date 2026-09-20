@@ -542,14 +542,51 @@ Security-relevant commits include:
 - provisioning duplicate-request recovery
 - manager internal-action actor/permission enforcement
 - full-history CI secret scanner
+- fail-closed Workspace principal revocation with post-removal verification
 
 AUDIT-011-specific:
 
 - `debc69c9688c4057eb849114c038cf5879f031da`
 - `246cddbba878b6ba1183cb125d091113edb832ae`
 - `cc20f5592ddde2cfa755320e76b75c6193f8f3c7`
+- `e99b668a20df41aff7d5942ccea31df6406640d3`
+- `62c84c6e4c509459310e9f9d96409a8ee82414af`
 
 ---
+
+# 24. Workspace access revocation — HARDENED
+
+Previous access-removal logic swallowed `removeEditor` / `removeViewer` failures. An inactive or revoked user could therefore theoretically retain Drive access while the workflow continued.
+
+The final audit branch now:
+
+- checks whether the principal is currently an editor/viewer
+- attempts revocation
+- fails closed if an existing principal cannot be removed
+- verifies that the principal is absent after removal
+
+Code commit:
+
+`e99b668a20df41aff7d5942ccea31df6406640d3`
+
+Regression commit:
+
+`62c84c6e4c509459310e9f9d96409a8ee82414af`
+
+# 25. Known external credential exposure
+
+A real Telegram bot token was previously supplied in project conversation context. Even though the current repository scan did not identify it in audited source, it must be treated as compromised.
+
+AUDIT-011 did **not** rotate it because credential rotation was explicitly excluded without approval.
+
+Before Production approval:
+
+1. rotate the bot token through BotFather
+2. update Apps Script `BOT_TOKEN` only in Script Properties
+3. verify relay/webhook registration
+4. run staging/admin smoke tests
+5. confirm the old token no longer works
+6. retain only non-secret rotation evidence
 
 # AUDIT-011 acceptance
 
@@ -573,7 +610,7 @@ AUDIT-011-specific:
 
 ## HIGH / CRITICAL blockers
 
-1. Public repository means Git-history secret evidence must be green; full-history scanner is installed but successful run is not yet observed.
+1. A real Telegram bot token was previously exposed outside Git in project conversation context; it must be rotated before Production approval. Public-repository Git-history evidence must also be green; the full-history scanner is installed but a successful final-head run is not yet observed.
 2. Public-link `RAW_Admin.xlsx` remains shared to anyone-with-link.
 3. Break-glass admin bypass remains outside canonical RBAC and lacks dedicated usage logging.
 4. Workspace scoping still needs unified Permission-derived authorization architecture.
