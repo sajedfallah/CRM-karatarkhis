@@ -10,6 +10,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: JavaScript syntax check
         run: |
@@ -21,6 +23,15 @@ jobs:
         run: |
           if grep -RInE '[0-9]{7,12}:[A-Za-z0-9_-]{25,}' --exclude-dir=.git .; then
             echo "Potential Telegram bot token detected."
+            exit 1
+          fi
+
+      - name: Block high-confidence secrets in Git history
+        shell: bash
+        run: |
+          set -o pipefail
+          if git log --all -p -- . ':!*.xlsx' ':!*.xls' ':!*.zip' | grep -qE '([0-9]{7,12}:[A-Za-z0-9_-]{25,}|sk-[A-Za-z0-9_-]{20,}|AIza[0-9A-Za-z_-]{30,}|-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----)'; then
+            echo "High-confidence secret material detected in Git history."
             exit 1
           fi
 
@@ -42,3 +53,18 @@ jobs:
           else
             echo "No duplicate function declarations detected."
           fi
+
+      - name: V4.27 behavioral regression tests
+        run: node tests/v427_behavior.test.js
+
+      - name: Audit regression tests
+        run: node --test tests/audit-regression.test.js
+
+      - name: Telegram relay syntax check
+        run: node --check backend/api/telegram.js
+
+      - name: Vercel relay structure
+        run: |
+          test -f backend/package.json
+          test -f backend/vercel.json
+          test -f backend/api/telegram.js

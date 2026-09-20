@@ -1,415 +1,183 @@
-# راهنمای Deployment کاراترخیص
+# راهنمای Deployment کاراترخیص — V4.28
 
-این سند روش استقرار کاراترخیص در محیط‌های Development، Staging و Production را توضیح می‌دهد.
+این سند مسیر Development، Staging و Production برای نسخه V4.28 را تعریف می‌کند.
 
-> **اصل کلیدی:** Google Sheet، Apps Script Deployment، Telegram Bot و Drive Folderهای Production نباید برای تست توسعه استفاده شوند.
+> Production تا زمانی که تست‌های Staging و E2E این سند تکمیل نشده‌اند، آماده انتشار تلقی نمی‌شود.
 
----
+## 1. اصل جداسازی محیط‌ها
 
-## 1. محیط‌ها
+هر محیط باید Bot، Apps Script Project، Spreadsheet و Drive Folder مستقل داشته باشد. شناسه‌های محیطی ترجیحاً در Script Properties تنظیم شوند و fallbackهای موجود فقط برای سازگاری نسخه فعلی هستند.
 
-| محیط | هدف | Bot | Sheet | Drive | Apps Script |
-|---|---|---|---|---|---|
-| Development | توسعه و تست سریع | جدا | کپی تست | پوشه تست | Project جدا |
-| Staging | تست End-to-End قبل از Release | جدا | کپی نزدیک Production | پوشه Staging | Deployment جدا |
-| Production | عملیات واقعی | اصلی | اصلی | اصلی | Deployment اصلی |
-
----
-
-## 2. پیش‌نیاز
-
-- Google Account دارای دسترسی Editor/Owner
-- Google Sheet CRM
-- Google Apps Script Project
-- Telegram Bot
-- Telegram Group
-- Vercel Relay
-- دسترسی به Repository GitHub
-- Backup از Sheet و کد نسخه فعلی
-
----
-
-## 3. Secretها و Configuration
-
-Secretها فقط در Apps Script → **Project Settings → Script Properties** ذخیره شوند.
-
-### Propertyهای لازم
+### Script Properties لازم
 
 ```text
 BOT_TOKEN
-GROUP_CHAT_ID
-SPREADSHEET_ID
-CUSTOMER_DOCS_ROOT_FOLDER_ID
-CASE_IMPORT_ROOT_FOLDER_ID
-CASE_EXPORT_ROOT_FOLDER_ID
-```
-
-Optional:
-
-```text
+ADMIN_TELEGRAM_ID
 WEB_APP_URL
-CASE_DOCS_ROOT_FOLDER_ID
+SPREADSHEET_ID
+CRM_FOLDER_ID
+CRM_DOCUMENTS_ROOT_FOLDER_ID
+
+TELEGRAM_RELAY_URL
+TELEGRAM_WEBHOOK_SECRET
+RELAY_SHARED_SECRET
+
+TEMPLATE_ADMIN_ID
+TEMPLATE_INTERNAL_EMPLOYEE_ID
+TEMPLATE_CUSTOMER_MANAGER_ID
+TEMPLATE_CUSTOMER_EMPLOYEE_ID
+
+WORKSPACE_FOLDER_ADMIN_ID
+WORKSPACE_FOLDER_INTERNAL_ID
+WORKSPACE_FOLDER_CUSTOMER_MANAGER_ID
+WORKSPACE_FOLDER_CUSTOMER_EMPLOYEE_ID
 ```
 
-### ممنوع
+Folder IDهای تکمیلی V4.26/V4.28 نیز در صورت تفاوت محیط می‌توانند با Script Properties متناظر override شوند.
 
-هرگز این موارد را Commit نکنید:
+Secret واقعی نباید در Git Commit شود.
+
+## 2. Telegram Relay / Vercel
+
+Root Directory پروژه Vercel باید `backend` باشد. این شاخه یک Relay واقعی در مسیر زیر دارد:
 
 ```text
-real bot token
-real customer data
-private Telegram IDs when not required
-Google OAuth credentials
-service-account key JSON
-Drive exports containing customer documents
+backend/api/telegram.js
 ```
 
----
-
-# 4. Development Deployment
-
-## 4.1 ساخت Sheet تست
-
-از Production Spreadsheet یک Copy بگیرید و Customer Data واقعی را حذف/Mask کنید.
-
-نام پیشنهادی:
+Environment Variables لازم در Vercel:
 
 ```text
-CRM | ترخیص یزد | DEV
+TELEGRAM_WEBHOOK_SECRET
+RELAY_SHARED_SECRET
+APPS_SCRIPT_WEB_APP_URL
 ```
 
-## 4.2 ساخت Drive Folderهای تست
+Endpoint:
 
 ```text
-DEV-Case-Import
-DEV-Case-Export
-DEV-Customer-Docs
+GET  /api/telegram
+POST /api/telegram
 ```
 
-IDها را در Script Properties محیط DEV قرار دهید.
+Relay ابتدا `X-Telegram-Bot-Api-Secret-Token` را بررسی می‌کند، سپس payload را با HMAC-SHA256 + timestamp + nonce به Apps Script می‌فرستد.
 
-## 4.3 Telegram Bot تست
+Apps Script درخواست Telegram مستقیم، signature اشتباه، timestamp منقضی و replay را قبل از پردازش داده رد می‌کند.
 
-Bot جدا بسازید. Production Bot Token را در DEV استفاده نکنید.
+## 3. Staging setup
 
-## 4.4 Apps Script
+1. از CRM یک Copy بدون داده حساس واقعی بسازید.
+2. چهار RAW Template را برای Staging کپی کنید.
+3. Workspace Folderهای چهار نقش را جدا بسازید.
+4. Bot تستی مستقل ایجاد کنید.
+5. Relay Preview/Staging مستقل بسازید.
+6. Script Properties بالا را با شناسه‌های Staging تکمیل کنید.
+7. `src/apps-script/Code.gs` را در Apps Script Staging قرار دهید.
+8. Web App Staging را Deploy کنید.
+9. `repairBotInstallation()` را فقط در Staging اجرا کنید.
+10. نتیجه `validateRuntimeConfigV427_()` و `repairProvisioningSettingsV427_(true)` را بررسی کنید.
 
-سورس Branch Feature را در Project DEV قرار دهید.
+## 4. تست‌های اجباری Staging
 
-### Syntax Check محلی اختیاری
+### RBAC / Scope
 
-اگر سورس به فایل JS export شده است:
+- نام‌های مشابه مانند Ali / Alireza نباید داده یکدیگر را ببینند.
+- User ID مشابه نباید match شود.
+- `PERSONAL:<User ID>` باید مرجع قطعی تسک شخصی باشد.
+- وضعیت‌های خالی، ناشناخته و «در انتظار فعالسازی» باید Telegram access را رد کنند.
+- Customer Manager / Customer Employee بدون Customer ID معتبر باید رد شوند.
+
+### Telegram ingress
+
+- درخواست معتبر از Relay پذیرفته شود.
+- درخواست مستقیم به Apps Script رد شود.
+- secret اشتباه رد شود.
+- timestamp منقضی رد شود.
+- replay همان nonce رد شود.
+
+### Provisioning
+
+برای هر چهار نقش:
+- یک Workspace ساخته شود.
+- قبل از Share، data tabs پاک و Scope اعمال شده باشد.
+- شکست عمدی بعد از ساخت فایل و retry، فایل دوم نسازد.
+- درخواست مانده در «در حال پردازش» بعد از timeout بازیابی شود.
+
+### Google Access lifecycle
+
+- تغییر Gmail: دسترسی ایمیل قبلی حذف و ایمیل جدید اضافه شود.
+- غیرفعال‌سازی: editor/viewer کاربر حذف شود.
+- فعال‌سازی مجدد: فقط Gmail فعلی اضافه شود.
+- تغییر Role: Workspace قبلی حذف نشود؛ migration/review کنترل‌شده انجام شود.
+
+### Daily Task conflict
+
+- local-only change → push شود.
+- central-only change → pull شود.
+- تغییر هم‌زمان → conflict ثبت شود و local بی‌صدا overwrite نشود.
+- baseline ناموجود و داده متفاوت → overwrite مرکز انجام نشود.
+
+### Scheduler
+
+بیش از ۲۰ Mapping آزمایشی بسازید و چند چرخه Sync اجرا کنید. همه Mappingها باید بر اساس قدیمی‌ترین `آخرین Sync` نوبت بگیرند.
+
+### Templates
+
+- RAW Template نباید داده عملیاتی دریافت کند.
+- Provisioning Settings باید به RAW IDهای canonical اشاره کند.
+- فونت مؤثر صفحات بعد از Sync باید Vazirmatn باشد.
+
+## 5. CI
+
+قبل از Staging این موارد باید سبز باشند:
 
 ```bash
-node --check Code.js
+node --check src/apps-script/Code.gs
+node tests/v427_behavior.test.js
+node --check backend/api/telegram.js
 ```
 
-Apps Script از برخی Globalهای خاص Google استفاده می‌کند؛ Node فقط Syntax خام JavaScript را بررسی می‌کند، نه API Compatibility.
+GitHub Actions workflow `Static validation` این موارد را اجرا می‌کند.
 
-## 4.5 Setup
+## 6. Production release
 
-برای V4.9.2:
+Production تنها پس از ثبت نتیجه Staging مجاز است.
 
-```text
-setupV492
-```
+ترتیب:
+1. Backup Sheet و ثبت Version فعلی.
+2. Backup/ثبت Triggerها و Deployment فعلی.
+3. Export امن لیست Script Properties بدون مقدار Secret.
+4. تأیید RAW Template IDs و Provisioning Settings.
+5. Merge به `main` فقط با تأیید صریح مالک پروژه.
+6. Deploy نسخه جدید Apps Script.
+7. Deploy Relay Production.
+8. اجرای کنترل‌شده `repairBotInstallation()`.
+9. Smoke test کم‌خطر.
+10. پایش Apps Script Executions و Vercel logs.
 
-فقط یک‌بار اجرا شود.
+هیچ پیام آزمایشی یا تست مخرب روی Production قبل از تأیید انجام نشود.
 
-انتظار:
+## 7. Rollback
 
-- Trigger `onCrmEditV492`
-- Trigger Sender هر 1 دقیقه
-- Trigger Document Sync هر 5 دقیقه
+### Apps Script
 
-## 4.6 Web App
+- نسخه قبلی Code.gs را از Git/Version history بازیابی کنید.
+- Web App deployment را به نسخه پایدار قبلی برگردانید.
+- Triggerها را با inventory ثبت‌شده بازسازی کنید.
 
-Apps Script:
+### Relay
 
-```text
-Deploy
-→ New deployment
-→ Web app
-```
+- Vercel deployment قبلی را Promote/Rollback کنید.
+- Telegram webhook را فقط به Relay معتبر قبلی برگردانید.
 
-Execute as:
+### Provisioning
 
-```text
-Me
-```
+Workspace ایجادشده در retry حذف خودکار نمی‌شود. Request ID و Workspace File ID ثبت‌شده مبنای recovery هستند.
 
-Access باید متناسب با Webhook تنظیم شود.
+### Sheet / Drive
 
-URL `/exec` را ثبت کنید.
+Schema یا اسناد عملیاتی با rollback خودکار پاک نمی‌شوند. هر migration باید create/link یا update محدود و قابل برگشت باشد.
 
-## 4.7 Relay
+## 8. وضعیت انتشار
 
-Relay محیط DEV را به Web App DEV متصل کنید.
-
-## 4.8 Webhook
-
-Telegram webhook را روی Relay تست تنظیم کنید و بررسی کنید:
-
-```text
-allowed_updates = message, callback_query
-```
-
----
-
-# 5. Staging Deployment
-
-Staging باید تا حد ممکن مشابه Production باشد، اما بدون داده حساس واقعی.
-
-### تست‌های اجباری
-
-#### Telegram
-
-- `/version`
-- Group message
-- Callback button
-- Private keyboard
-
-#### Task
-
-- Task برای مدیر
-- Task برای کارمند
-- Reply مسئول
-- Reply کاربر غیرمسئول
-- Telegram Message ID
-- Pending Sender
-
-#### پرونده
-
-- واردات
-- صادرات
-- Folder Routing
-- Document Sync
-- Reset فرم
-
-#### مشتری
-
-- مشتری حقیقی
-- مشتری حقوقی
-- Folder creation
-- تاریخ وکالت
-- Reset فرم
-
-#### Regression
-
-- Company Search
-- Lead Reply
-- Daily Report manual run
-- Marketing Report manual run
-
----
-
-# 6. Production Release Process
-
-## مرحله 1 — Freeze
-
-قبل از Deploy:
-
-- تغییرات جدید Sheet متوقف شود.
-- Backup گرفته شود.
-- Version فعلی ثبت شود.
-- Script Properties Export دستی امن/لیست شود؛ Secretها در Git ذخیره نشوند.
-
-## مرحله 2 — Git
-
-Branch تغییرات باید Review و Merge شده باشد.
-
-Tag پیشنهادی:
-
-```bash
-git tag v4.9.2
-git push origin v4.9.2
-```
-
-## مرحله 3 — Apps Script Code
-
-کد Release را کامل جایگزین کنید.
-
-بعد:
-
-```text
-Save
-Refresh
-```
-
-Version Header و `CONFIG.VERSION` را بررسی کنید.
-
-## مرحله 4 — Setup/Migration
-
-برای V4.9.2:
-
-```text
-setupV492
-```
-
-فقط یک بار.
-
-### بسیار مهم
-
-در V4.9.2 تابع Legacy `installTriggers()` را بلافاصله بعد از `setupV492()` اجرا نکنید. این تابع می‌تواند Trigger `onTaskEdit` جداگانه بسازد، درحالی‌که `onCrmEditV492` خودش `onTaskEdit(e)` را اجرا می‌کند. نتیجه ممکن است پردازش دوبل باشد.
-
-برای گزارش‌های زمان‌بندی‌شده تا قبل از Refactor Scheduler:
-
-- Triggerهای موجود Production را بررسی کنید.
-- از Duplicate نبودن Handler مطمئن شوید.
-- اگر نیاز به Trigger گزارش دارید، آن‌ها را جدا و کنترل‌شده از UI Apps Script ایجاد کنید یا کد Scheduler Consolidated منتشر کنید.
-
-## مرحله 5 — Update Web App
-
-اگر Webhook/Private Router تغییر کرده:
-
-```text
-Deploy
-→ Manage deployments
-→ Edit deployment
-→ New version
-→ Deploy
-```
-
-**Deployment جدید با URL جدید ایجاد نکنید** مگر اینکه قصد تغییر Relay را داشته باشید.
-
-## مرحله 6 — Webhook
-
-ابتدا Webhook Info را بررسی کنید.
-
-شرط درست:
-
-```text
-URL = Relay production URL
-allowed_updates includes message + callback_query
-```
-
-اگر URL فعلی درست است، Repair باید URL را حفظ و فقط `allowed_updates` را اصلاح کند.
-
-## مرحله 7 — Smoke Test
-
-ترتیب پیشنهادی:
-
-```text
-1. GET Web App health
-2. /version
-3. Telegram direct test
-4. Private menu button
-5. New Task
-6. Task Reply
-7. New Case test
-8. New Customer test
-9. Drive link
-10. Apps Script Executions
-```
-
----
-
-# 7. Rollback
-
-## Apps Script Rollback
-
-اگر Release جدید مشکل دارد:
-
-1. نسخه کد قبلی را از Git Tag/Backup بازیابی کنید.
-2. Code.gs را جایگزین کنید.
-3. Setup نسخه قبلی را فقط در صورت نیاز اجرا کنید.
-4. Web App را به Version پایدار Deploy کنید.
-5. Triggerها را بررسی کنید.
-
-## Sheet Rollback
-
-قبل از Migrationهای Schema یک Copy کامل Sheet داشته باشید.
-
-هرگز برای Rollback Production از `reset/clean` تهاجمی روی داده استفاده نکنید.
-
-## Drive Rollback
-
-Folderها و اسناد مشتری را خودکار حذف نکنید. Migrationها باید Create/Link باشند، نه Destructive Delete.
-
----
-
-# 8. Monitoring بعد از Deploy
-
-حداقل 30 دقیقه اول:
-
-- Apps Script → Executions
-- Error Rate
-- Pending Telegram Update
-- Taskهایی که Message ID ندارند
-- Trigger execution failures
-- Document Sync errors
-- Duplicate messages
-
-روز بعد:
-
-- Reminderها
-- Daily Reports
-- Lead Escalation
-- Folder Sync
-
----
-
-# 9. گزارش Deployment
-
-برای هر Release یک یادداشت کوتاه ثبت کنید:
-
-```markdown
-## Release vX.Y.Z
-
-Date:
-Deployer:
-Git commit:
-Apps Script deployment version:
-Sheet migration:
-Triggers changed:
-Webhook changed:
-Smoke tests:
-Rollback version:
-```
-
----
-
-# 10. Environment Matrix پیشنهادی
-
-| Config | DEV | STAGING | PROD |
-|---|---|---|---|
-| BOT_TOKEN | جدا | جدا | اصلی |
-| GROUP_CHAT_ID | گروه تست | گروه تست نهایی | گروه اصلی |
-| SPREADSHEET_ID | DEV | STG | PROD |
-| Drive Roots | DEV | STG | PROD |
-| Relay URL | DEV | STG | PROD |
-| Apps Script Project | DEV | STG | PROD |
-
----
-
-# 11. Production Safety Rules
-
-- ابتدا Backup، سپس Migration.
-- Secret هرگز در Git.
-- Webhook URL را بدون نیاز تغییر ندهید.
-- Trigger جدید را قبل از بررسی Triggerهای موجود نصب نکنید.
-- Customer Documents را Delete/Move نکنید مگر Migration برنامه‌ریزی‌شده باشد.
-- تغییر Schema بدون Backward Compatibility روی Production انجام نشود.
-- یک Release باید قابلیت Rollback داشته باشد.
-
----
-
-# 12. مسیر پیشنهادی بعدی
-
-برای V5 استقرار باید از `clasp` یا CI/CD کنترل‌شده استفاده کند تا GitHub منبع حقیقت سورس باشد و Copy/Paste دستی Code.gs حذف شود.
-
-معماری پیشنهادی Release:
-
-```text
-GitHub main
-   ↓
-Automated checks
-   ↓
-Staging Apps Script
-   ↓
-Smoke tests
-   ↓
-Manual approval
-   ↓
-Production Apps Script
-```
+V4.28 روی شاخه audit/handoff اصلاح شده است، اما تا تکمیل E2E زنده Staging، inventory واقعی Trigger/Deployment و تست lifecycle دسترسی، Production-ready اعلام نمی‌شود.

@@ -1,0 +1,4 @@
+# Only the executable Apps Script source and manifest may be pushed.
+**/*
+!Code.gs
+!appsscript.json
