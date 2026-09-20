@@ -189,3 +189,21 @@ test('stale recoverable provisioning states are eligible for worker recovery', (
   assert.match(candidates, /Workspace ساخته شد/);
   assert.match(candidates, /isProvisioningStaleV427_/);
 });
+
+
+test('installer preflight blocks destructive trigger reset when canonical sheets are missing', () => {
+  const preflight = extractLastFunction('installerPreflightV430_');
+  const installer = extractLastFunction('repairBotInstallation');
+  assert.match(preflight, /required_sheets_missing/);
+  assert.match(preflight, /Provisioning Settings/);
+  const guardAt = installer.indexOf('if (!preflight.ok)');
+  const destructiveAt = installer.indexOf('removeAllProjectTriggers');
+  assert.ok(guardAt >= 0 && destructiveAt > guardAt, 'preflight must run before trigger deletion');
+});
+
+test('protected Drive IDs derive LIVE dashboard IDs from properties', () => {
+  const fn = extractLastFunction('protectedDriveIdsV413_');
+  assert.match(fn, /Object\.keys\(LIVE_DASHBOARDS\)/);
+  assert.match(fn, /parseDriveFileId_\(LIVE_DASHBOARDS\[k\]\)/);
+  assert.doesNotMatch(fn, /1RADxHUGzEfwrW76qb10ip-YcG6mogSXjhRVOyRGeImE/);
+});
