@@ -10127,8 +10127,16 @@ function getTelegramUserContextV419_(telegramId) {
 
   const sources = [SHEETS.usersRaw, SHEETS.users];
   let found = null;
+  let readableSourceCount = 0;
   for (let s = 0; s < sources.length && !found; s++) {
-    const rows = readRows(sources[s]);
+    let rows = null;
+    try {
+      rows = readRows(sources[s]);
+      readableSourceCount++;
+    } catch (_) {
+      rows = null;
+    }
+    if (!rows) continue;
     for (let i = 0; i < rows.length; i++) {
       if (String(rows[i]['Telegram User ID'] || '').trim() === telegramId) {
         found = rows[i];
@@ -10137,7 +10145,14 @@ function getTelegramUserContextV419_(telegramId) {
     }
   }
 
-  if (!found) return { authorized:false, isAdmin:false, reason:'telegram_id_not_found', telegramId:telegramId };
+  if (!found) {
+    return {
+      authorized:false,
+      isAdmin:false,
+      reason:readableSourceCount ? 'telegram_id_not_found' : 'rbac_source_unavailable',
+      telegramId:telegramId
+    };
+  }
 
   const status = String(found['وضعیت'] || '').trim();
   if (status !== 'فعال') {
@@ -10153,12 +10168,23 @@ function getTelegramUserContextV419_(telegramId) {
   const userId = String(found['User ID'] || '').trim();
   if (!userId) return { authorized:false, isAdmin:false, reason:'missing_user_id', telegramId:telegramId, user:found };
 
-  const permission =
-    getRowById(SHEETS.permissions, 'PERM-' + userId) ||
-    readRows(SHEETS.permissions).find(function(r) {
-      return String(r['User ID'] || '').trim() === userId;
-    }) ||
-    null;
+  let permission = null;
+  try {
+    permission =
+      getRowById(SHEETS.permissions, 'PERM-' + userId) ||
+      readRows(SHEETS.permissions).find(function(r) {
+        return String(r['User ID'] || '').trim() === userId;
+      }) ||
+      null;
+  } catch (_) {
+    return {
+      authorized:false,
+      isAdmin:false,
+      reason:'permission_source_unavailable',
+      telegramId:telegramId,
+      user:found
+    };
+  }
 
   if (!permission || String(permission['وضعیت'] || '').trim() !== 'فعال') {
     return { authorized:false, isAdmin:false, reason:'permission_inactive_or_missing', telegramId:telegramId, user:found };
