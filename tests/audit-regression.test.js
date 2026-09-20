@@ -147,3 +147,13 @@ test('semantic sheet styling preserves per-sheet color identity and Vazirmatn', 
   const sync = extractLastFunction('syncWorkspaceDataV412_');
   assert.match(sync, /styleSpreadsheetSemanticallyV429_/);
 });
+
+test('workspace provisioning never uses LIVE dashboards as template source', () => {
+  const provision = extractLastFunction('provisionWorkspace');
+  assert.match(provision, /DASHBOARD_TEMPLATES/);
+  assert.doesNotMatch(provision, /LIVE_DASHBOARDS/);
+
+  const enqueue = extractLastFunction('enqueueProvisioningRequestV412_');
+  assert.match(enqueue, /'Template File ID': DASHBOARD_TEMPLATES\[role\]/);
+  assert.doesNotMatch(enqueue, /LIVE_DASHBOARDS/);
+});
