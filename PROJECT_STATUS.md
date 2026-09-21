@@ -8,7 +8,7 @@ Base: feature/v5-backend-foundation
 Environment: repository baseline only; no production deployment
 
 ## Task Status
-KRT-FOUNDATION-001R: IN_PROGRESS
+KRT-FOUNDATION-001R: PASS
 
 ## Baseline
 V5 backend foundation: FastAPI + SQLAlchemy 2 + PostgreSQL/Neon + Alembic.
@@ -20,7 +20,19 @@ Legacy V4: Google Sheets + Apps Script + Drive + Telegram, retained as migration
 - 0003_tasks
 - 0004_documents
 
-These migrations are locked and must not be rewritten.
+These migrations are locked and were byte-identical by Git blob SHA between the base branch and canonical branch during this task.
+
+## Verification performed
+- canonical branch created directly from feature/v5-backend-foundation
+- branch diff reviewed: documentation/status files only
+- backend/app/main.py blob SHA unchanged from base
+- Alembic migration 0001 blob SHA unchanged from base
+- Alembic migration 0002 blob SHA unchanged from base
+- Alembic migration 0003 blob SHA unchanged from base
+- Alembic migration 0004 blob SHA unchanged from base
+- existing health endpoints statically confirmed in backend/app/main.py: /health, /health/db, /health/sheets
+
+No executable CI/pytest suite exists in the audited V5 baseline, so no claim of runtime automated-test execution is made. Establishing that capability is the next task.
 
 ## Production Cutover Blocker
 Version identity mismatch:
@@ -36,6 +48,10 @@ Exact live deployment/version/commit must be pinned before production migration.
 - V5 current-state matrix established
 - traceability baseline established
 - migration delta priorities documented
+- V4 kept intact
+- no production deployment
+- no live customer-data migration
+- no wholesale PR #4 merge
 
 ## Known P0 Gaps
 - automated V5 test/CI foundation
