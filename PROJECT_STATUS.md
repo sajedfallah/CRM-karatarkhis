@@ -64,5 +64,18 @@ Exact live deployment/version/commit must be pinned before production migration.
 ## Remaining verification
 Runtime health/migration execution was not rerun in this task because the V5 baseline has no verified automated test/CI runner in-repository. Static route/migration integrity and branch diff verification passed. This is the only reason the task remains PARTIAL.
 
+## Documentation Pack
+بسته مستندات فارسی برای Codex تکمیل و به Repository اضافه شد:
+- AGENTS.md
+- README.md Canonical
+- CODEX_MASTER_PROMPT.md
+- docs/START_HERE.md
+- docs/MASTER_SPEC_FA.md
+- docs/UI_REFERENCES.md
+- docs/IMPLEMENTATION_ROADMAP_FA.md
+- docs/CODEX_EXECUTION_GUIDE_FA.md
+- docs/DECISIONS_FA.md
+- UI/UX و AI Agent Context به‌صورت فارسی و با Referenceهای UI به‌روزرسانی شدند.
+
 ## Next Task
 KRT-FOUNDATION-002R — Automated QA + CI Foundation
