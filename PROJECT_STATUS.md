@@ -8,7 +8,7 @@ Base: feature/v5-backend-foundation
 Environment: repository baseline only; no production deployment
 
 ## Task Status
-KRT-FOUNDATION-001R: PASS
+KRT-FOUNDATION-001R: PARTIAL
 
 ## Baseline
 V5 backend foundation: FastAPI + SQLAlchemy 2 + PostgreSQL/Neon + Alembic.
@@ -60,6 +60,9 @@ Exact live deployment/version/commit must be pinned before production migration.
 - worker/queue architecture
 - customer submission confirmation/lock/reopen
 - security regression suite
+
+## Remaining verification
+Runtime health/migration execution was not rerun in this task because the V5 baseline has no verified automated test/CI runner in-repository. Static route/migration integrity and branch diff verification passed. This is the only reason the task remains PARTIAL.
 
 ## Next Task
 KRT-FOUNDATION-002R — Automated QA + CI Foundation
