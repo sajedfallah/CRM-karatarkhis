@@ -1,38 +1,97 @@
-# KARATARKHIS CRM — AI Agent Context
+# Context اصلی Agent هوش مصنوعی — KARATARKHIS CRM
 
-## Authority
-This branch is the canonical V5 build baseline. Product behavior is governed by the approved CASE-STRUCTURE-001..022 specification and the canonical files under `docs/`.
+این فایل برای Codex/Claude/Agentها مرجع اجباری است.
 
-## Architecture position
-- V4 Google Sheets + Apps Script + Drive + Telegram = **Legacy Operational Bridge**.
-- V5 FastAPI + PostgreSQL/Neon + Alembic = **Canonical Backend Target**.
-- PostgreSQL = future transactional Source of Truth.
-- Google Sheets = migration/integration/reporting surface, not the final security boundary or authoritative transactional store.
-- Google Drive remains an accepted document store during migration; binary migration is not required by this baseline task.
+## موقعیت پروژه
 
-## Locked rules
-1. Customer final confirmation before final submission.
-2. Submitted customer data/documents become customer-locked.
-3. Customer cannot self-reopen; authorized Admin/Manager only.
-4. Reopen requires reason; limited reopen preferred.
-5. Resubmission requires a new confirmation and immutable revision.
-6. Documents are versioned; previous versions are never overwritten.
-7. AI results become stale when source data changes.
-8. AI can recommend HS codes; final sensitive classification remains human-authorized.
-9. Corporate document expiry is deterministic/rule-driven after extraction.
-10. Export Packing List and package derive from immutable submission snapshots.
-11. Posted finance records are not edited directly; use adjustments.
-12. Customer isolation and backend authorization are mandatory.
-13. Internal communication must never leak to customer views.
-14. Sensitive overrides require permission + reason + audit.
-15. AI/Telegram/PDF failures must not crash core CRM.
+کاراترخیص یک Customs Clearance Case/Operations Management Platform است.
 
-## Agent working rules
-- Read `PROJECT_STATUS.md` first.
-- Inspect existing implementation before editing.
-- Work one scoped task at a time.
-- Do not rewrite existing Alembic migrations.
-- Do not delete V4 during migration.
-- No production deploy or live-data migration without an explicit task and approval.
-- Do not wholesale merge `codex/full-system-audit`; evaluate individual changes separately.
-- If a critical requirement is ambiguous, stop that part and report it instead of guessing.
+معماری فعلی:
+- V4 = Google Sheets + Apps Script + Drive + Telegram، فقط Legacy Operational Bridge
+- V5 = FastAPI + PostgreSQL/Neon + Alembic، Backend رسمی آینده
+- Frontend نهایی = React + TypeScript + Vite + Tailwind v4 + shadcn/ui
+
+PostgreSQL باید در Cutover نهایی Source of Truth شود.
+
+## Product Authority
+
+ترتیب اعتبار:
+1. Business Ruleهای Canonical
+2. MASTER_SPEC_FA.md
+3. اسناد Domain در docs/
+4. Task فعال
+5. مراجع بیرونی UI
+
+اگر تعارض وجود داشت، Reference خارجی هیچ‌وقت بر Specification کاراترخیص غلبه نمی‌کند.
+
+## مرجع‌های UI
+
+Primary:
+Atomic CRM — https://github.com/marmelab/atomic-crm
+
+Secondary:
+BottleCRM — https://github.com/mj-pagani/BottleCRM
+
+Optional:
+Krayin CRM — https://github.com/krayin/laravel-crm
+
+از این‌ها فقط برای UX/UI/interaction pattern استفاده کن. Backend، DB model یا Business Logic آن‌ها را خودکار وارد پروژه نکن.
+
+## Business Ruleهای قفل‌شده
+
+1. Customer قبل از Final Submit باید تأیید کند.
+2. Submit یک Snapshot immutable می‌سازد.
+3. بعد از Submit، Customer edit قفل است.
+4. Customer حق self-reopen ندارد.
+5. Reopen فقط نقش مجاز + Reason + Audit.
+6. Limited Reopen بر Full Reopen اولویت دارد.
+7. Resubmit نیاز به Confirmation جدید دارد.
+8. Submission revision immutable است.
+9. Document replacement = Version جدید، نه overwrite.
+10. Source change باید AI result وابسته را STALE کند.
+11. AI می‌تواند HS پیشنهاد دهد ولی final sensitive classification انسانی است.
+12. Low-confidence critical AI result نیازمند Human Review است.
+13. Expiry rule deterministic است.
+14. Packing List/Export Package از immutable submission revision ساخته می‌شود.
+15. Posted ledger مستقیم edit نمی‌شود.
+16. Customer isolation اجباری است.
+17. Internal content نباید به Customer نشت کند.
+18. Backend مرجع نهایی permission است.
+19. Sensitive override = permission + reason + audit.
+20. خرابی AI/Telegram/PDF نباید Core CRM را از کار بیندازد.
+
+## قواعد مهندسی
+
+- Migrationهای قبلی Rewrite نشوند.
+- Business rule داخل Frontend تنها مرجع نباشد.
+- External API داخل transaction طولانی اجرا نشود.
+- Heavy work async باشد.
+- Critical commandها idempotent باشند.
+- Mutable critical records optimistic concurrency داشته باشند.
+- Audit/History حساس hard-delete نشود.
+- Secret داخل Git/Log/Prompt قرار نگیرد.
+
+## روش اجرای Task
+
+قبل:
+- PROJECT_STATUS
+- AGENTS
+- START_HERE
+- MASTER_SPEC
+- Domain docs
+- current code
+- dependencies
+
+بعد:
+- implementation
+- tests
+- permission/security tests
+- diff review
+- docs/status/traceability update
+- handoff
+
+## قانون Ambiguity
+
+اگر Requirement حساس مبهم بود:
+حدس نزن.
+AMBIGUITY + OPTIONS + RECOMMENDATION + BLOCKING را گزارش کن.
