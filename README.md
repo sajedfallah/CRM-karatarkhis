@@ -1,152 +1,220 @@
-# کاراترخیص — CRM عملیات ترخیص، فروش و پیگیری
+# کاراترخیص — سامانه مدیریت عملیات ترخیص و کارگزاری گمرکی
 
-> **Karatarkhis CRM** سامانه عملیاتی مدیریت مشتری، پرونده گمرکی، تخصیص مسئول، Task، اسناد و یکپارچگی Google Workspace/Telegram است.
+کاراترخیص یک CRM عمومی نیست؛ یک سامانه اختصاصی **Case Management + Operations Management** برای مدیریت مشتری، پرونده گمرکی، اسناد، وظایف، مالی، ارتباطات، هوش مصنوعی، نامه‌نگاری، صادرات و کنترل دسترسی است.
 
-## وضعیت نسخه
+## وضعیت فعلی پروژه
 
-| مورد | وضعیت |
-|---|---|
-| نسخه Backend در حال توسعه | `5.0.0-dev` |
-| شاخه توسعه | `feature/v5-backend-foundation` |
-| Pull Request | [#1 — V5 backend foundation](https://github.com/sajedfallah/CRM-karatarkhis/pull/1) |
-| Backend | FastAPI + SQLAlchemy 2 + PostgreSQL/Neon |
-| Deployment توسعه | Vercel Preview |
-| Migration فعلی DEV | `0004_documents` |
-| Production فعلی | V4.9.2 / بدون تغییر توسط این شاخه |
-| وضعیت `main` | بدون Merge این تغییرات تا زمان Review |
+شاخه Canonical توسعه:
+`codex/canonical-v5-build`
 
-> **وضعیت داده DEV در 2026-09-17:** بنا بر تصمیم عملیاتی، داده‌های DEV تخلیه شده‌اند و Schema تا Migration `0004_documents` حفظ شده است. بنابراین محیط DEV در حال حاضر برای Seed/Import کنترل‌شده آماده است.
+معماری هدف:
+- Backend: FastAPI
+- Database: PostgreSQL / Neon
+- ORM: SQLAlchemy 2
+- Migration: Alembic
+- Frontend هدف: React + TypeScript + Vite + Tailwind CSS v4 + shadcn/ui
+- معماری: Modular Monolith
+- V4: Google Sheets + Apps Script + Drive + Telegram به‌عنوان پل عملیاتی Legacy
 
-## معماری V5
+## اگر Codex/Claude هستی
 
-```mermaid
-flowchart LR
-    TG[Telegram / Future clients] --> API[FastAPI / REST API]
-    WS[Google Sheets / Workspaces] --> SYNC[Explicit Sync Adapters]
-    SYNC --> API
-    API --> DB[(PostgreSQL / Neon)]
-    API --> GD[Google Drive]
-    DB --> API
-```
+اول این فایل‌ها را به همین ترتیب بخوان:
 
-اصل معماری V5 این است که **PostgreSQL منبع حقیقت مرکزی (Source of Truth)** باشد. Google Sheets و Workspaceها رابط عملیاتی/مدیریتی هستند و نباید به دیتابیس دوم ضمنی تبدیل شوند.
+1. `AGENTS.md`
+2. `PROJECT_STATUS.md`
+3. `docs/START_HERE.md`
+4. `docs/AI_AGENT_CONTEXT.md`
+5. `docs/MASTER_SPEC_FA.md`
+6. `docs/BUSINESS_RULES.md`
+7. سند Domain مربوط به Task
+8. `docs/TRACEABILITY_MATRIX.md`
+9. `docs/CODEX_EXECUTION_GUIDE_FA.md`
 
-## قابلیت‌های پیاده‌سازی‌شده در V5
+بعد فقط Task بعدی ثبت‌شده در `PROJECT_STATUS.md` را اجرا کن.
 
-- FastAPI application و OpenAPI
-- PostgreSQL/Neon با SQLAlchemy 2
-- Alembic migrations (`0001` تا `0004`)
-- Customer / User / Permission / Case / Assignment / Audit models
-- Case CRUD و Assignment lifecycle
-- Server-side authorization با Tenant Boundary و Scopeهای `GLOBAL` / `CUSTOMER` / `ASSIGNED`
-- Task و Task Message/Thread API
-- Document metadata، Approval/Reject و Expiry metadata
-- Google Sheets customer/case sync adapters
-- Controlled manual sync endpoint با Dry Run
-- Health checks برای API، Database و Google Sheets
-- Vercel Preview deployment
-- Audit Log برای عملیات اصلی
-
-## APIهای اصلی
+## معماری کسب‌وکار
 
 ```text
-GET  /health
-GET  /health/db
-GET  /health/sheets
+Customer
+  ↓
+Case
+  ↓
+Workflow Stage
+  ↓
+Task
+  ↓
+Action
 
-GET  /api/v1/users/me
-GET  /api/v1/users/me/permissions
-
-GET  /api/v1/cases
-POST /api/v1/cases
-GET  /api/v1/cases/{case_id}
-PATCH /api/v1/cases/{case_id}
-GET  /api/v1/cases/{case_id}/assignments
-POST /api/v1/cases/{case_id}/assignments
-DELETE /api/v1/cases/{case_id}/assignments/{assignment_id}
-
-GET  /api/v1/tasks
-POST /api/v1/tasks
-GET  /api/v1/tasks/{task_id}
-PATCH /api/v1/tasks/{task_id}
-GET  /api/v1/tasks/{task_id}/messages
-POST /api/v1/tasks/{task_id}/messages
-
-GET  /api/v1/documents
-POST /api/v1/documents
-GET  /api/v1/documents/{document_id}
-PATCH /api/v1/documents/{document_id}
-POST /api/v1/documents/{document_id}/approval
-
-POST /api/v1/sync/manual
+همراه با:
+Documents
+Finance
+Communication
+AI
+Timeline
+Audit
+Alerts
+Correspondence
 ```
 
-## Migrationهای دیتابیس
+## ماژول‌های اصلی
 
-| Migration | هدف |
-|---|---|
-| `0001_initial_v5_schema` | Customers, Users, Cases, Permissions, Assignments, Audit Logs |
-| `0002_case_sync_metadata` | `sync_version`, `sync_source`, `sync_updated_at` برای Case |
-| `0003_tasks` | Tasks و Task Messages |
-| `0004_documents` | Document metadata، approval و expiry |
+- Lead / Referral
+- Customer 360
+- Product / HS
+- Case Registration Wizard
+- Workflow / Stage / Task / SLA
+- Document Management / Versioning
+- AI Document Intelligence
+- Customer Final Confirmation / Submission Lock
+- Corporate Document Compliance / Expiry
+- Finance
+- Communication Hub / Telegram
+- Smart Correspondence
+- Export Workflow / Packing List / PDF Package
+- Dashboard / Reporting / Search
+- Employees / RBAC
+- Security / Audit
+- Deployment / Backup / Monitoring
 
-## امنیت و دسترسی
+## طراحی UI
 
-Authorization در Backend اعمال می‌شود و Google Sheet validation یا مخفی‌کردن Tab به‌عنوان مرز امنیتی پذیرفته نیست.
+هدف UI:
+**Modern SaaS + Enterprise Operations Command Center**
 
-مدل تصمیم‌گیری دسترسی:
+ویژگی‌ها:
+- فارسی
+- RTL
+- Vazirmatn
+- Responsive
+- Dark/Light mode
+- Minimal
+- Data-dense but uncluttered
+- No dead buttons
+- Backend-driven permissions
 
-```text
-User → Active State → Role → Customer/Tenant Boundary → Permission Profile → Scope → Assignment → Action
-```
+### مراجع UI
 
-احراز هویت فعلی `X-User-ID` **فقط DEV/STAGING adapter** است. در `production` این adapter عمداً فعال نیست و تا قبل از پیاده‌سازی Identity واقعی، Production API نباید با آن منتشر شود.
+**مرجع اصلی: Atomic CRM**  
+https://github.com/marmelab/atomic-crm
 
-## Google Workspace
+**مرجع ثانویه: BottleCRM**  
+https://github.com/mj-pagani/BottleCRM
 
-Spreadsheet پایه عملیاتی فعلی:
+**مرجع اختیاری: Krayin CRM**  
+https://github.com/krayin/laravel-crm
 
-**CRM | ترخیص یزد | V1.5 | 2026-09-17**
+قاعده:
+این پروژه‌ها فقط مرجع UX/UI/interaction هستند. Product Authority و Business Rule همیشه متعلق به کاراترخیص است.
 
-Google Drive شامل ساختارهای مستقل برای اسناد مشتری و اسناد پرونده است. Credentialهای واقعی Google، Telegram tokenها، Database credentials و فایل‌های خصوصی هرگز نباید داخل Git commit شوند.
+## Migrationهای فعلی V5
 
-## Infrastructure
+- `0001_initial_v5_schema`
+- `0002_case_sync_metadata`
+- `0003_tasks`
+- `0004_documents`
 
-- **Database:** Neon PostgreSQL
-- **App Hosting:** Vercel Preview
-- **CI/CD:** در حال حاضر GitHub Actions تعریف نشده؛ Vercel Git Integration روی commitهای شاخه Feature Preview می‌سازد.
-- **Containers:** Docker/Kubernetes در V5 فعلی استفاده نشده‌اند.
-- **Cache/Queue:** Redis، RabbitMQ، Kafka یا Queue مستقل فعلاً وجود ندارد.
-- **Protocol:** REST/HTTP + JSON
-- **Architecture:** Modular monolith؛ microservice architecture پیاده‌سازی نشده است.
+این Migrationها Historical Baseline هستند و نباید Rewrite شوند.
 
-## Dependencies
+## وضعیت فعلی Backend
 
-Dependency constraints در `backend/requirements.txt` نگهداری می‌شوند. نسخه‌ها به‌صورت Range تعریف شده‌اند و **lockfile حاوی نسخه resolve‌شده دقیق فعلاً وجود ندارد**. پیش از Production باید dependency locking و reproducible build اضافه شود.
+پیاده‌سازی‌شده/قابل استفاده:
+- Customers
+- Users
+- Permissions
+- Cases
+- Case Assignments
+- Tasks
+- Task Messages
+- Documents baseline
+- Audit Logs
+- Google Sheets sync foundation
+- Health endpoints
 
-## اجرای محلی Backend
+Gapهای مهم:
+- automated QA/CI
+- production authentication
+- advanced RBAC
+- document version/file model
+- queue/workers
+- AI layer
+- HS
+- submission confirmation/lock/reopen
+- compliance/expiry worker
+- finance
+- communication
+- export
+- modern frontend
 
-```bash
-cd backend
-python -m venv .venv
-# Windows: .venv\Scripts\activate
-# Linux/macOS: source .venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env
-alembic upgrade head
-uvicorn app.main:app --reload
-```
+## Source of Truth
 
-هیچ Secret واقعی را داخل `.env.example` یا GitHub قرار ندهید.
+هدف نهایی:
+`PostgreSQL = Source of Truth`
 
-## مستندات نسخه V5
+Google Sheets:
+Migration / Integration / Reporting Surface
 
-- [CHANGELOG.md](CHANGELOG.md) — لیست تغییرات و اصلاحات
-- [docs/V5_TECHNICAL_AND_OPERATIONS.md](docs/V5_TECHNICAL_AND_OPERATIONS.md) — مستند جامع فنی و عملیاتی
-- [docs/V5_MIGRATION_GUIDE.md](docs/V5_MIGRATION_GUIDE.md) — راهنمای مهاجرت و Rollout
-- [docs/V5_QA_REPORT.md](docs/V5_QA_REPORT.md) — تست‌ها، شواهد و Gapهای QA
-- [backend/README.md](backend/README.md) — راهنمای Backend
+Google Drive:
+در دوره مهاجرت می‌تواند مخزن فایل باقی بماند.
 
-## وضعیت Release
+## اسناد مهم
 
-V5 هنوز **Development/Preview** است و Release Production محسوب نمی‌شود. قبل از Merge/Production موارد زیر باید تکمیل شوند: Production authentication، runtime Google credential strategy، automated test suite/CI، dependency lock، E2E permission regression، backup/restore drill و production migration rehearsal.
+- [شروع سریع Agent](docs/START_HERE.md)
+- [سند جامع محصول](docs/MASTER_SPEC_FA.md)
+- [Business Rules](docs/BUSINESS_RULES.md)
+- [معماری](docs/ARCHITECTURE.md)
+- [دیتابیس](docs/DATABASE.md)
+- [API](docs/API.md)
+- [UI/UX](docs/UI_UX.md)
+- [مراجع UI](docs/UI_REFERENCES.md)
+- [AI](docs/AI_SYSTEM.md)
+- [امنیت](docs/SECURITY.md)
+- [صادرات](docs/EXPORT_WORKFLOW.md)
+- [نامه‌نگاری](docs/CORRESPONDENCE.md)
+- [Deployment](docs/DEPLOYMENT.md)
+- [Testing](docs/TESTING.md)
+- [Roadmap](docs/IMPLEMENTATION_ROADMAP_FA.md)
+- [راهنمای Codex](docs/CODEX_EXECUTION_GUIDE_FA.md)
+- [Traceability](docs/TRACEABILITY_MATRIX.md)
+
+## زبان Repository
+
+توضیحات، راهنماها و Product Documentation باید فارسی باشند.
+
+نام فایل‌های فنی، APIها، کلاس‌ها، enumها، migrationها و identifierهای کدنویسی می‌توانند انگلیسی باشند تا tooling و interoperability خراب نشود.
+
+## قانون توسعه
+
+هیچ Feature حساس بدون:
+- Requirement
+- Backend rule
+- Permission
+- Test
+- Acceptance Criteria
+- Audit where required
+
+کامل محسوب نمی‌شود.
+
+## Go-Live
+
+تا زمانی که این موارد PASS نشده‌اند Production Cutover ممنوع است:
+- Production Auth
+- P0 tests
+- Customer isolation
+- Submission lock
+- Document versioning
+- HS/human approval
+- Finance ledger integrity
+- Export package integrity
+- Backup/Restore
+- Security audit
+- Import/Export E2E
+- Production version identity reconciliation
+
+## وضعیت Version Drift
+
+فعلاً یک Blocker شناخته‌شده وجود دارد:
+- `main` مستندات V4.26
+- V5 docs اشاره به Production V4.9.2
+- Audit قبلی اشاره به V4.30 staging target
+
+قبل از Cutover باید Version/Deployment/Commit واقعی Production دقیقاً Pin شود.
