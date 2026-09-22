@@ -88,5 +88,33 @@ Runtime health/migration execution was not rerun in this task because the V5 bas
 
 این تصمیم در CORRESPONDENCE.md، MASTER_SPEC_FA.md، BUSINESS_RULES.md، TRACEABILITY_MATRIX.md و DECISIONS_FA.md ثبت شده است.
 
+## Product Decisions Synced — 2026-09-22
+تصمیم‌های جدید این جلسه به مستندات Canonical اضافه شدند:
+
+- Organization model برای Internal/Customer
+- Invite flow و Customer Admin user management
+- Email + Password + Email Confirmation
+- Organization + Case scope RBAC
+- Audit/Security Logs
+- Dev/Staging/Prod
+- Feature Flags
+- Observability
+- Backup/Restore Drill
+- Case calendar/reminders
+- Admin/Customer dashboards
+- In-App Notification Center + unread badge + deep links
+- Admin Announcement Board
+- Case completion satisfaction survey
+- Global Search / Tags / Saved Views / Report templates
+- Timeline-based Case UX
+- Comments/attachments per stage
+- Import declaration draft customer approval/correction
+- Kotazh as primary operational reference after declaration
+- Authorized route assignment
+- GREEN/YELLOW/RED import workflow branches
+- Actionable chart policy
+
+این تغییرات Documentation/Specification هستند و به معنی پیاده‌سازی Runtime نیستند.
+
 ## Next Task
 KRT-FOUNDATION-002R — Automated QA + CI Foundation
