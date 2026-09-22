@@ -305,3 +305,151 @@ Predictive AI, advanced customization, HA/multi-region, advanced SSO.
 - Import/Export E2E PASS
 - Customer/Admin UAT PASS
 - هیچ Critical defect باز نیست
+
+## 28. Identity / Organization / Invitation
+هویت پروژه بر پایه Organization Membership طراحی می‌شود.
+
+Organization Types:
+- INTERNAL
+- CUSTOMER
+
+ورود:
+Email + Password + Email Confirmation.
+MFA/step-up برای عملیات حساس آماده باشد.
+
+Invite Flow:
+Create/Select Organization → Invite User → Email Verification → Set Password → Assign Role/Scope → Activate.
+
+Customer Admin می‌تواند کاربران سازمان خودش را دعوت و مدیریت کند، اما هرگز خارج از سازمان خودش.
+
+Access Scope:
+Organization + Role + Resource + Action + Case Scope + Field Access.
+
+Customer user می‌تواند:
+- organization-wide scope
+یا
+- selected case scope
+داشته باشد.
+
+## 29. Customer Portal Experience
+Customer Home باید شامل:
+- Announcement Board
+- Action Required
+- Unread Notification Badge
+- Active Cases
+- Timeline Progress
+- Requested Documents
+- Finance summary در صورت permission
+- Recent messages/comments
+- Satisfaction survey after closure
+
+هر Notification باید Deep Link به context دقیق داشته باشد.
+
+## 30. Internal Operations Home
+Admin/Employee Home:
+- My Tasks
+- Overdue/SLA
+- Cases needing action
+- Bottlenecks
+- Document review queue
+- Expiry alerts
+- Finance alerts
+- Team workload
+- Announcements management
+- customer action pending
+
+## 31. Import Case Operational Timeline
+Import Case flow:
+
+```text
+Case Created
+→ Customer Documents Uploaded
+→ Document Review
+→ Draft Declaration
+→ Customer Review
+   ├─ Request Correction → Draft Revision → Customer Review
+   └─ Approve
+→ Customs Declaration
+→ Kotazh Number Assigned
+→ Route Assignment by authorized internal user
+   ├─ GREEN
+   │   → Permit/Standard if required
+   │   → Duties/Taxes Payment
+   │   → Exit Gate
+   │   → Complete
+   ├─ YELLOW
+   │   → Virtual Expert
+   │   → Additional Document/Correction if requested
+   │   → Expert Approval
+   │   → Duties/Taxes Payment
+   │   → Exit Gate
+   │   → Complete
+   └─ RED
+       → Physical Evaluation
+       → Physical Evaluation Approval/Findings
+       → Virtual Expert
+       → Additional Document/Correction if requested
+       → Expert Approval
+       → Duties/Taxes Payment
+       → Exit Gate
+       → Complete
+```
+
+Kotazh Number بعد از اظهار Primary Operational Reference است، اما Database Case ID به‌عنوان immutable technical identifier حفظ می‌شود.
+
+## 32. Stage Collaboration
+هر Timeline Stage:
+- comments
+- attachments
+- customer-visible messages
+- internal-only notes
+- requested actions
+- requested documents
+- activity history
+دارد.
+
+Comment جدید یا Request باید Notification داخلی تولید کند.
+
+## 33. In-App Notification Center
+Notification:
+- read/unread
+- priority
+- recipient
+- organization
+- case
+- stage/context
+- action URL/deep link
+- created_at/read_at
+- dedupe key
+
+Badge در Home/Topbar نمایش داده می‌شود.
+
+## 34. Announcement Board
+Admin می‌تواند پیام عمومی یا Targeted Announcement را روی Home مشتری نمایش دهد.
+Announcement قابلیت زمان‌بندی شروع/پایان، Priority، Segment/Organization targeting و Dismiss را دارد.
+
+## 35. Satisfaction Survey
+پس از Case Completion:
+1..5 rating + optional comment.
+نتایج برای Trend/Monthly Report و Service Improvement استفاده می‌شوند.
+
+## 36. Reporting / Search / Productivity
+- Global permission-aware search
+- Saved Views
+- Tags
+- Report Templates
+- Weekly Management Summary
+- Case/customer report export
+- SLA/Bottleneck reporting
+- Customer satisfaction reporting
+
+## 37. Platform Operations
+- Dev/Staging/Prod separation
+- Feature Flags
+- Structured Logs
+- Error Tracking
+- Metrics/Alerts
+- Automated Backups
+- Restore Drills
+- Case Calendar/Reminder
+جزو الزامات Platform هستند.
