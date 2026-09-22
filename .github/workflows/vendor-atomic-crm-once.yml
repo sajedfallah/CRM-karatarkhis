@@ -1,0 +1,82 @@
+name: Vendor Atomic CRM reference (one-time)
+
+on:
+  push:
+    branches:
+      - codex/canonical-v5-build
+    paths:
+      - .github/workflows/vendor-atomic-crm-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  vendor-atomic-crm:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout KARATARKHIS
+        uses: actions/checkout@v4
+        with:
+          ref: codex/canonical-v5-build
+          fetch-depth: 0
+
+      - name: Fetch pinned Atomic CRM source
+        shell: bash
+        run: |
+          set -euo pipefail
+          UPSTREAM_REPO="https://github.com/marmelab/atomic-crm.git"
+          UPSTREAM_SHA="625c221d1f3adc442298d9a8cea3af02397dc125"
+          rm -rf /tmp/atomic-crm
+          git init /tmp/atomic-crm
+          git -C /tmp/atomic-crm remote add origin "$UPSTREAM_REPO"
+          git -C /tmp/atomic-crm fetch --depth 1 origin "$UPSTREAM_SHA"
+          git -C /tmp/atomic-crm checkout --detach FETCH_HEAD
+          test "$(git -C /tmp/atomic-crm rev-parse HEAD)" = "$UPSTREAM_SHA"
+
+      - name: Copy complete source into references/atomic-crm
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf references/atomic-crm
+          mkdir -p references/atomic-crm
+          tar -C /tmp/atomic-crm --exclude=.git -cf - . | tar -C references/atomic-crm -xf -
+
+          mkdir -p references
+          cat > references/ATOMIC_CRM_UPSTREAM.md <<'EOF'
+          # Atomic CRM — منبع مرجع UI
+
+          این پوشه یک Snapshot کامل از پروژه Atomic CRM برای استفاده مرجع در KARATARKHIS است.
+
+          - Upstream: https://github.com/marmelab/atomic-crm
+          - Pinned commit: `625c221d1f3adc442298d9a8cea3af02397dc125`
+          - Destination: `references/atomic-crm/`
+          - Purpose: UI/UX and interaction reference only
+
+          قواعد کاراترخیص و `docs/UI_REFERENCES.md` بر این سورس مقدم هستند.
+          Backend و Business Logic این پروژه نباید بدون Task صریح وارد معماری KARATARKHIS شوند.
+          EOF
+
+      - name: Verify reference snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f references/atomic-crm/package.json
+          test -f references/atomic-crm/LICENSE
+          COUNT="$(find references/atomic-crm -type f | wc -l | tr -d ' ')"
+          echo "Atomic CRM files copied: $COUNT"
+          test "$COUNT" -gt 500
+
+      - name: Remove one-time workflow and commit snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/vendor-atomic-crm-once.yml
+          git config user.name "KARATARKHIS Automation"
+          git config user.email "actions@users.noreply.github.com"
+          git add references/atomic-crm references/ATOMIC_CRM_UPSTREAM.md .github/workflows/vendor-atomic-crm-once.yml
+          if git diff --cached --quiet; then
+            echo "Nothing to commit."
+            exit 0
+          fi
+          git commit -m "vendor: add complete Atomic CRM UI reference snapshot"
+          git push origin HEAD:codex/canonical-v5-build
