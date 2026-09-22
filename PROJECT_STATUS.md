@@ -77,5 +77,16 @@ Runtime health/migration execution was not rerun in this task because the V5 bas
 - docs/DECISIONS_FA.md
 - UI/UX و AI Agent Context به‌صورت فارسی و با Referenceهای UI به‌روزرسانی شدند.
 
+## Newly Approved Product Decision
+نامه‌نگاری هوشمند به‌صورت **Template-First + AI-Assisted** قفل شد:
+- Templateهای آماده برای موضوعات پرتکرار
+- پیشنهاد Template توسط AI
+- در صورت نبود Template، AI ابتدا Missing Information را می‌گیرد و سپس Draft تولید می‌کند
+- Letter نهایی می‌تواند به Template Draft تبدیل شود
+- Active Template فقط با Human/Admin Approval
+- ارسال رسمی همیشه Human Review و در موارد حساس Approval دارد
+
+این تصمیم در CORRESPONDENCE.md، MASTER_SPEC_FA.md، BUSINESS_RULES.md، TRACEABILITY_MATRIX.md و DECISIONS_FA.md ثبت شده است.
+
 ## Next Task
 KRT-FOUNDATION-002R — Automated QA + CI Foundation
