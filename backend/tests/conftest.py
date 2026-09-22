@@ -8,7 +8,7 @@ os.environ.setdefault("DATABASE_URL", os.getenv("KRT_TEST_DATABASE_URL", "sqlite
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, delete
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
@@ -36,9 +36,18 @@ def db_engine():
 def db(db_engine):
     session = sessionmaker(bind=db_engine, autoflush=False, expire_on_commit=False)()
     try:
+        # CI uses one migrated PostgreSQL database for the suite. API handlers
+        # commit by design, so rollback alone cannot isolate examples there.
+        # Delete in FK-safe order to keep every test independently repeatable.
+        for model in (AuditLog, TaskMessage, Document, Task, CaseAssignment, Permission, Case, User, Customer):
+            session.execute(delete(model))
+        session.commit()
         yield session
     finally:
         session.rollback()
+        for model in (AuditLog, TaskMessage, Document, Task, CaseAssignment, Permission, Case, User, Customer):
+            session.execute(delete(model))
+        session.commit()
         session.close()
 
 
