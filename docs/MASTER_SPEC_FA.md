@@ -170,13 +170,25 @@ Domain Event → Notification Rule → Recipient Resolution → Channel → Queu
 Telegram باید lightweight باشد؛ CRUD سنگین و Drive scan داخل callback انجام نشود.
 
 ## 17. Smart Correspondence
-Menu:
-نامه جدید، پیش‌نویس، ارسالی، دریافتی، نیازمند پاسخ، Template، پرونده، مشتری، گمرک، آرشیو.
+معماری نامه‌نگاری **Template-First + AI-Assisted** است.
 
-AI Draft می‌سازد، اما Fact اختراع نمی‌کند.
+Menu:
+نامه جدید، قالب‌های آماده، پیش‌نویس، در انتظار بررسی، در انتظار تأیید، آماده ارسال، ارسالی، دریافتی، نیازمند پاسخ، پرونده، مشتری، گمرک، آرشیو.
+
+Flow استاندارد:
+Template Search → Select → Auto-fill CRM Context → Ask Missing Fields → Preview → AI Polish Optional → Human Review → Approval if required → Send/Archive.
+
+اگر Template مناسب وجود نداشت:
+Describe Request → AI Intent Detection → Similar Template Suggestion → Ask Missing Information → AI Draft → Human Review → Optional Save as Template Draft.
+
+Templateها Versioned و Human-Approved هستند. AI-generated letter فقط می‌تواند Template Draft پیشنهاد دهد و حق فعال‌سازی خودکار Template را ندارد.
+
+AI Fact اختراع نمی‌کند.
 Missing fact = NEEDS_INFORMATION.
 Official outgoing letters = Human Review/Approval.
+Sensitive letters = Approval Policy.
 SENT immutable است.
+Incoming letters می‌توانند توسط AI خلاصه شوند و Suggested Task/Deadline/Reply ایجاد کنند، ولی ثبت نهایی طبق Permission/Workflow است.
 
 ## 18. Export Workflow
 Required:
