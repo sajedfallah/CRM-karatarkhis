@@ -17,7 +17,12 @@
 | FIN-CORE | Finance Ledger | MISSING | canonical finance domain absent | NOT_STARTED |
 | COM-CORE | Communication Hub | MISSING | V5 full communication/notification engine absent | NOT_STARTED |
 | COM-TG | Telegram V5 | PARTIAL/MISSING | legacy V4 bot exists; V5 adapter incomplete | NOT_STARTED |
-| LTR-001 | Smart Correspondence | MISSING | not implemented | NOT_STARTED |
+| LTR-001 | Smart Correspondence / Template-first | MISSING | template library + AI-assisted draft not implemented | NOT_STARTED |
+| LTR-002 | Template Recommendation | MISSING | search/recommendation flow not implemented | NOT_STARTED |
+| LTR-003 | Missing Information Gate | MISSING | NEEDS_INFORMATION structured flow not implemented | NOT_STARTED |
+| LTR-005 | Human Review | MISSING | outbound review workflow not implemented | NOT_STARTED |
+| LTR-008 | Versioned Templates | MISSING | template/version data model not implemented | NOT_STARTED |
+| LTR-009 | AI Draft → Template Draft | MISSING | reusable template promotion workflow not implemented | NOT_STARTED |
 | EXP-001 | Packing List Snapshot | MISSING | not implemented | NOT_STARTED |
 | EXP-003 | Export Package Manifest | MISSING | not implemented | NOT_STARTED |
 | UI-WEB | Persian RTL Web App | MISSING | no canonical web frontend | NOT_STARTED |
