@@ -28,3 +28,21 @@
 | UI-WEB | Persian RTL Web App | MISSING | no canonical web frontend | NOT_STARTED |
 | OPS-CI | Automated CI | MISSING | no verified GitHub Actions baseline | NOT_STARTED |
 | OPS-AUTH | Production Auth | MISSING | X-User-ID DEV/STAGING only | NOT_STARTED |
+
+| IAM-INVITE | Organization/User Invitation | MISSING | invite/email confirmation/customer admin membership flow not implemented | NOT_STARTED |
+| IAM-CASE-SCOPE | Customer Case Scope | MISSING | organization + selected-case access model not implemented | NOT_STARTED |
+| AUD-CORE | Audit/Security Logs | PARTIAL | audit exists; comprehensive auth/security events incomplete | PARTIAL |
+| OPS-FLAG | Feature Flags | MISSING | rollout control not implemented | NOT_STARTED |
+| OPS-OBS | Observability | MISSING/PARTIAL | structured monitoring baseline incomplete | NOT_STARTED |
+| OPS-BACKUP | Backup/Restore Drill | MISSING | production drill not established | NOT_STARTED |
+| NTF-INAPP | In-App Notification Center | MISSING | unread badge/deep-link notifications not implemented | NOT_STARTED |
+| ANN-HOME | Customer Home Announcements | MISSING | targeted/scheduled announcement board not implemented | NOT_STARTED |
+| CASE-TIMELINE | Stage Timeline | MISSING/PARTIAL | current Case backend lacks canonical stage timeline UX/model | NOT_STARTED |
+| CASE-COMMENT | Stage Comments | MISSING | customer-visible/internal stage threads not implemented | NOT_STARTED |
+| IMP-DRAFT | Declaration Draft Approval | MISSING | customer approve/correction workflow absent | NOT_STARTED |
+| IMP-KOTAZH | Kotazh Operational Reference | MISSING | post-declaration reference workflow absent | NOT_STARTED |
+| IMP-ROUTE | Green/Yellow/Red Workflow | MISSING | branch workflow absent | NOT_STARTED |
+| CSAT-CASE | Case Satisfaction Survey | MISSING | closure survey/reporting absent | NOT_STARTED |
+| SRCH-GLOBAL | Global Search | MISSING | permission-aware unified search absent | NOT_STARTED |
+| RPT-TEMPLATES | Report Templates | MISSING | admin/customer operational reports absent | NOT_STARTED |
+| UI-CHARTS | Actionable Dashboard Charts | MISSING | admin/customer chart policy not implemented | NOT_STARTED |
