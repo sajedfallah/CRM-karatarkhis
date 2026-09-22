@@ -281,3 +281,118 @@ No dead button.
 - Action بدون API واقعی
 - Permission فقط در Frontend
 - قرار دادن Business Rule در Component
+
+## 17. Home و Dashboardهای نقش‌محور
+
+### Admin Home
+- KPI strip
+- Action Required
+- Bottleneck/SLA
+- Document/Expiry
+- Team workload
+- Finance alerts
+- Recent activity
+- Customer action pending
+- Announcement composer shortcut
+
+Chartهای مجاز:
+Donut/Pie، Line/Area، Bar، Stacked Bar، Funnel، Heatmap؛ فقط در صورت Actionable بودن.
+
+### Customer Home
+- Announcement board
+- Unread badge
+- Action Required
+- Active Cases
+- Timeline progress
+- Requested Documents
+- Recent Comments
+- Finance summary (permission based)
+- Completed Case Survey prompt
+
+## 18. Timeline Component
+
+Case Timeline باید شاخه‌ای و مرحله‌ای باشد و فقط یک Status Label نباشد.
+
+هر Stage card:
+- عنوان مرحله
+- وضعیت
+- تاریخ شروع/پایان
+- مسئول
+- توضیح
+- Comments
+- Attachments
+- Requested Action
+- Requested Document
+- Blocker
+- Customer action badge
+
+Customer View جزئیات داخلی و internal notes را نمی‌بیند.
+
+## 19. Import Timeline UI
+
+قبل از اظهار:
+Document Review → Draft Declaration → Customer Review.
+
+Customer Review component:
+- Approve
+- Request Correction
+- Comment
+- attachment if policy allows
+
+پس از اظهار:
+Kotazh prominently displayed.
+
+Route selection:
+GREEN / YELLOW / RED
+فقط برای internal user مجاز.
+
+شاخه‌های Route به‌صورت dynamic timeline render می‌شوند.
+
+## 20. Notification UX
+
+Topbar/Home:
+Bell + unread count.
+
+Notification item:
+- title
+- brief message
+- source
+- relative time
+- priority
+- read state
+- deep link
+
+Customer notification برای comment/request باید مستقیم همان Stage/Comment را باز کند.
+
+## 21. Announcement UX
+
+Home Banner/Card:
+- title
+- message
+- priority
+- valid period
+- optional CTA
+- dismiss if allowed
+
+Admin:
+create/edit/schedule/target/archive.
+
+## 22. Customer Organization Users
+
+Customer Admin:
+Organization → Users
+- invite
+- resend invite
+- deactivate
+- role
+- case access
+- finance visibility
+- document permission
+
+هیچ گزینه‌ای برای مدیریت User خارج از Organization خودش نمایش داده نشود.
+
+## 23. Survey UX
+
+بعد از Completion:
+کارت کوچک و غیرمزاحم:
+امتیاز 1 تا 5 + نظر اختیاری + submit.
