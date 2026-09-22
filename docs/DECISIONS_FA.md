@@ -61,3 +61,7 @@ Migration repeatable/scripted است؛ Manual copy برای Production ممنو�
 
 ## DEC-020 — Production Cutover Blocker
 Version identity باید reconcile شود: main V4.26، مستندات V5 Production V4.9.2، Audit target V4.30.
+
+
+## DEC-021 — نامه‌نگاری Template-First + AI-Assisted
+ماژول نامه‌نگاری ابتدا Template Library را جستجو و پیشنهاد می‌دهد. اگر Template مناسب موجود باشد، داده‌های مجاز CRM در آن Auto-fill می‌شوند و AI فقط برای Polish/Rewrite یا کمک تکمیلی استفاده می‌شود. اگر Template مناسب موجود نباشد، AI Intent را تشخیص می‌دهد، اطلاعات ناقص را درخواست می‌کند و Draft می‌سازد. Letter نهایی می‌تواند با تأیید کاربر به Template Draft تبدیل شود، اما Active Template فقط پس از Human/Admin Approval ایجاد می‌شود.
