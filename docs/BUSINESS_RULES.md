@@ -61,3 +61,18 @@ Rule results: PASS, WARNING, BLOCK, REVIEW_REQUIRED, OVERRIDE_REQUIRED, NOT_APPL
 - OPS-001: Heavy work is asynchronous.
 - OPS-002: Critical commands are idempotent.
 - OPS-003: External provider failure must not roll back already-committed core business transactions.
+
+
+## Correspondence
+- LTR-001: ساخت نامه به‌صورت Template-First است؛ Freeform AI generation مسیر پیش‌فرض نیست.
+- LTR-002: قبل از AI Freeform، Template Library باید Search شود و Template مشابه پیشنهاد شود.
+- LTR-003: AI در صورت نبود اطلاعات کافی باید NEEDS_INFORMATION و فهرست Missing Fields برگرداند.
+- LTR-004: AI حق اختراع شماره پرونده، شماره سند، تاریخ، مبلغ، گیرنده یا HS تأییدشده را ندارد.
+- LTR-005: تمام نامه‌های رسمی Outbound حداقل Human Review دارند.
+- LTR-006: نامه‌های حساس طبق Approval Policy نیازمند Manager/Admin approval هستند.
+- LTR-007: SENT immutable است؛ اصلاح بعدی باید Version/Correction جدید باشد.
+- LTR-008: Template فعال Versioned و Human-Approved است.
+- LTR-009: AI می‌تواند از Letter نهایی Template Draft پیشنهاد دهد، ولی حق فعال‌سازی مستقیم ندارد.
+- LTR-010: Template Variable فقط از Context مجاز/verified یا Human Input Resolve می‌شود.
+- LTR-011: Incoming Letter AI می‌تواند Summary/Task/Deadline/Reply پیشنهاد دهد؛ اجرای آن‌ها تابع Permission/Workflow است.
+- LTR-012: AI context در نامه‌نگاری Permission-aware است و Internal/Finance sensitive data بدون مجوز وارد Prompt نمی‌شود.
