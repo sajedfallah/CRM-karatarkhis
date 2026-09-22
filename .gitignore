@@ -37,6 +37,10 @@ yarn-debug.log*
 yarn-error.log*
 
 # Temporary files
+backend/.venv/
+.venv/
+__pycache__/
+*.py[cod]
 *.tmp
 *.temp
 *.bak

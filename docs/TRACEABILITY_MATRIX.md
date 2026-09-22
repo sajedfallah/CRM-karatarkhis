@@ -26,7 +26,7 @@
 | EXP-001 | Packing List Snapshot | MISSING | not implemented | NOT_STARTED |
 | EXP-003 | Export Package Manifest | MISSING | not implemented | NOT_STARTED |
 | UI-WEB | Persian RTL Web App | MISSING | no canonical web frontend | NOT_STARTED |
-| OPS-CI | Automated CI | MISSING | no verified GitHub Actions baseline | NOT_STARTED |
+| OPS-CI | Automated CI | IMPLEMENTED | `.github/workflows/ci.yml`: compile/import, PostgreSQL zero→head migration, pytest, Gitleaks | PASS (local pytest: 5 passed; CI PostgreSQL pending first remote run) |
 | OPS-AUTH | Production Auth | MISSING | X-User-ID DEV/STAGING only | NOT_STARTED |
 
 | IAM-INVITE | Organization/User Invitation | MISSING | invite/email confirmation/customer admin membership flow not implemented | NOT_STARTED |

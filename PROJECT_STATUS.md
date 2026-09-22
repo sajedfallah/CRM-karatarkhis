@@ -2,13 +2,38 @@
 
 ## Current State
 Current Epic: EPIC-001 FOUNDATION
-Current Task: KRT-FOUNDATION-001R
+Current Task: KRT-FOUNDATION-002R
 Branch: codex/canonical-v5-build
 Base: feature/v5-backend-foundation
 Environment: repository baseline only; no production deployment
 
 ## Task Status
 KRT-FOUNDATION-001R: PARTIAL
+KRT-FOUNDATION-002R: PASS
+
+## KRT-FOUNDATION-002R — Automated QA + CI Foundation
+
+**Status: PASS**
+
+Implemented a canonical automated backend baseline:
+- pytest + FastAPI TestClient fixtures with a disposable SQLite developer
+  fallback and PostgreSQL CI configuration.
+- Health and identity boundary tests.
+- Customer tenant-isolation/IDOR regression tests for cases, tasks, and
+  documents, including cross-tenant create denial.
+- GitHub Actions CI with dependency installation, compile/import checks,
+  PostgreSQL zero-to-head Alembic validation, pytest, and Gitleaks scan.
+- Local commands documented in `docs/TEST_COMMANDS.md`.
+
+Verification executed locally on 2026-09-23:
+`python -m compileall -q app tests` — PASS
+`python -m pytest -q` — **5 passed**
+
+The PostgreSQL migration rehearsal is enforced by CI's disposable PostgreSQL
+service. No credentials, production database, or live data were used.
+
+**Next Task:** KRT-IAM-001 — Production Authentication, Organizations,
+Memberships, Invitations, Email Confirmation, RBAC, and security event logs.
 
 ## Baseline
 V5 backend foundation: FastAPI + SQLAlchemy 2 + PostgreSQL/Neon + Alembic.
