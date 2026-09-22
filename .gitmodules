@@ -1,0 +1,4 @@
+[submodule "references/atomic-crm"]
+	path = references/atomic-crm
+	url = https://github.com/marmelab/atomic-crm.git
+	branch = main
