@@ -2,7 +2,7 @@
 
 ## Current State
 Current Epic: EPIC-001 FOUNDATION
-Current Task: KRT-FOUNDATION-002R
+Current Task: KRT-IAM-001
 Branch: codex/canonical-v5-build
 Base: feature/v5-backend-foundation
 Environment: repository baseline only; no production deployment
@@ -10,6 +10,8 @@ Environment: repository baseline only; no production deployment
 ## Task Status
 KRT-FOUNDATION-001R: PARTIAL
 KRT-FOUNDATION-002R: PASS
+KRT-IAM-001: IN_PROGRESS
+KRT-IAM-001A: PASS — identity/organization schema and ORM foundation
 
 ## KRT-FOUNDATION-002R — Automated QA + CI Foundation
 

@@ -3,6 +3,7 @@
 | Requirement | Target Module | Current V5 | Evidence/Gap | Test Status |
 |---|---|---|---|---|
 | IAM-BASE | Identity/Auth | PARTIAL | Users/Permissions exist; production auth missing | PARTIAL |
+| IAM-ORG | Organization/Membership foundation | IMPLEMENTED | migration 0006_identity_access and ORM models | PASS |
 | SEC-004 | Customer Isolation | PARTIAL | server-side tenant/scope logic exists; automated IDOR suite missing | UNTESTED |
 | CRM-CUSTOMER | Customer | IMPLEMENTED-PARTIAL | customer backend foundation exists; 360/contacts incomplete | PARTIAL |
 | CASE-CORE | Case/Assignment | IMPLEMENTED | V5 case + assignments exist | PARTIAL |
@@ -26,7 +27,7 @@
 | EXP-001 | Packing List Snapshot | MISSING | not implemented | NOT_STARTED |
 | EXP-003 | Export Package Manifest | MISSING | not implemented | NOT_STARTED |
 | UI-WEB | Persian RTL Web App | MISSING | no canonical web frontend | NOT_STARTED |
-| OPS-CI | Automated CI | IMPLEMENTED | `.github/workflows/ci.yml`: compile/import, PostgreSQL zero→head migration, pytest, Gitleaks | PASS (local pytest: 5 passed; CI PostgreSQL pending first remote run) |
+| OPS-CI | Automated CI | IMPLEMENTED | `.github/workflows/ci.yml`: compile/import, PostgreSQL zero→head migration, pytest, Gitleaks | PASS (local pytest: 5 passed; remote GitHub Actions verified green) |
 | OPS-AUTH | Production Auth | MISSING | X-User-ID DEV/STAGING only | NOT_STARTED |
 
 | IAM-INVITE | Organization/User Invitation | MISSING | invite/email confirmation/customer admin membership flow not implemented | NOT_STARTED |
