@@ -11,7 +11,11 @@ Environment: repository baseline only; no production deployment
 KRT-FOUNDATION-001R: PARTIAL
 KRT-FOUNDATION-002R: PASS
 KRT-IAM-001: IN_PROGRESS
-KRT-IAM-001A: PASS — identity/organization schema and ORM foundation
+KRT-IAM-001A: PASS — identity/organization schema and ORM foundation; CI gate
+verified on 2026-09-23 by GitHub Actions run 35802057875 at commit
+`b772ddcc786c96cb0e3f9ef61b64c65c5b57ffa7`.
+
+Next Subtask: KRT-IAM-001B
 
 ## KRT-FOUNDATION-002R — Automated QA + CI Foundation
 

@@ -3,7 +3,7 @@
 | Requirement | Target Module | Current V5 | Evidence/Gap | Test Status |
 |---|---|---|---|---|
 | IAM-BASE | Identity/Auth | PARTIAL | Users/Permissions exist; production auth missing | PARTIAL |
-| IAM-ORG | Organization/Membership foundation | IMPLEMENTED | migration 0006_identity_access and ORM models | PASS |
+| IAM-ORG | Organization/Membership foundation | IMPLEMENTED | migration 0006_identity_access and ORM models; CI run 35802057875 verified PostgreSQL zero→head | PASS |
 | SEC-004 | Customer Isolation | PARTIAL | server-side tenant/scope logic exists; automated IDOR suite missing | UNTESTED |
 | CRM-CUSTOMER | Customer | IMPLEMENTED-PARTIAL | customer backend foundation exists; 360/contacts incomplete | PARTIAL |
 | CASE-CORE | Case/Assignment | IMPLEMENTED | V5 case + assignments exist | PARTIAL |
