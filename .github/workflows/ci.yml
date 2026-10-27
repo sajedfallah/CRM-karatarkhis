@@ -43,6 +43,9 @@ jobs:
       - name: Run backend regression suite
         working-directory: backend
         run: pytest
+      - name: Generate reviewed staging upgrade SQL
+        working-directory: backend
+        run: alembic upgrade 0005_drive_folder_provisioning:head --sql
   secret-scan:
     runs-on: ubuntu-latest
     permissions:
