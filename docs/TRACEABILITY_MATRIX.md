@@ -28,8 +28,8 @@
 | EXP-003 | Export Package Manifest | MISSING | not implemented | NOT_STARTED |
 | UI-WEB | Persian RTL Web App | MISSING | no canonical web frontend | NOT_STARTED |
 | OPS-CI | Automated CI | IMPLEMENTED | `.github/workflows/ci.yml`: compile/import, PostgreSQL zero→head migration, pytest, Gitleaks | PASS (local pytest: 5 passed; remote GitHub Actions verified green) |
-| OPS-AUTH | Production Auth | PARTIAL | KRT-IAM-001B adds password/session runtime; enrollment and organization integration remain open | CI_PENDING |
-| IAM-SESSION | Revocable cookie sessions | IMPLEMENTED-PARTIAL | migration 0007, authentication.py, auth.py; Origin/CSRF/expiry/revocation/rate-limit regressions | CI_PENDING |
+| OPS-AUTH | Production Auth | PARTIAL | password/session runtime tested; enrollment and organization integration remain open | PARTIAL |
+| IAM-SESSION | Revocable cookie sessions | IMPLEMENTED | migration 0007; CSRF/expiry/revocation/rate-limit regressions; PostgreSQL CI and isolated staging verified | PASS |
 
 | IAM-INVITE | Organization/User Invitation | MISSING | invite/email confirmation/customer admin membership flow not implemented | NOT_STARTED |
 | IAM-CASE-SCOPE | Customer Case Scope | MISSING | organization + selected-case access model not implemented | NOT_STARTED |

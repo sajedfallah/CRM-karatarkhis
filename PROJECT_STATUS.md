@@ -5,7 +5,7 @@ Current Epic: EPIC-001 FOUNDATION
 Current Task: KRT-IAM-001B — password/session authentication foundation
 Branch: codex/iam-session-auth-20261027
 Base: feature/v5-backend-foundation
-Environment: repository baseline only; no production deployment
+Environment: isolated Neon staging + Vercel preview; no production deployment
 
 ## Task Status
 KRT-FOUNDATION-001R: PARTIAL
@@ -19,7 +19,7 @@ Next Subtask: invitation/email-verification enrollment and organization authoriz
 
 ## 2026-10-27 — Session authentication slice
 
-KRT-IAM-001B: PARTIAL pending runtime CI and the remaining enrollment dependencies.
+KRT-IAM-001B: PARTIAL — session foundation verified; invitation/enrollment dependencies remain.
 
 Implemented Argon2id password verification, verified-email binding, hashed opaque
 server-side sessions, Secure/HttpOnly/SameSite cookies, Origin/CSRF checks,
@@ -29,11 +29,20 @@ Added migration 0007; migrations 0001–0006 are unchanged.
 
 Local compileall and git diff --check: PASS. Local dependency installation failed
 because files.pythonhosted.org timed out; no local pytest PASS is claimed.
-The PostgreSQL migration/API regression gate must pass in GitHub Actions before merge.
+PostgreSQL zero-to-head migrations and all 21 API/security tests: PASS in GitHub Actions.
+Secret scanning: PASS on 3bfa7286291a89be58408f9d18c9fb41fb847e67.
+Isolated Neon branch staging-iam-20261027 upgraded from 0005 to 0007 using
+Alembic-generated SQL; parent development was not modified. Vercel preview
+redeployed against staging with APP_ENV=staging: /health and /health/db returned 200.
 No production deployment, account enrollment, email sending or customer migration
 was performed. Organization membership enforcement, invitations, email verification,
 password reset, MFA, UI and the other canonical P0 milestones remain open.
 See docs/IAM_SESSION_AUTH.md for exact behavior/configuration and limitations.
+
+User confirmed V5 web completion and migration as the target on 2026-10-27.
+Email-provider integration is required for invitation/verification delivery;
+the Vercel connector returned 403 for integration management and Marketplace
+requires account login. The frontend and remaining canonical P0 modules are open.
 
 Historical sections below describe earlier tasks and may contain superseded status.
 

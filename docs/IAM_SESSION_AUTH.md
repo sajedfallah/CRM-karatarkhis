@@ -1,27 +1,39 @@
-# KRT-IAM-001B — Password/session foundation
+# احراز هویت و نشست — KRT-IAM-001B
 
-This slice adds password verification and revocable server-side sessions to the existing FastAPI stack. It does not complete the IAM epic or authorize production cutover.
+این مرحله، پایه ورود با رمز و نشست قابل لغو را به FastAPI اضافه می‌کند. تکمیل این مرحله به معنی تکمیل کل IAM یا آمادگی انتقال عملیاتی نیست.
 
-## Behavior
+## رفتار پیاده‌سازی‌شده
 
-- `POST /api/v1/auth/login`: email/password; only active users with a verified credential can sign in. Email matching is normalized; ambiguous duplicate legacy identities fail closed.
-- Argon2id password hashes; session and CSRF tokens are random and stored only as SHA-256 hashes.
-- Host-only `__Host-krt_session` cookie: Secure, HttpOnly, SameSite=Strict, eight-hour expiry.
-- Mutations authenticated by cookie require an allowed Origin and `X-CSRF-Token` returned by login.
-- `POST /api/v1/auth/logout` revokes the server-side session and expires the cookie.
-- Active state and verified email are checked for every session request. Changing email invalidates existing sessions.
-- Database-backed, atomic login limits: ten attempts per normalized email and sixty per connection IP per fifteen minutes. The proxy forwarding header is deliberately ignored; configure trusted proxy handling before relying on per-client IP limits behind a proxy.
-- Security events record success/failure/logout without passwords, raw tokens or email addresses.
-- `X-User-ID` is disabled by default. It requires `DEV_IDENTITY_ENABLED=true` and APP_ENV=development/test. It never overrides a cookie or works in staging/production.
+- POST /api/v1/auth/login: ورود با ایمیل و رمز؛ فقط حساب فعال با ایمیل تأییدشده می‌تواند وارد شود.
+- رمزها با Argon2id نگهداری می‌شوند؛ توکن نشست و CSRF تصادفی هستند و فقط هش آن‌ها در پایگاه‌داده ذخیره می‌شود.
+- کوکی __Host-krt_session دارای Secure، HttpOnly، SameSite=Strict و عمر هشت‌ساعته است.
+- تغییر اطلاعات با نشست کوکی به Origin مجاز و هدر X-CSRF-Token نیاز دارد.
+- POST /api/v1/auth/logout نشست را در سرور لغو و کوکی را منقضی می‌کند.
+- وضعیت حساب و ایمیل تأییدشده در هر درخواست دوباره کنترل می‌شوند. تغییر ایمیل نشست قبلی را نامعتبر می‌کند.
+- محدودیت ورود در پایگاه‌داده و به‌صورت اتمیک اعمال می‌شود: ده تلاش برای هر ایمیل و شصت تلاش برای هر IP اتصال در پانزده دقیقه. هدر X-Forwarded-For ارسالی کاربر قابل اعتماد فرض نمی‌شود.
+- رویدادهای ورود موفق، ناموفق و خروج بدون ثبت رمز یا توکن خام ذخیره می‌شوند.
+- X-User-ID پیش‌فرض خاموش است؛ فقط با DEV_IDENTITY_ENABLED=true و APP_ENV=development/test قابل استفاده است و در staging/production پذیرفته نمی‌شود.
+- خطای اعتبارسنجی مقدار رمز ارسال‌شده را به پاسخ برنمی‌گرداند.
 
-## Configuration
+## تنظیمات
 
-Set `AUTH_ALLOWED_ORIGINS` to a JSON array containing the exact HTTPS frontend origin, for example `["https://crm.example.test"]`. There is no wildcard fallback. HTTPS is required for the session cookie, including staging. Cross-origin frontend deployment/CORS is not configured by this change; prefer a same-origin reverse proxy.
+AUTH_ALLOWED_ORIGINS آرایه JSON شامل آدرس دقیق HTTPS رابط کاربری است؛ wildcard یا fallback عمومی ندارد. این تغییر CORS میان دو مبدأ را پیکربندی نمی‌کند؛ استقرار هم‌مبدأ برای رابط و API مناسب است. کوکی امن در محیط آزمایشی نیز به HTTPS نیاز دارد.
 
-Apply the new `0007_password_sessions` migration on a disposable staging database first. Previous migrations are unchanged. Run `python -m pytest -q` and the existing PostgreSQL zero-to-head CI gate.
+migration جدید 0007_password_sessions است و migrationهای 0001 تا 0006 تغییر نکرده‌اند.
 
-## Remaining IAM dependencies
+## شواهد اجرای ۲۰۲۶/۱۰/۲۷
 
-PasswordCredential rows must be created by a subsequent invitation/email-verification flow. This slice deliberately adds no public registration endpoint or admin verification bypass. No account was created and no email sent. Organization-membership activation, invitation acceptance, email delivery, password reset, organization/case access integration, MFA and session management UI remain open. Existing User/Permission authorization is retained and the full organization model is not yet enforced by it.
+- ۲۱ آزمون بک‌اند روی PostgreSQL در GitHub Actions موفق شد.
+- ساخت پایگاه‌داده از صفر تا migration شماره ۷ موفق شد.
+- اسکن امنیتی روی commit 3bfa7286291a89be58408f9d18c9fb41fb847e67 موفق شد.
+- ارتقای شاخه مستقل staging-iam-20261027 در Neon از نسخه ۵ به ۷ با SQL تولیدشده توسط Alembic موفق شد.
+- استقرار آزمایشی Vercel با APP_ENV=staging اجرا شد؛ /health و /health/db هر دو پاسخ موفق دادند.
+- نصب وابستگی Python در دستگاه محلی با timeout مواجه شد؛ نتیجه pytest محلی ادعا نمی‌شود. compileall و diff --check محلی موفق بودند.
 
-Expired session/throttle cleanup needs an operations job. The current per-IP limiter can conservatively group users behind a reverse proxy; tune it using a verified trusted-proxy policy before public rollout. Full production readiness still depends on the canonical P0/UAT checklist.
+## موارد باقی‌مانده
+
+ساخت PasswordCredential باید از مسیر دعوت و تأیید ایمیل انجام شود. مسیر ثبت‌نام عمومی یا دور زدن تأیید مدیر ایجاد نشده است. حساب جدید یا ایمیل خروجی ساخته/ارسال نشده است.
+
+دعوت و پذیرش، ارسال ایمیل، اتصال مجوز به عضویت سازمان و پرونده، بازیابی رمز، MFA و رابط کاربری همچنان باقی‌اند. مجوزهای فعلی User/Permission حفظ شده‌اند؛ مدل کامل سازمان هنوز در تمام مسیرها اعمال نشده است.
+
+پاک‌سازی نشست‌های منقضی و شمارنده‌ها به کار دوره‌ای نیاز دارد. محدودیت IP پشت reverse proxy باید با سیاست اعتماد مشخص تنظیم شود. فهرست کامل P0 و آزمون پذیرش همچنان ملاک انتقال عملیاتی است.
