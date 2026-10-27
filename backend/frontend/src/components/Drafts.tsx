@@ -2,7 +2,7 @@ import {useEffect,useState,type FormEvent} from 'react';
 import {useBlocker} from '@tanstack/react-router';
 import {useMutation,useQuery,useQueryClient} from '@tanstack/react-query';
 import {request,ApiError,type RecordRow} from '../api';
-import {createDraft,saveDraft,draftValidation,emptyProductDetails,type CaseDraft,type DraftContent} from '../drafts';
+import {createDraft,saveDraft,draftValidation,emptyProductDetails,emptyExportShipment,type CaseDraft,type DraftContent} from '../drafts';
 import {ProductReview} from './ProductReview';
 import {RegistrationReadiness} from './RegistrationReadiness';
 import {Button} from './Button';
@@ -13,6 +13,7 @@ const same=(a:DraftContent,b:DraftContent)=>JSON.stringify(a)===JSON.stringify(b
 function DraftEditor({initial,onClose,onReload}:{initial:CaseDraft;onClose:()=>void;onReload:()=>void}){
   const [record,setRecord]=useState(initial);const [content,setContent]=useState<DraftContent>(initial.content);
   const details=content.product_details??emptyProductDetails;
+  const shipment=content.export_shipment??emptyExportShipment;
   const cache=useQueryClient();const dirty=!same(content,record.content);const invalid=draftValidation(content);
   const save=useMutation({retry:false,mutationFn:(input:{version:number;content:DraftContent})=>saveDraft(record.id,input.version,input.content),
     onSuccess:(data,input)=>{setRecord(data);setContent(current=>same(current,input.content)?data.content:current);void cache.invalidateQueries({queryKey:['case-drafts']});}});
@@ -38,7 +39,14 @@ function DraftEditor({initial,onClose,onReload}:{initial:CaseDraft;onClose:()=>v
       <label className="full-width">جنس / مواد تشکیل‌دهنده<textarea maxLength={500} value={details.material} onChange={e=>change('product_details',{...details,material:e.target.value})}/></label>
       <label className="full-width">کاربرد کالا<textarea maxLength={1000} value={details.intended_use} onChange={e=>change('product_details',{...details,intended_use:e.target.value})}/></label>
       <label className="full-width">ویژگی‌های فنی<textarea rows={4} maxLength={4000} value={details.technical_attributes} onChange={e=>change('product_details',{...details,technical_attributes:e.target.value})}/></label>
-    </div><p className="muted">کد HS ورودی انسانی است. ثبت آن به‌تنهایی تأیید کارشناسی محسوب نمی‌شود.</p></fieldset>{invalid&&<p className="form-error" role="alert">{invalid}</p>}
+    </div><p className="muted">کد HS ورودی انسانی است. ثبت آن به‌تنهایی تأیید کارشناسی محسوب نمی‌شود.</p></fieldset>{content.operation_type==='export'&&<fieldset><legend>جزئیات حمل صادراتی</legend><div className="customer-grid">
+      <label>نوع بسته‌بندی<input maxLength={100} value={shipment.package_type} onChange={e=>change('export_shipment',{...shipment,package_type:e.target.value})}/></label>
+      <label>تعداد بسته<input type="number" min={1} max={1000000000} step={1} value={shipment.package_count??''} onChange={e=>change('export_shipment',{...shipment,package_count:e.target.value===''?null:Number(e.target.value)})}/></label>
+      <label>ارزش کل<input type="number" min={0} step="0.01" value={shipment.total_value??''} onChange={e=>change('export_shipment',{...shipment,total_value:e.target.value||null})}/></label>
+      <label>ارز سه‌حرفی<input maxLength={3} autoCapitalize="characters" placeholder="USD" value={shipment.currency} onChange={e=>change('export_shipment',{...shipment,currency:e.target.value.toUpperCase()})}/></label>
+      <label>موبایل راننده<input type="tel" maxLength={32} value={shipment.driver_mobile} onChange={e=>change('export_shipment',{...shipment,driver_mobile:e.target.value})}/></label>
+      <label>خودرو / پلاک<input maxLength={128} value={shipment.vehicle_identifier} onChange={e=>change('export_shipment',{...shipment,vehicle_identifier:e.target.value})}/></label>
+    </div><p className="muted">این مشخصات فقط برای عملیات صادرات نمایش داده می‌شود. ثبت آن‌ها هنوز بسته‌بندی نهایی یا ثبت پرونده نیست.</p></fieldset>}{invalid&&<p className="form-error" role="alert">{invalid}</p>}
     {save.isError&&<div className="form-error" role="alert"><p>{conflict?'اطلاعات این پرونده در جای دیگری تغییر کرده است. برای جلوگیری از بازنویسی، ذخیره متوقف شد.':'ذخیره انجام نشد. اطلاعات شما در فرم باقی مانده است؛ دوباره ذخیره کنید.'}</p>
       {conflict&&<><p>با دریافت نسخه جدید، تغییرات ذخیره‌نشده این فرم کنار گذاشته می‌شوند.</p><Button type="button" variant="outline" onClick={onReload}>دریافت نسخه جدید</Button></>}</div>}
     <div className="form-actions"><Button type="submit" disabled={!dirty||!!invalid||save.isPending||conflict}>ذخیره اطلاعات</Button>{dirty&&!save.isPending&&<Button type="button" variant="ghost" onClick={onClose}>بستن بدون ذخیره تغییرات</Button>}</div>

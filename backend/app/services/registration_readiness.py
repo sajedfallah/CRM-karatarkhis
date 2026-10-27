@@ -26,6 +26,23 @@ def registration_readiness(db, draft):
         ("quantity","تعداد"),("net_weight","وزن خالص"),("gross_weight","وزن ناخالص")):
         value=data.get(key)
         fields.append((key,title,value is not None and (not isinstance(value,str) or bool(value.strip()))))
+    shipment_checks=[]
+    if data.get("operation_type")=="export":
+        shipment=data.get("export_shipment") or {}
+        product=data.get("product_details") or {}
+        checks=(
+            ("package_type","نوع بسته‌بندی",bool(shipment.get("package_type"))),
+            ("package_count","تعداد بسته",shipment.get("package_count") is not None),
+            ("total_value","ارزش کل",shipment.get("total_value") is not None),
+            ("currency","ارز",bool(shipment.get("currency"))),
+            ("customs","گمرک خروجی",bool(data.get("customs"))),
+            ("hs_code","کد HS",bool(product.get("hs_code"))),
+            ("driver_mobile","موبایل راننده",bool(shipment.get("driver_mobile"))),
+            ("vehicle_identifier","خودرو / پلاک",bool(shipment.get("vehicle_identifier"))),
+        )
+        shipment_checks=[{"id":key,"title":title,"complete":complete} for key,title,complete in checks]
+        review=product_review(db,draft)
+        shipment_checks.append({"id":"hs_human_review","title":"بررسی انسانی کد HS","complete":review["status"]=="VERIFIED"})
     documents=[]
     for document,version in latest_versions(db):
         if document.customer_id==draft.customer_id:
@@ -33,6 +50,8 @@ def registration_readiness(db, draft):
                 "version":version.version,"status":validity(version)})
     return {"draft_id":draft.id,"draft_version":draft.version,"evaluated_on":local_today(),
         "initial_data_complete":all(passed for _,_,passed in fields),
+        "shipment_check_status":"COMPLETE" if shipment_checks and all(item["complete"] for item in shipment_checks) else "INCOMPLETE" if shipment_checks else "NOT_DEFINED",
+        "shipment_checks":shipment_checks,
         "final_submission_available":False,"product_review":product_review(db,draft),
         "initial_checks":[{"id":key,"title":title,"complete":passed} for key,title,passed in fields],
         "workflow_gaps":[{"requirement":key,"title":title,"status":"NOT_IMPLEMENTED"} for key,title in WORKFLOW_GAPS],

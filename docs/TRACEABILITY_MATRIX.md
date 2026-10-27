@@ -144,3 +144,11 @@ Product-review runtime 3d0ef60a087ddf6b3f607b98d33a9f14348d2bd9 deployed READY.
 Technical form and human-review readiness verified in authenticated Preview.
 No real HS value, review, customer record or draft edit was fabricated.
 
+CASE-SHIPMENT / EXP-001: export shipment data capture implemented as a draft-only
+slice. Packaging, package count, total value/currency, driver mobile and vehicle
+identifier persist in the resumable draft; readiness checks them alongside
+product/quantity/weights/customs/HS and explicit human HS review. Import and transit
+shipment requirements remain undefined and are not guessed. No final submission,
+snapshot, lock or migration is introduced. PostgreSQL CI and Preview verification
+are pending; local pytest/npm are unavailable in this workstation session.
+

@@ -211,3 +211,14 @@ Product-review runtime 3d0ef60a087ddf6b3f607b98d33a9f14348d2bd9 deployed READY.
 Technical form and human-review readiness verified in authenticated Preview.
 No real HS value, review, customer record or draft edit was fabricated.
 
+## Active slice — export shipment details
+CASE-SHIPMENT / UI-WEB: implementation prepared; full shipment workflow remains PARTIAL.
+Export drafts now include packaging type/count, total value/currency, driver mobile,
+and vehicle/plate. The read-only saved-version checklist includes the existing
+product, quantity, weight, customs and HS data plus a separate human-HS-review
+check. Import/transit requirements are not inferred. These fields stay inside the
+existing versioned draft JSON, so no migration or final-case creation is added.
+Customer confirmation, immutable submission snapshot, final-submit lock, and
+document linkage remain unavailable. Local pytest/npm runners are unavailable;
+PostgreSQL CI and deployed-preview verification are pending.
+

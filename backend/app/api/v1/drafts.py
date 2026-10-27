@@ -25,6 +25,16 @@ class ProductDetails(BaseModel):
     hs_code: str = Field(default="", max_length=12, pattern=r"^(?:[0-9]{6,12})?$")
 
 
+class ExportShipmentDetails(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    package_type: str = Field(default="", max_length=100)
+    package_count: int | None = Field(default=None, ge=1, le=1_000_000_000)
+    total_value: Decimal | None = Field(default=None, ge=0, max_digits=18, decimal_places=2)
+    currency: str = Field(default="", max_length=3, pattern=r"^(?:[A-Z]{3})?$")
+    driver_mobile: str = Field(default="", max_length=32)
+    vehicle_identifier: str = Field(default="", max_length=128)
+
+
 class DraftContent(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
     title: str = Field(default="", max_length=200)
@@ -32,6 +42,7 @@ class DraftContent(BaseModel):
     customs: str = Field(default="", max_length=64)
     product_description: str = Field(default="", max_length=2000)
     product_details: ProductDetails = Field(default_factory=ProductDetails)
+    export_shipment: ExportShipmentDetails = Field(default_factory=ExportShipmentDetails)
     shipment_reference: str = Field(default="", max_length=128)
     quantity: int | None = Field(default=None, ge=1, le=1_000_000_000)
     net_weight: Decimal | None = Field(default=None, ge=0, max_digits=18, decimal_places=3)

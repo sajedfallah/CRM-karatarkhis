@@ -43,6 +43,25 @@ def test_readiness_admin_only_and_strict_version_validation(client,actors,auth_h
     assert client.get('/api/v1/case-drafts/MISSING/readiness?expected_version=1',headers=headers).status_code==404
 
 
+def test_export_shipment_readiness_lists_canonical_fields_without_claiming_submission(client,actors,auth_headers):
+    headers=auth_headers(actors['admin'].id);row=draft(client,headers)
+    path='/api/v1/case-drafts/'+row['id']
+    content={'operation_type':'export','customs':'Bandar Abbas','product_description':'Goods','quantity':4,
+        'net_weight':'10','gross_weight':'12','product_details':{'hs_code':'123456'},
+        'export_shipment':{'package_type':'Carton','package_count':2,'total_value':'500.00','currency':'USD',
+            'driver_mobile':'09120000000','vehicle_identifier':'Truck 1'}}
+    saved=client.put(path,headers=headers,json={'expected_version':1,'content':content})
+    assert saved.status_code==200,saved.text
+    data=client.get(path+'/readiness?expected_version=2',headers=headers).json()
+    assert data['shipment_check_status']=='INCOMPLETE'
+    checks={item['id']:item['complete'] for item in data['shipment_checks']}
+    assert checks=={'package_type':True,'package_count':True,'total_value':True,'currency':True,
+        'customs':True,'hs_code':True,'driver_mobile':True,'vehicle_identifier':True,'hs_human_review':False}
+    assert not data['final_submission_available']
+    assert client.get(path+'/readiness?expected_version=1',headers=headers).status_code==409
+    assert db.scalar(select(func.count()).select_from(Case))==0
+
+
 def test_only_latest_own_customer_document_validity_is_informational(client,db,actors,auth_headers):
     headers=auth_headers(actors['admin'].id);row=draft(client,headers)
     for name,customer in [('OWN','CUS-A'),('OTHER','CUS-B')]:
