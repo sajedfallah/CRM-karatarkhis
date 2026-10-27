@@ -25,3 +25,9 @@
 .nav-group summary:focus-visible{outline:2px solid #34867e;outline-offset:2px}
 @media(prefers-reduced-motion:reduce){.nav-chevron{transition:none}}
 
+.document-upload textarea{display:block;width:100%;min-height:90px;border:1px solid #cbd5e1;border-radius:8px;padding:10px;margin-top:7px;background:white;font:inherit;resize:vertical}
+.document-upload label:has(input[type=checkbox]),.draft-editor label:has(input[type=checkbox]){display:flex;align-items:flex-start;gap:10px;line-height:1.9}
+.document-upload input[type=checkbox],.draft-editor input[type=checkbox]{display:inline-block;width:16px;height:16px;flex-shrink:0;padding:0;margin:4px 0 0;accent-color:#0f766e}
+.document-upload textarea:focus-visible{outline:2px solid #0f766e;outline-offset:3px}
+.detail-tabs{flex-wrap:wrap}.sidebar{overflow-y:auto}
+

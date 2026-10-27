@@ -27,3 +27,12 @@ API: GET/POST /customers/{customer_id}/reviewer-invitations، فقط مدیر د
 باز کردن لینک مستقیم یکی از این صفحات، گروه مربوط را باز می‌کند. باز/بسته‌شدن
 با صفحه‌کلید هم ممکن است و انتخاب زیرمنو در موبایل، منو را می‌بندد.
 
+آزمون‌ها: ۶۶ آزمون PostgreSQL و ۱۰ آزمون رابط، ساخت TypeScript/Vite و اسکن کلیدها
+موفق شدند. فعال‌سازی/تکرار، نقش و سازمان، عدم مشاهده اطلاعات داخلی، منع مدیریت
+کاربران و تأیید سند با مجوز اختصاصی در CI آزموده شده‌اند. هیچ دعوت واقعی برای
+آزمون ارسال نشده است.
+
+Preview verification: compact four-item navigation, keyboard disclosure and empty
+reviewer invitation form load with the existing admin. No customer profile or
+invitation was changed. /health/db returns 200. Full final submission remains open.
+

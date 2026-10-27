@@ -111,10 +111,14 @@ was READY on the active Preview alias. Full customer workflow remains PARTIAL.
 
 
 UI-WEB / IAM-INVITE / IMP-DRAFT: grouped case navigation and customer reviewer
-enrollment IN_PROGRESS. Case lists, registration drafts, declarations and documents
+enrollment PASS for this restricted slice; full customer portal PARTIAL. Case lists, registration drafts, declarations and documents
 share an accessible disclosure. Admin-only email invitation creates a dedicated
 DECLARATION_REVIEW permission, not generic customer data or delegation rights.
 Customer activation still verifies email and consumes a one-use 24h token. Existing
 accounts and general customer portal invitations remain outside this slice.
-No migration; CI and authenticated Preview verification pending.
+No migration. 66 PostgreSQL tests, 10 frontend tests, TypeScript/Vite build and secret scan PASS (CI 40538045883; runtime 5820a9bc4db3fd7f046a838563fd46528d4e1073). Authenticated Preview group collapse/reopen with Enter and reviewer invitation tab verified; no live email sent.
+
+Preview verification: compact four-item navigation, keyboard disclosure and empty
+reviewer invitation form load with the existing admin. No customer profile or
+invitation was changed. /health/db returns 200. Full final submission remains open.
 
