@@ -56,3 +56,8 @@ panel at /app uses existing authenticated API lists, session identity, real coun
 search/sort and explicit detail fields. Server authorization remains authoritative.
 Panel route and asset boundary tests plus frontend request/CSRF tests added.
 CRUD workflows, complete canonical screens and UAT remain outstanding.
+
+## Customer registration UI slice
+UI-WEB / CRM-001 / SEC-003: PARTIAL, CI_PENDING. Admin customer create/rename
+form with CSRF, input validation, pending/error/success handling; backend
+permission and audit regression tests. Full Customer 360 and case wizard remain.

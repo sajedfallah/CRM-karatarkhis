@@ -12,3 +12,14 @@ export async function logout(){
   await request('auth/logout',{method:'POST',headers:{'X-CSRF-Token':csrf}});
   sessionStorage.removeItem('krt_csrf');
 }
+
+export async function saveCustomer(name:string,id?:string):Promise<RecordRow>{
+  const normalized=name.trim();
+  if(normalized.length<2||normalized.length>255)throw new Error('نام مشتری باید بین ۲ تا ۲۵۵ نویسه باشد.');
+  const csrf=sessionStorage.getItem('krt_csrf');
+  if(!csrf)throw new Error('برای ثبت تغییرات، در همین زبانه دوباره وارد شوید.');
+  return request<RecordRow>(id?'customers/'+encodeURIComponent(id):'customers',{
+    method:id?'PATCH':'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':csrf},
+    body:JSON.stringify({name:normalized}),
+  });
+}

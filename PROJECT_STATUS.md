@@ -81,3 +81,11 @@ compileall and git diff --check passed for the previous slices. Local pip downlo
 timed out, so runtime pytest results come from PostgreSQL CI, not this workstation.
 Do not claim complete frontend, complete organization IAM, or production readiness
 from backend health alone.
+
+## Active slice — customer registration UI
+KRT-CRM-UI-001 / UI-WEB / CRM-001 / SEC-003: CI_PENDING.
+Admin-only create and rename customer dialogs use existing APIs with CSRF,
+no automatic retries, pending guard and cache refresh after server success.
+Server trims names and rejects whitespace-only/explicit-null names.
+No schema migration. Case creation UI remains gated on canonical draft workflow.
+Plan: PostgreSQL/frontend CI on isolated branch, then publish and inspect form.
