@@ -159,6 +159,8 @@ is implemented as an additive slice. Draft/customer boundary is enforced server-
 attach/detach are version-checked and audited, and detach retains its record.
 Readiness reports exact linked version and expiry validity. Required-document
 rules, shipment documents, authenticity/review, customer confirmation and submit
-remain outside this slice. Migration 0014 and PostgreSQL CI/deployment verification
-are pending.
+remain outside this slice. Migration 0014_draft_doc_links applied to isolated staging;
+CI 40598133253 passed (75 PostgreSQL, 11 frontend, TS/Vite build, migration rehearsal,
+Gitleaks). Commit f5683515bf3b625a9a69aa9dd354e70d3b47d84e is READY on protected
+Preview; authenticated read-only browser review passed with real draft version 9 unchanged.
 
