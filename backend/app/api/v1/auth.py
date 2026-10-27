@@ -54,6 +54,7 @@ def bootstrap_admin(request: Request, db: DbSession):
 class LoginRequest(BaseModel):
     email: str = Field(min_length=3, max_length=320)
     password: str = Field(min_length=1, max_length=128, repr=False)
+    organization_id: str | None = Field(default=None, min_length=1, max_length=64)
 
     @field_validator("email")
     @classmethod
@@ -65,7 +66,7 @@ class LoginRequest(BaseModel):
 def login(payload: LoginRequest, request: Request, response: Response, db: DbSession):
     require_origin(request)
     user = authenticate_password(db, payload.email, payload.password, request)
-    token, csrf = create_session(db, user)
+    token, csrf = create_session(db, user, payload.organization_id)
     response.set_cookie(COOKIE_NAME, token, httponly=True, secure=True, samesite="strict", path="/", max_age=8 * 3600)
     response.headers["Cache-Control"] = "no-store"
     return {"user_id": user.id, "csrf_token": csrf}

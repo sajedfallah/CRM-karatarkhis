@@ -82,7 +82,7 @@ def create_task(payload: TaskCreate, db: DbSession, current_user: CurrentUser) -
     customer_id, case_id, related_id = _resolve_relation(db, payload)
     auth = AuthorizationService(db)
     try:
-        auth.require_create_task(current_user, customer_id)
+        auth.require_create_task(current_user, customer_id, case_id)
     except AuthorizationDenied:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="action_not_allowed") from None
 

@@ -19,6 +19,7 @@ class AuthSession(Base):
     __tablename__ = "auth_sessions"
     token_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    membership_id: Mapped[str | None] = mapped_column(ForeignKey("organization_memberships.id", ondelete="RESTRICT"), index=True)
     csrf_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

@@ -6,6 +6,7 @@ from sqlalchemy import select
 from app.api.deps import CurrentUser, DbSession
 from app.models.core import AuditLog, Customer, Permission, User
 from app.schemas.users import CurrentUserRead, PermissionRead, UserCreate, UserRead, UserUpdate
+from app.services.authorization import AuthorizationService
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -56,12 +57,7 @@ def get_me(current_user: CurrentUser) -> CurrentUserRead:
 
 @router.get("/me/permissions", response_model=list[PermissionRead])
 def get_my_permissions(db: DbSession, current_user: CurrentUser) -> list[PermissionRead]:
-    statement = select(Permission).where(
-        Permission.is_active.is_(True),
-        (Permission.user_id == current_user.id)
-        | ((Permission.user_id.is_(None)) & (Permission.role == current_user.role) & (Permission.profile == current_user.permission_profile)),
-    )
-    return [PermissionRead.model_validate(item) for item in db.scalars(statement)]
+    return [PermissionRead.model_validate(item) for item in AuthorizationService(db).effective_permissions(current_user)]
 
 
 @router.get("", response_model=list[UserRead])

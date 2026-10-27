@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.models.auth import AuthSession, LoginThrottle, PasswordCredential
 from app.models.core import SecurityEvent, User
+from app.services.membership_identity import resolve_membership
 
 COOKIE_NAME = "__Host-krt_session"
 password_hasher = PasswordHasher()
@@ -80,9 +81,10 @@ def authenticate_password(db: Session, email: str, password: str, request: Reque
     return user
 
 
-def create_session(db: Session, user: User) -> tuple[str, str]:
+def create_session(db: Session, user: User, organization_id: str | None = None) -> tuple[str, str]:
+    identity = resolve_membership(db, user, organization_id=organization_id)
     token, csrf = secrets.token_urlsafe(32), secrets.token_urlsafe(32)
-    db.add(AuthSession(token_hash=token_hash(token), user_id=user.id, csrf_hash=token_hash(csrf),
+    db.add(AuthSession(token_hash=token_hash(token), user_id=user.id, membership_id=identity.membership_id, csrf_hash=token_hash(csrf),
                        expires_at=utc_now() + timedelta(hours=8)))
     db.add(SecurityEvent(user_id=user.id, event_type="login_succeeded"))
     db.commit()
@@ -107,4 +109,4 @@ def session_user(db: Session, request: Request) -> User | None:
         csrf = request.headers.get("x-csrf-token", "")
         if not secrets.compare_digest(session.csrf_hash, token_hash(csrf)):
             raise HTTPException(403, "invalid_csrf_token")
-    return user
+    return resolve_membership(db, user, membership_id=session.membership_id)

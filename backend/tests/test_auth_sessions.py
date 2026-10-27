@@ -7,7 +7,7 @@ from sqlalchemy import select
 from app.core.config import get_settings
 from app.main import app
 from app.models.auth import AuthSession, LoginThrottle, PasswordCredential
-from app.models.core import SecurityEvent
+from app.models.core import SecurityEvent, Organization, OrganizationMembership
 from app.services.authentication import COOKIE_NAME, hash_password, token_hash, utc_now
 
 ORIGIN = "https://crm.example.test"
@@ -22,6 +22,10 @@ def session_client(client, db, actors):
     settings.auth_allowed_origins = [ORIGIN]
     user = actors["manager_a"]
     user.email = "person@example.test"
+    db.add(Organization(id="SESSION-ORG", type="CUSTOMER", customer_id="CUS-A", name="Customer A", slug="session-org"))
+    db.flush()
+    db.add(OrganizationMembership(id="SESSION-MEM", organization_id="SESSION-ORG", user_id=user.id,
+        role=user.role, permission_profile=user.permission_profile, status="ACTIVE", is_primary=True))
     db.add(PasswordCredential(user_id=user.id, password_hash=hash_password(PASSWORD),
                               verified_email=user.email, email_verified_at=utc_now()))
     db.commit()
