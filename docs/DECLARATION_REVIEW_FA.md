@@ -27,3 +27,15 @@ cases/{id}/reviewers کاربران واجد شرایط؛ {version}/send، {vers
 گمرکی و override، کوتاژ و مسیرهای گمرکی هنوز تکمیل نشده‌اند.
 نباید از تأیید این سند، ثبت اظهار در سامانه گمرک یا تکمیل IMP-003 را نتیجه گرفت.
 هیچ سند یا نظر ساختگی در محیط آزمایشی واقعی ثبت نمی‌شود.
+
+## آزمون‌ها
+۶۲ آزمون PostgreSQL و ۱۰ آزمون رابط، ساخت TypeScript/Vite و اسکن کلیدها موفق شدند.
+آزمون‌های این گردش، تأیید/اصلاح، عدم تأیید مدیر داخلی، نسخه قدیمی، فایل ارسال‌نشده،
+مشتری دیگر، لغو عضویت/دسترسی پرونده، تکرار امن و تشخیص تغییر فایل را پوشش می‌دهند.
+Migration افزایشی 0012 در محیط آزمایشی اعمال شد. آزمون گردش کامل سند در CI
+با حساب‌ها و فایل‌های موقت انجام شده؛ سند مشتری واقعی برای آزمون ساخته نشده است.
+
+Authenticated Preview verification: /app/declarations renders the separate menu,
+import-case selector and honest empty state; /health/db returns 200. No real
+case or file was fabricated. Runtime e05eed0a3456fa89b05c4c0672e98fba7d079161
+was READY on the active Preview alias. Full customer workflow remains PARTIAL.

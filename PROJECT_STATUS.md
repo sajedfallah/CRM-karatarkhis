@@ -164,9 +164,14 @@ Terminology correction (UI-WEB / CASE-DRAFT): initial case-data UI is labelled
 customer approval is claimed. Existing draft IDs, API, content and autosave remain intact.
 
 
-IMP-DRAFT / DOC-003 / SEC-004: declaration-review slice IN_PROGRESS. Private
+IMP-DRAFT / DOC-003 / SEC-004: declaration-review slice PASS for API/UI foundation; full import workflow PARTIAL. Private
 immutable import-case file versions, explicit verified customer-manager recipient,
 version-bound approval/correction with required comment, append-only decisions,
 stale-version rejection and customer action inbox. No automatic EPS integration,
 email delivery, customer enrollment or case final-submission implementation.
-Migration 0012_declaration_review is additive. CI and staging verification pending.
+Migration 0012_declaration_review is additive. 62 PostgreSQL tests, 10 frontend tests, TypeScript/Vite build and secret scan PASS (CI 40535885618). Staging upgraded to 0012 with Alembic-generated SQL. Runtime e05eed0a3456fa89b05c4c0672e98fba7d079161.
+
+Authenticated Preview verification: /app/declarations renders the separate menu,
+import-case selector and honest empty state; /health/db returns 200. No real
+case or file was fabricated. Runtime e05eed0a3456fa89b05c4c0672e98fba7d079161
+was READY on the active Preview alias. Full customer workflow remains PARTIAL.
