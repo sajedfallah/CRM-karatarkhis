@@ -4,6 +4,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
 from app.api.v1.router import api_router
+from app.api.auth_pages import router as auth_pages_router
 from app.core.config import get_settings
 from app.db.session import engine
 from app.integrations.google_sheets import GoogleSheetsClient
@@ -17,6 +18,7 @@ app = FastAPI(
     redoc_url=None,
 )
 app.include_router(api_router)
+app.include_router(auth_pages_router)
 
 
 @app.exception_handler(RequestValidationError)

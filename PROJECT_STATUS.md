@@ -2,7 +2,7 @@
 
 ## Current State
 Current Epic: EPIC-001 FOUNDATION
-Current Task: KRT-IAM-001B — password/session authentication foundation
+Current Task: KRT-IAM-001B — internal invitation and email activation
 Branch: codex/iam-session-auth-20261027
 Base: feature/v5-backend-foundation
 Environment: isolated Neon staging + Vercel preview; no production deployment
@@ -40,6 +40,11 @@ password reset, MFA, UI and the other canonical P0 milestones remain open.
 See docs/IAM_SESSION_AUTH.md for exact behavior/configuration and limitations.
 
 User confirmed V5 web completion and migration as the target on 2026-10-27.
+Resend key was connected to the isolated Preview branch. Internal invitation
+delivery, one-time acceptance and Persian account utility pages are now implemented;
+runtime CI and live delivery verification are pending. No customer/organization
+authorization completion is claimed. Staging-only bootstrap is fixed to an env
+recipient, requires a separate random secret and closes after a verified admin exists.
 Email-provider integration is required for invitation/verification delivery;
 the Vercel connector returned 403 for integration management and Marketplace
 requires account login. The frontend and remaining canonical P0 modules are open.

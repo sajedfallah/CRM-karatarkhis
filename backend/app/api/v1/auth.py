@@ -1,12 +1,54 @@
-from fastapi import APIRouter, Request, Response
+from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel, Field, field_validator
 
 from app.api.deps import CurrentUser, DbSession
-from app.models.auth import AuthSession
+from app.models.auth import AuthSession, PasswordCredential
 from app.models.core import SecurityEvent
 from app.services.authentication import COOKIE_NAME, authenticate_password, create_session, require_origin, token_hash, utc_now
+from app.services.authentication import consume_login_attempt
+from app.services.invitations import accept_invitation, issue_internal_invitation
+from app.core.config import get_settings
+from app.models.core import Organization, User
+from sqlalchemy import select
+from uuid import uuid4
+import secrets
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
+
+
+class AcceptInvitationRequest(BaseModel):
+    token: str = Field(min_length=32, max_length=128, repr=False)
+    password: str = Field(min_length=12, max_length=128, repr=False)
+    full_name: str = Field(min_length=2, max_length=255)
+
+
+@router.post("/accept-invitation")
+def activate(payload: AcceptInvitationRequest, request: Request, response: Response, db: DbSession):
+    require_origin(request)
+    consume_login_attempt(db, "activation:" + (request.client.host if request.client else "unknown"), 30)
+    response.headers["Cache-Control"] = "no-store"
+    return accept_invitation(db, payload.token, payload.password, payload.full_name)
+
+
+@router.post("/bootstrap-admin", status_code=202, include_in_schema=False)
+def bootstrap_admin(request: Request, db: DbSession):
+    """One-account staging bootstrap; email verification is still mandatory."""
+    settings = get_settings()
+    configured = settings.admin_bootstrap_token.get_secret_value() if settings.admin_bootstrap_token else ""
+    supplied = request.headers.get("x-bootstrap-token", "")
+    if settings.app_env != "staging" or len(configured) < 32 or not secrets.compare_digest(supplied, configured):
+        raise HTTPException(404, "not_found")
+    email = (settings.admin_bootstrap_email or "").strip().lower()
+    if not email or "@" not in email:
+        raise HTTPException(503, "bootstrap_not_configured")
+    if db.scalar(select(PasswordCredential.user_id).join(User).where(User.role == "admin", PasswordCredential.email_verified_at.is_not(None))):
+        raise HTTPException(409, "bootstrap_closed")
+    organization = db.scalar(select(Organization).where(Organization.slug == "karatarkhis-internal"))
+    if not organization:
+        organization = Organization(id="ORG-" + uuid4().hex, type="INTERNAL", name="کاراترخیص", slug="karatarkhis-internal")
+        db.add(organization)
+        db.commit()
+    return issue_internal_invitation(db, organization, email, "admin", None)
 
 
 class LoginRequest(BaseModel):

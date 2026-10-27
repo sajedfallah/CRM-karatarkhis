@@ -31,7 +31,7 @@
 | OPS-AUTH | Production Auth | PARTIAL | password/session runtime tested; enrollment and organization integration remain open | PARTIAL |
 | IAM-SESSION | Revocable cookie sessions | IMPLEMENTED | migration 0007; CSRF/expiry/revocation/rate-limit regressions; PostgreSQL CI and isolated staging verified | PASS |
 
-| IAM-INVITE | Organization/User Invitation | MISSING | invite/email confirmation/customer admin membership flow not implemented | NOT_STARTED |
+| IAM-INVITE | Organization/User Invitation | PARTIAL | Internal invitation + email activation implemented; customer-admin enrollment and organization authorization remain open | CI_PENDING |
 | IAM-CASE-SCOPE | Customer Case Scope | MISSING | organization + selected-case access model not implemented | NOT_STARTED |
 | AUD-CORE | Audit/Security Logs | PARTIAL | audit exists; comprehensive auth/security events incomplete | PARTIAL |
 | OPS-FLAG | Feature Flags | MISSING | rollout control not implemented | NOT_STARTED |

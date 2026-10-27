@@ -7,6 +7,16 @@
   },
   "routes": [
     {
+      "src": "/(activate|login|account|auth-assets/.*)",
+      "dest": "/api/index",
+      "transforms": [{"type": "request.path", "op": "set", "args": "/$1"}]
+    },
+    {
+      "src": "/",
+      "dest": "/api/index",
+      "transforms": [{"type": "request.path", "op": "set", "args": "/"}]
+    },
+    {
       "src": "/health",
       "dest": "/api/index",
       "transforms": [

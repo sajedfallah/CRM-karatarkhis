@@ -1,6 +1,7 @@
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import SecretStr
 
 
 class Settings(BaseSettings):
@@ -11,6 +12,11 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     dev_identity_enabled: bool = False
     auth_allowed_origins: list[str] = []
+    auth_public_url: str | None = None
+    resend_api_key: SecretStr | None = None
+    email_from: str = "Karatarkhis <onboarding@resend.dev>"
+    admin_bootstrap_email: str | None = None
+    admin_bootstrap_token: SecretStr | None = None
 
     google_spreadsheet_id: str | None = None
     google_service_account_file: str | None = None
