@@ -58,6 +58,10 @@ Panel route and asset boundary tests plus frontend request/CSRF tests added.
 CRUD workflows, complete canonical screens and UAT remain outstanding.
 
 ## Customer registration UI slice
-UI-WEB / CRM-001 / SEC-003: PARTIAL, CI_PENDING. Admin customer create/rename
-form with CSRF, input validation, pending/error/success handling; backend
+UI-WEB / CRM-001 / SEC-003: PARTIAL; 46 PostgreSQL tests, 7 frontend tests and build PASS. Admin customer create/rename
+form with session-bound CSRF recovery for new tabs, input validation, pending/error/success handling; backend
 permission and audit regression tests. Full Customer 360 and case wizard remain.
+
+Customer form deployment and authenticated new-tab CSRF preparation verified
+in-browser on the active Preview alias. Live create/rename was not performed
+with fabricated customer data; persistence/audit/authorization verified in CI.

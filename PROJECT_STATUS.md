@@ -1,8 +1,8 @@
 # KARATARKHIS CRM — Project Status
 
 ## Current State
-Current Epic: EPIC-001 FOUNDATION / Identity & Access
-Current Task: KRT-IAM-001C — organization and selected-case authorization
+Current Epic: CRM foundation / operations web UI
+Current Task: KRT-CRM-UI-001 — customer registration and safe new-tab writes
 Working Branch: codex/iam-session-auth-20261027
 Canonical Base: codex/canonical-v5-build
 Environment: isolated Neon staging + Vercel Preview; no production cutover
@@ -30,7 +30,7 @@ No password or raw invitation token was read or stored in repository artifacts.
 The staging bootstrap secret was disabled after sending the invitation.
 
 ## Current implementation
-KRT-IAM-001C: CI_PENDING.
+KRT-IAM-001C backend slice: PASS (40 PostgreSQL tests; overall IAM remains partial).
 Requirement IDs: IAM-ORG, IAM-CASE-SCOPE, SEC-004, AUD-CORE.
 
 Implemented:
@@ -83,9 +83,20 @@ Do not claim complete frontend, complete organization IAM, or production readine
 from backend health alone.
 
 ## Active slice — customer registration UI
-KRT-CRM-UI-001 / UI-WEB / CRM-001 / SEC-003: CI_PENDING.
+KRT-CRM-UI-001 / UI-WEB / CRM-001 / SEC-003: PASS for this slice; full CRM remains PARTIAL.
 Admin-only create and rename customer dialogs use existing APIs with CSRF,
 no automatic retries, pending guard and cache refresh after server success.
 Server trims names and rejects whitespace-only/explicit-null names.
 No schema migration. Case creation UI remains gated on canonical draft workflow.
-Plan: PostgreSQL/frontend CI on isolated branch, then publish and inspect form.
+46 PostgreSQL tests and 7 frontend tests, TypeScript/Vite build and secret scan
+passed on 2df25a97c7cd14e89feaf7471be9692455da53dc.
+New-tab session preparation uses authenticated no-store CSRF recovery, preserving
+legacy sessions and existing tabs. Origin/CSRF validation remains mandatory.
+No customer records were fabricated for live verification.
+
+Browser verification: active administrator opened the deployed customer form;
+new-tab CSRF preparation completed without re-login or error. No live record
+was created by the agent. Create/rename persistence, audit, role denial, Origin,
+CSRF recovery and logout revocation were exercised against disposable PostgreSQL
+in CI. Runtime code: 2df25a97c7cd14e89feaf7471be9692455da53dc.
+Next task: canonical case-draft foundation and resumable registration flow.

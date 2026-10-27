@@ -23,3 +23,15 @@ Sensitive mutations and overrides are append-only audited.
 
 ## Secrets
 No secrets in Git, logs, AI prompts or public artifacts.
+
+## Session CSRF recovery for new tabs
+The same-origin GET /api/v1/auth/csrf requires an active verified cookie session
+and X-CSRF-Request: 1. An explicitly supplied Origin must be allowlisted. No
+cross-origin CORS access is enabled. Responses are private/no-store and vary by
+Cookie. CSRF is an HMAC-SHA256 value with a versioned purpose string, keyed by
+the cryptographically random HttpOnly session secret. It is not a bearer session
+credential and cannot authenticate without the cookie. Recovery does not rotate
+or extend sessions and does not invalidate other tabs. Unsafe requests still
+require both exact Origin and session-bound X-CSRF-Token. Legacy random CSRF
+hashes remain accepted only within their existing valid sessions. Expired,
+revoked, unverified and inactive sessions cannot acquire a token.
