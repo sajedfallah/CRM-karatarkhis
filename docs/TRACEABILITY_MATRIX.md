@@ -66,6 +66,10 @@ Customer form deployment and authenticated new-tab CSRF preparation verified
 in-browser on the active Preview alias. Live create/rename was not performed
 with fabricated customer data; persistence/audit/authorization verified in CI.
 
-CRM-CUSTOMER profile slice: CI_PENDING. Persistent identity/contact/address fields,
+CRM-CUSTOMER profile slice: PARTIAL; 48 backend tests, 8 frontend tests and build PASS. Persistent identity/contact/address fields,
 create/edit/detail UI, digit normalization, email validation and admin-only writes.
 Full multiple-contact Customer 360 remains out of this slice.
+
+Customer profile runtime 188e67e132988d5fa1e7ffae6d83928b54795bba deployed;
+existing-customer details/edit form and all contact/address sections verified
+in-browser. Staging schema 0009. Persistence/clear/partial-update tests PASS.

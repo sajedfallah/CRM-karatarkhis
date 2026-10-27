@@ -102,8 +102,17 @@ in CI. Runtime code: 2df25a97c7cd14e89feaf7471be9692455da53dc.
 Next task: canonical case-draft foundation and resumable registration flow.
 
 ## Active correction — customer profile
-CRM-CUSTOMER / UI-WEB: CI_PENDING. Extend create/edit/detail to include person/company,
+CRM-CUSTOMER / UI-WEB: PASS for the profile slice; full Customer 360 remains PARTIAL. Extend create/edit/detail to include person/company,
 identity/registration/tax identifiers, primary contact, phone/mobile/email, province,
 city/postal/address. Name remains required; optional fields can be completed later.
 Migration 0009 adds nullable columns; existing customers/sessions are preserved.
 Plan: PostgreSQL/frontend CI, additive staging migration, deploy, browser form QA.
+
+Customer profile: 48 PostgreSQL tests, 8 frontend tests, TypeScript/Vite build
+and secret scan PASS. Runtime candidate 188e67e132988d5fa1e7ffae6d83928b54795bba.
+Additive Alembic-generated migration applied to isolated staging; schema 0009.
+
+Profile deployment verified with the existing administrator/customer: details
+include all new fields, editor preserves the previous name, contact/address
+sections and save button render correctly, and write-session preparation completes.
+The agent did not modify the real customer profile or create test records in staging.

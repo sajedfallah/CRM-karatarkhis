@@ -31,3 +31,13 @@ Legacy Google Sheet IDs should be preserved as stable business identifiers where
 
 ## Deletion
 No hard delete for cases, submission snapshots, document versions, posted finance, audit, stage history, sent official correspondence or human AI decisions.
+
+## Customer profile — migration 0009_customer_profile
+Nullable fields on customers: customer_type (person/company), national_id,
+registration_number, economic_code, contact_name, phone, mobile, email,
+province, city, postal_code, address. IDs/phone/postal values are strings so
+leading zeroes are preserved. Persian/Arabic digits normalize to ASCII.
+Existing rows retain NULL for unknown values. No identity or tax-verification
+claim is inferred from a populated field. Multiple contacts remain a separate
+Customer 360 milestone. Profile reads/writes remain admin-only through the
+existing customer endpoints; no contact data is added to public pages or logs.
