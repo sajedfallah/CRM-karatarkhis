@@ -140,9 +140,19 @@ notification bell and empty notification center. The agent uploaded no customer
 file and modified no real profile. No independent offline scheduler is claimed.
 
 ## Active task — resumable case draft foundation
-CASE-DRAFT / UI-WEB / SEC-003: CI_PENDING. Separate draft records with bounded
+CASE-DRAFT / UI-WEB / SEC-003: PASS for initial drafts; full wizard remains PARTIAL. Separate draft records with bounded
 initial operation/goods/shipment fields, idempotent creation/save replay, atomic
 optimistic version checks and audit. Admin-only scope initially; no final-submit
 command is exposed and no Case record is created. Web autosave/resume and
 unsaved-navigation protection added. Full wizard/confirmation/submission remain.
 Additive migration 0011 required; prior migrations unchanged.
+
+Case draft runtime 631a7b6bdedcb74cbd4f70385a95a9c01b089358: 57 PostgreSQL
+tests, 10 frontend tests, TypeScript/Vite build and secret scan PASS. Additive
+migration 0011 applied to isolated staging using Alembic-generated SQL.
+See docs/CASE_DRAFTS_FA.md for the explicit initial-draft scope.
+
+Deployed /app/drafts verified with the existing administrator: menu, active
+customer selector and saved-draft list load successfully. The agent created no
+fabricated draft in staging. Save/resume/conflict/replay validation is PostgreSQL
+CI evidence; final confirmation/submission workflows remain unimplemented.

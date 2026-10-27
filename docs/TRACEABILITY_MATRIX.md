@@ -82,7 +82,10 @@ daily worker/offline delivery remain incomplete (CMP-004 stays PARTIAL).
 Corporate runtime 8e9760510e893295cc414eea01e3f77ee8f25f3e: deployed tab,
 private-storage readiness, upload fields and notification center verified in browser.
 
-Case-draft foundation slice: CI_PENDING. Persistent resumable initial drafts,
+Case-draft foundation slice: PARTIAL; 57 PostgreSQL tests, 10 frontend tests and build PASS. Persistent resumable initial drafts,
 optimistic conflict handling, idempotent replay, backend validation and no new
 submission bypass. Full canonical registration wizard and customer confirmation
 remain PARTIAL/NOT_STARTED until their own command workflows are implemented.
+
+Initial draft runtime 631a7b6bdedcb74cbd4f70385a95a9c01b089358 deployed;
+menu, real customer selection and draft listing verified in browser.
