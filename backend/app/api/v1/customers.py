@@ -27,8 +27,7 @@ def create_customer(payload: CustomerCreate, db: DbSession, current_user: Curren
     _require_admin(current_user)
     customer = Customer(
         id=f"CUS-{uuid4().hex[:12].upper()}",
-        name=payload.name,
-        is_active=payload.is_active,
+        **payload.model_dump(),
         drive_provisioning_status="pending",
     )
     db.add(customer)

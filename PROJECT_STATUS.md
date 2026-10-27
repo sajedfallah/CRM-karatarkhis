@@ -100,3 +100,10 @@ was created by the agent. Create/rename persistence, audit, role denial, Origin,
 CSRF recovery and logout revocation were exercised against disposable PostgreSQL
 in CI. Runtime code: 2df25a97c7cd14e89feaf7471be9692455da53dc.
 Next task: canonical case-draft foundation and resumable registration flow.
+
+## Active correction — customer profile
+CRM-CUSTOMER / UI-WEB: CI_PENDING. Extend create/edit/detail to include person/company,
+identity/registration/tax identifiers, primary contact, phone/mobile/email, province,
+city/postal/address. Name remains required; optional fields can be completed later.
+Migration 0009 adds nullable columns; existing customers/sessions are preserved.
+Plan: PostgreSQL/frontend CI, additive staging migration, deploy, browser form QA.

@@ -1,3 +1,4 @@
+import {customerProfileFields,type CustomerInput} from './customerProfile';
 export type RecordRow = {id:string;[key:string]:unknown};
 export type User = {id:string;full_name:string;role:string;organization_id:string|null;membership_id:string|null;scope_type:string|null};
 export class ApiError extends Error {constructor(public status:number){super(status===401?'نشست شما پایان یافته است. دوباره وارد شوید.':status===403?'برای این بخش دسترسی فعال ندارید.':'دریافت اطلاعات انجام نشد. دوباره تلاش کنید.');}}
@@ -21,12 +22,18 @@ export async function prepareWriteSession():Promise<string>{
   return data.csrf_token;
 }
 
-export async function saveCustomer(name:string,id?:string):Promise<RecordRow>{
-  const normalized=name.trim();
+export async function saveCustomer(input:string|CustomerInput,id?:string):Promise<RecordRow>{
+  const normalized=(typeof input==='string'?input:input.name).trim();
+  const payload:CustomerInput={name:normalized};
+  if(typeof input!=='string'){
+    for(const key of ['customer_type',...customerProfileFields.map(field=>field.key)] as const){
+      if(key in input)payload[key]=input[key]?.trim()||null;
+    }
+  }
   if(normalized.length<2||normalized.length>255)throw new Error('نام مشتری باید بین ۲ تا ۲۵۵ نویسه باشد.');
   const csrf=await prepareWriteSession();
   return request<RecordRow>(id?'customers/'+encodeURIComponent(id):'customers',{
     method:id?'PATCH':'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':csrf},
-    body:JSON.stringify({name:normalized}),
+    body:JSON.stringify(payload),
   });
 }

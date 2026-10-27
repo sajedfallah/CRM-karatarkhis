@@ -65,3 +65,7 @@ permission and audit regression tests. Full Customer 360 and case wizard remain.
 Customer form deployment and authenticated new-tab CSRF preparation verified
 in-browser on the active Preview alias. Live create/rename was not performed
 with fabricated customer data; persistence/audit/authorization verified in CI.
+
+CRM-CUSTOMER profile slice: CI_PENDING. Persistent identity/contact/address fields,
+create/edit/detail UI, digit normalization, email validation and admin-only writes.
+Full multiple-contact Customer 360 remains out of this slice.

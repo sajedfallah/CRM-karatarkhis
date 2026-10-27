@@ -1,5 +1,13 @@
 import {afterEach,expect,test,vi} from 'vitest';
 import {request,logout,saveCustomer,ApiError} from './api';
+
+test('profile save includes contact fields, clears optional blanks and excludes unrelated properties',async()=>{
+  vi.stubGlobal('sessionStorage',{getItem:()=> 'test-csrf'});
+  const fetch=vi.fn().mockResolvedValue(new Response(JSON.stringify({id:'CUS-1'}),{status:200}));vi.stubGlobal('fetch',fetch);
+  const input={name:' Company ',customer_type:'company',phone:' 02112345678 ',email:'',city:' City ',role:'admin',is_active:false};
+  await saveCustomer(input,'CUS-1');
+  expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({name:'Company',customer_type:'company',phone:'02112345678',email:null,city:'City'});
+});
 afterEach(()=>vi.unstubAllGlobals());
 
 test('customer writes stop when session csrf acquisition is unauthorized',async()=>{

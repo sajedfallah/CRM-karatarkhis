@@ -75,3 +75,37 @@ def test_cookie_customer_registration_requires_origin_and_csrf(client, db, actor
             assert browser.get("/api/v1/auth/csrf", headers={"X-CSRF-Request": "1"}).status_code == 401
     finally:
         settings.auth_allowed_origins = previous
+
+
+def test_customer_profile_roundtrip_patch_and_clear(client, db, actors, auth_headers):
+    headers = auth_headers(actors["admin"].id)
+    profile = {"name": "Profile Customer", "customer_type": "company", "national_id": "۱۲۳۴۵۶۷۸۹۰۱",
+        "registration_number": "۱۲۳۴", "economic_code": "۱۲۳۴۵۶", "contact_name": "Example Contact",
+        "phone": "۰۲۱۱۲۳۴۵۶۷۸", "mobile": "۰۹۱۲۱۲۳۴۵۶۷", "email": " Contact@Example.Test ",
+        "province": "Example Province", "city": "Example City", "postal_code": "۱۲۳۴۵۶۷۸۹۰", "address": "Example address"}
+    response = client.post("/api/v1/customers", headers=headers, json=profile)
+    assert response.status_code == 201, response.text
+    row = response.json()
+    assert row["national_id"] == "12345678901"
+    assert row["phone"] == "02112345678"
+    assert row["email"] == "contact@example.test"
+    assert row["postal_code"] == "1234567890"
+    assert row["address"] == profile["address"]
+    customer_id = row["id"]
+    updated = client.patch(f"/api/v1/customers/{customer_id}", headers=headers, json={"city": "Changed City", "email": None})
+    assert updated.status_code == 200
+    assert updated.json()["email"] is None
+    assert updated.json()["national_id"] == "12345678901"
+    assert updated.json()["name"] == "Profile Customer"
+    assert db.get(Customer, customer_id).city == "Changed City"
+    listed = client.get("/api/v1/customers", headers=headers).json()
+    assert next(item for item in listed if item["id"] == customer_id)["contact_name"] == "Example Contact"
+    assert client.patch(f"/api/v1/customers/{customer_id}", headers=auth_headers(actors["manager_a"].id), json={"phone": "Changed"}).status_code == 403
+
+
+def test_profile_validation_and_existing_customer_compatibility(client, actors, auth_headers):
+    headers = auth_headers(actors["admin"].id)
+    for extra in ({"email": "invalid"}, {"customer_type": "unknown"}, {"address": "x"*2001}):
+        assert client.post("/api/v1/customers", headers=headers, json={"name": "Invalid Profile", **extra}).status_code == 422
+    existing = next(row for row in client.get("/api/v1/customers", headers=headers).json() if row["id"] == "CUS-A")
+    assert existing["phone"] is None and existing["customer_type"] is None

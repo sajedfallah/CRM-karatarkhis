@@ -3,7 +3,7 @@ import { flexRender,getCoreRowModel,getFilteredRowModel,getSortedRowModel,useRea
 import { ArrowDownUp,Search } from 'lucide-react';
 import type { RecordRow } from '../api';
 export type Field = {key:string;label:string};
-export function display(value:unknown){if(value===null||value===undefined||value==='')return '—';if(typeof value==='boolean')return value?'فعال':'غیرفعال';return String(value);}
+export function display(value:unknown){if(value===null||value===undefined||value==='')return '—';if(typeof value==='boolean')return value?'فعال':'غیرفعال';return value==='company'?'حقوقی':value==='person'?'حقیقی':String(value);}
 export function DataTable({data,fields,onInspect}:{data:RecordRow[];fields:Field[];onInspect:(row:RecordRow)=>void}){
   const [search,setSearch]=useState('');const [sorting,setSorting]=useState<SortingState>([]);
   const columns=useMemo<ColumnDef<RecordRow>[]>(()=>fields.map((field,index)=>({accessorKey:field.key,header:field.label,cell:({getValue,row})=>index===0?<button className="record-link" onClick={()=>onInspect(row.original)}>{display(getValue())}</button>:<span className={field.key==='status'?'status-badge':''}>{display(getValue())}</span>})),[fields,onInspect]);

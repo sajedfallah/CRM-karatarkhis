@@ -7,6 +7,7 @@ import {request,logout,type User,type RecordRow} from './api';
 import { Button } from './components/Button';
 import { DataTable,display,type Field } from './components/DataTable';
 import {CustomerEditor} from './components/CustomerEditor';
+import {customerProfileFields} from './customerProfile';
 import '@fontsource/vazirmatn/400.css';
 import '@fontsource/vazirmatn/500.css';
 import '@fontsource/vazirmatn/700.css';
@@ -17,7 +18,7 @@ function useUser(){const user=useContext(UserContext);if(!user)throw new Error('
 type Resource='customers'|'cases'|'tasks'|'documents';
 function useRecords(resource:Resource){const user=useUser();return useQuery({queryKey:['records',user.organization_id,resource],queryFn:()=>request<RecordRow[]>(resource),enabled:resource!=='customers'||user.role==='admin'});}
 const resources:{key:Resource;name:string;description:string;icon:typeof Files;fields:Field[]}[]=[
-  {key:'customers',name:'مشتریان',description:'شرکت‌ها و صاحبان کالای ثبت‌شده',icon:Building2,fields:[{key:'name',label:'نام مشتری'},{key:'id',label:'شناسه مشتری'},{key:'is_active',label:'وضعیت'}]},
+  {key:'customers',name:'مشتریان',description:'شرکت‌ها و صاحبان کالای ثبت‌شده',icon:Building2,fields:[{key:'name',label:'نام مشتری'},{key:'contact_name',label:'رابط'},{key:'phone',label:'تلفن ثابت'},{key:'mobile',label:'همراه'},{key:'is_active',label:'وضعیت'}]},
   {key:'cases',name:'پرونده‌ها',description:'پرونده‌های مجاز در محدوده دسترسی شما',icon:Files,fields:[{key:'real_case_number',label:'شماره پرونده'},{key:'id',label:'شناسه'},{key:'operation_type',label:'نوع عملیات'},{key:'customs',label:'گمرک'},{key:'status',label:'وضعیت'}]},
   {key:'tasks',name:'وظایف',description:'کارها، موعدها و اقدام‌های بعدی',icon:ListTodo,fields:[{key:'title',label:'موضوع'},{key:'priority',label:'اولویت'},{key:'status',label:'وضعیت'},{key:'due_at',label:'موعد'}]},
   {key:'documents',name:'اسناد',description:'فهرست اسناد قابل مشاهده در پرونده‌ها',icon:FileText,fields:[{key:'title',label:'عنوان سند'},{key:'document_type',label:'نوع سند'},{key:'status',label:'وضعیت'},{key:'version',label:'نسخه'}]},
@@ -46,14 +47,14 @@ function Overview(){
 function Detail({record,fields,onClose,onEdit}:{record:RecordRow|null;fields:Field[];onClose:()=>void;onEdit?:()=>void}){
   const dialog=useRef<HTMLDialogElement>(null);
   useEffect(()=>{if(record&&!dialog.current?.open)dialog.current?.showModal();if(!record&&dialog.current?.open)dialog.current.close();},[record]);
-  return <dialog ref={dialog} onCancel={onClose} onClose={onClose} className="detail-dialog" aria-labelledby="detail-title"><header><h2 id="detail-title">جزئیات رکورد</h2><Button variant="ghost" size="icon" aria-label="بستن جزئیات" onClick={onClose}><X size={20}/></Button></header><dl>{record&&fields.map(field=><div key={field.key}><dt>{field.label}</dt><dd>{display(record[field.key])}</dd></div>)}</dl><p className="muted">شناسه: <bdi>{record?.id}</bdi></p>{onEdit&&<Button onClick={onEdit}>اصلاح نام مشتری</Button>}</dialog>;
+  return <dialog ref={dialog} onCancel={onClose} onClose={onClose} className="detail-dialog" aria-labelledby="detail-title"><header><h2 id="detail-title">جزئیات رکورد</h2><Button variant="ghost" size="icon" aria-label="بستن جزئیات" onClick={onClose}><X size={20}/></Button></header><dl>{record&&fields.map(field=><div key={field.key}><dt>{field.label}</dt><dd>{display(record[field.key])}</dd></div>)}</dl><p className="muted">شناسه: <bdi>{record?.id}</bdi></p>{onEdit&&<Button onClick={onEdit}>ویرایش اطلاعات مشتری</Button>}</dialog>;
 }
 
 function ResourcePage({resource}:{resource:Resource}){
   const config=resources.find(r=>r.key===resource)!;const user=useUser();const query=useRecords(resource);const [selected,setSelected]=useState<RecordRow|null>(null);
   const [editor,setEditor]=useState<{record:RecordRow|null}|null>(null);const [notice,setNotice]=useState('');
   if(resource==='customers'&&user.role!=='admin')return <EmptyState icon={ShieldCheck} title="این بخش برای نقش شما فعال نیست" description="از منوی پرونده‌ها و وظایف برای دنبال‌کردن کارهای خود استفاده کنید."/>;
-  return <><div className="page-heading"><div><p className="eyebrow">اطلاعات عملیاتی</p><h1>{config.name}</h1><p>{config.description}</p></div><div className="page-actions">{resource==='customers'&&user.role==='admin'&&<Button onClick={()=>{setNotice('');setEditor({record:null});}}>مشتری جدید</Button>}<span className="page-icon"><config.icon size={25}/></span></div></div>{notice&&<p className="save-notice" role="status">{notice}</p>}<section className="surface">{query.isPending?<Loading/>:query.isError?<ErrorState retry={()=>void query.refetch()}/>:query.data.length===0?<EmptyState icon={config.icon} title={'هنوز '+config.name+' ثبت نشده است'} description="پس از ثبت یا تخصیص اطلاعات، فهرست این بخش نمایش داده می‌شود."/>:<DataTable data={query.data} fields={config.fields} onInspect={setSelected}/>}</section><Detail record={selected} fields={config.fields} onClose={()=>setSelected(null)} onEdit={resource==='customers'&&user.role==='admin'&&selected?()=>{setEditor({record:selected});setSelected(null);}:undefined}/>{editor&&<CustomerEditor record={editor.record} onClose={()=>setEditor(null)} onSaved={()=>{setEditor(null);setNotice('اطلاعات مشتری ذخیره شد.');}}/>}</>;
+  return <><div className="page-heading"><div><p className="eyebrow">اطلاعات عملیاتی</p><h1>{config.name}</h1><p>{config.description}</p></div><div className="page-actions">{resource==='customers'&&user.role==='admin'&&<Button onClick={()=>{setNotice('');setEditor({record:null});}}>مشتری جدید</Button>}<span className="page-icon"><config.icon size={25}/></span></div></div>{notice&&<p className="save-notice" role="status">{notice}</p>}<section className="surface">{query.isPending?<Loading/>:query.isError?<ErrorState retry={()=>void query.refetch()}/>:query.data.length===0?<EmptyState icon={config.icon} title={'هنوز '+config.name+' ثبت نشده است'} description="پس از ثبت یا تخصیص اطلاعات، فهرست این بخش نمایش داده می‌شود."/>:<DataTable data={query.data} fields={config.fields} onInspect={setSelected}/>}</section><Detail record={selected} fields={resource==='customers'?[{key:'name',label:'نام مشتری'},{key:'customer_type',label:'نوع مشتری'},...customerProfileFields,{key:'is_active',label:'وضعیت'}]:config.fields} onClose={()=>setSelected(null)} onEdit={resource==='customers'&&user.role==='admin'&&selected?()=>{setEditor({record:selected});setSelected(null);}:undefined}/>{editor&&<CustomerEditor record={editor.record} onClose={()=>setEditor(null)} onSaved={()=>{setEditor(null);setNotice('اطلاعات مشتری ذخیره شد.');}}/>}</>;
 }
 
 const rootRoute=createRootRoute({component:Frame});
