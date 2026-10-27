@@ -1,6 +1,6 @@
 from decimal import Decimal
 from typing import Literal
-from uuid import UUID
+from uuid import UUID, uuid4
 from fastapi import APIRouter, HTTPException, Response, Query
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from sqlalchemy import select, update, func
@@ -8,7 +8,8 @@ from sqlalchemy.exc import IntegrityError
 from app.api.deps import CurrentUser, DbSession
 from app.api.v1.customers import _require_admin
 from app.models.core import AuditLog, Customer
-from app.models.drafts import CaseDraft
+from app.models.compliance import CorporateDocument, CorporateDocumentVersion
+from app.models.drafts import CaseDraft, DraftCorporateDocumentLink
 from app.services.product_review import product_fingerprint, product_review
 
 router = APIRouter(prefix="/case-drafts", tags=["case drafts"])
@@ -159,6 +160,121 @@ def readiness(draft_id: str, db: DbSession, user: CurrentUser, response: Respons
     from app.services.registration_readiness import registration_readiness
     response.headers["Cache-Control"]="private, no-store"
     return registration_readiness(db,row)
+
+
+def _document_record(db, draft_id: str, link: DraftCorporateDocumentLink):
+    version=db.get(CorporateDocumentVersion,link.document_version_id)
+    document=db.get(CorporateDocument,version.document_id)
+    from app.services.document_expiry import validity
+    return {"link_id":link.id,"document_id":document.id,"document_version_id":version.id,
+        "title":document.title,"document_type":document.document_type,"version":version.version,
+        "file_name":version.file_name,"starts_on":version.starts_on,"expires_on":version.expires_on,
+        "status":validity(version),"added_at":link.added_at}
+
+
+def _draft_document_state(db, row):
+    links=list(db.scalars(select(DraftCorporateDocumentLink).where(
+        DraftCorporateDocumentLink.draft_id==row.id,
+        DraftCorporateDocumentLink.removed_at.is_(None)).order_by(DraftCorporateDocumentLink.added_at)))
+    linked=[_document_record(db,row.id,link) for link in links]
+    linked_ids={item["document_version_id"] for item in linked}
+    available=[]
+    versions=db.execute(select(CorporateDocumentVersion,CorporateDocument).join(
+        CorporateDocument,CorporateDocumentVersion.document_id==CorporateDocument.id).where(
+        CorporateDocument.customer_id==row.customer_id).order_by(CorporateDocument.title,CorporateDocumentVersion.version.desc()))
+    from app.services.document_expiry import validity
+    for version,document in versions:
+        if version.id in linked_ids:
+            continue
+        available.append({"document_id":document.id,"document_version_id":version.id,"title":document.title,
+            "document_type":document.document_type,"version":version.version,"file_name":version.file_name,
+            "starts_on":version.starts_on,"expires_on":version.expires_on,"status":validity(version)})
+    return {"draft_id":row.id,"draft_version":row.version,"linked":linked,"available":available}
+
+
+@router.get("/{draft_id}/documents")
+def draft_documents(draft_id: str, db: DbSession, user: CurrentUser, response: Response):
+    _require_admin(user)
+    row=db.get(CaseDraft,draft_id)
+    if not row: raise HTTPException(404,"draft_not_found")
+    response.headers["Cache-Control"]="private, no-store"
+    return _draft_document_state(db,row)
+
+
+class DraftDocumentLinkCommand(BaseModel):
+    model_config=ConfigDict(extra="forbid")
+    expected_version: int=Field(ge=1)
+    document_version_id: str=Field(min_length=1,max_length=64)
+
+
+def _require_document_link_replay(db,row,expected_version,version_id,active):
+    if row.version==expected_version+1 and active:
+        return _draft_document_state(db,row)
+    raise HTTPException(409,"draft_changed_reload_required")
+
+
+@router.post("/{draft_id}/documents",status_code=201)
+def link_draft_document(draft_id: str,payload: DraftDocumentLinkCommand,db: DbSession,user: CurrentUser):
+    _require_admin(user)
+    row=db.scalar(select(CaseDraft).where(CaseDraft.id==draft_id).with_for_update())
+    if not row: raise HTTPException(404,"draft_not_found")
+    require_customer(db,row.customer_id)
+    existing=db.scalar(select(DraftCorporateDocumentLink).where(
+        DraftCorporateDocumentLink.draft_id==row.id,
+        DraftCorporateDocumentLink.document_version_id==payload.document_version_id))
+    active=bool(existing and existing.removed_at is None)
+    if row.version!=payload.expected_version:
+        return _require_document_link_replay(db,row,payload.expected_version,payload.document_version_id,active)
+    version=db.scalar(select(CorporateDocumentVersion).join(CorporateDocument).where(
+        CorporateDocumentVersion.id==payload.document_version_id,
+        CorporateDocument.customer_id==row.customer_id))
+    if not version: raise HTTPException(404,"customer_document_version_not_found")
+    if active:
+        return _draft_document_state(db,row)
+    if existing:
+        existing.removed_at=None
+        existing.removed_by=None
+    else:
+        existing=DraftCorporateDocumentLink(id="DCL-"+uuid4().hex,draft_id=row.id,
+            document_version_id=version.id,added_by=user.id)
+        db.add(existing)
+    row.version+=1
+    row.updated_at=func.now()
+    db.add(AuditLog(actor_user_id=user.id,entity_type="draft_corporate_document_link",entity_id=existing.id,
+        action="attach_exact_version",new_value=f"draft_id={row.id};document_version_id={version.id}",source="api"))
+    db.commit()
+    return _draft_document_state(db,db.get(CaseDraft,row.id))
+
+
+class DraftDocumentDetachCommand(BaseModel):
+    model_config=ConfigDict(extra="forbid")
+    expected_version: int=Field(ge=1)
+
+
+@router.post("/{draft_id}/documents/{link_id}/detach")
+def detach_draft_document(draft_id: str,link_id: str,payload: DraftDocumentDetachCommand,
+                          db: DbSession,user: CurrentUser):
+    _require_admin(user)
+    row=db.scalar(select(CaseDraft).where(CaseDraft.id==draft_id).with_for_update())
+    if not row: raise HTTPException(404,"draft_not_found")
+    require_customer(db,row.customer_id)
+    link=db.scalar(select(DraftCorporateDocumentLink).where(
+        DraftCorporateDocumentLink.id==link_id,DraftCorporateDocumentLink.draft_id==row.id))
+    if not link: raise HTTPException(404,"draft_document_link_not_found")
+    if row.version!=payload.expected_version:
+        if row.version==payload.expected_version+1 and link.removed_at is not None:
+            return _draft_document_state(db,row)
+        raise HTTPException(409,"draft_changed_reload_required")
+    if link.removed_at is not None:
+        return _draft_document_state(db,row)
+    link.removed_at=func.now()
+    link.removed_by=user.id
+    row.version+=1
+    row.updated_at=func.now()
+    db.add(AuditLog(actor_user_id=user.id,entity_type="draft_corporate_document_link",entity_id=link.id,
+        action="detach_exact_version",new_value=f"draft_id={row.id};document_version_id={link.document_version_id}",source="api"))
+    db.commit()
+    return _draft_document_state(db,db.get(CaseDraft,row.id))
 
 
 class ProductReviewCommand(BaseModel):

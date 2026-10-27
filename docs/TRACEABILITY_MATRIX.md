@@ -154,3 +154,11 @@ with 73 backend tests, 11 frontend tests, TypeScript/Vite build, migration
 rehearsal and secret scan. Preview commit 7273b710a7c15756f1de449457babc0b7af9286a
 is READY. Existing draft/customer data was not edited for export verification.
 
+DOC-CORE / CASE-DRAFT / SEC-004: exact reusable corporate-document version linkage
+is implemented as an additive slice. Draft/customer boundary is enforced server-side;
+attach/detach are version-checked and audited, and detach retains its record.
+Readiness reports exact linked version and expiry validity. Required-document
+rules, shipment documents, authenticity/review, customer confirmation and submit
+remain outside this slice. Migration 0014 and PostgreSQL CI/deployment verification
+are pending.
+

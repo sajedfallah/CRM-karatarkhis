@@ -29,6 +29,10 @@ The existing V5 `documents` model is only a foundation; canonical implementation
 Existing V5 auth/permission tables must be extended, not replaced blindly.
 Legacy Google Sheet IDs should be preserved as stable business identifiers where valid.
 
+Migration 0014 adds `draft_corporate_document_links`, a restricted FK association
+from a resumable case draft to one exact immutable customer corporate-document
+version. Detach is soft and audited; it never deletes a stored file/version.
+
 ## Deletion
 No hard delete for cases, submission snapshots, document versions, posted finance, audit, stage history, sent official correspondence or human AI decisions.
 
@@ -41,3 +45,4 @@ Existing rows retain NULL for unknown values. No identity or tax-verification
 claim is inferred from a populated field. Multiple contacts remain a separate
 Customer 360 milestone. Profile reads/writes remain admin-only through the
 existing customer endpoints; no contact data is added to public pages or logs.
+

@@ -225,3 +225,13 @@ secret scan. The code is deployed READY on the existing protected Preview alias
 at commit 7273b710a7c15756f1de449457babc0b7af9286a. Staging schema stayed at 0013;
 no real draft/customer was edited to test export fields.
 
+## Active slice — exact document version links
+DOC-CORE / CASE-DRAFT / SEC-004: implementation prepared; document governance remains PARTIAL.
+Admin can attach a specific immutable corporate-document version belonging to
+the draft's customer, or soft-detach it. Cross-customer IDs are denied; each
+change advances the draft version and appends audit. Readiness and the draft UI
+show the exact linked version and date-based validity without claiming document
+authenticity, requirement sufficiency or customer approval. Migration 0014 is
+additive; PostgreSQL CI, staging migration and protected-preview verification are
+pending. No production data changed.
+

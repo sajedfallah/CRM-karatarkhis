@@ -4,6 +4,7 @@ import {useMutation,useQuery,useQueryClient} from '@tanstack/react-query';
 import {request,ApiError,type RecordRow} from '../api';
 import {createDraft,saveDraft,draftValidation,emptyProductDetails,emptyExportShipment,type CaseDraft,type DraftContent} from '../drafts';
 import {ProductReview} from './ProductReview';
+import {DraftDocuments} from './DraftDocuments';
 import {RegistrationReadiness} from './RegistrationReadiness';
 import {Button} from './Button';
 
@@ -50,7 +51,7 @@ function DraftEditor({initial,onClose,onReload}:{initial:CaseDraft;onClose:()=>v
     {save.isError&&<div className="form-error" role="alert"><p>{conflict?'اطلاعات این پرونده در جای دیگری تغییر کرده است. برای جلوگیری از بازنویسی، ذخیره متوقف شد.':'ذخیره انجام نشد. اطلاعات شما در فرم باقی مانده است؛ دوباره ذخیره کنید.'}</p>
       {conflict&&<><p>با دریافت نسخه جدید، تغییرات ذخیره‌نشده این فرم کنار گذاشته می‌شوند.</p><Button type="button" variant="outline" onClick={onReload}>دریافت نسخه جدید</Button></>}</div>}
     <div className="form-actions"><Button type="submit" disabled={!dirty||!!invalid||save.isPending||conflict}>ذخیره اطلاعات</Button>{dirty&&!save.isPending&&<Button type="button" variant="ghost" onClick={onClose}>بستن بدون ذخیره تغییرات</Button>}</div>
-    </form></section><ProductReview record={record} unsaved={dirty||save.isPending} onReviewed={data=>{setRecord(current=>data.version>=current.version?data:current);void cache.invalidateQueries({queryKey:['registration-readiness',record.id]});}}/><RegistrationReadiness id={record.id} version={record.version} unsaved={dirty||save.isPending} onReload={onReload}/>{blocker.status==='blocked'&&<div className="draft-navigation-alert" role="alert"><p>{dirty||save.isPending?'تغییرات هنوز ذخیره نشده است.':'تغییرات ذخیره شد؛ می‌توانید ادامه دهید.'}</p><Button onClick={blocker.reset}>ماندن در فرم</Button><Button variant="outline" disabled={save.isPending} onClick={blocker.proceed}>{dirty?'خروج بدون ذخیره تغییرات':'ادامه'}</Button></div>}</>;
+    </form></section><DraftDocuments record={record} disabled={dirty||save.isPending||conflict} onChanged={version=>setRecord(current=>version>=current.version?{...current,version}:current)} onReload={onReload}/><ProductReview record={record} unsaved={dirty||save.isPending} onReviewed={data=>{setRecord(current=>data.version>=current.version?data:current);void cache.invalidateQueries({queryKey:['registration-readiness',record.id]});}}/><RegistrationReadiness id={record.id} version={record.version} unsaved={dirty||save.isPending} onReload={onReload}/>{blocker.status==='blocked'&&<div className="draft-navigation-alert" role="alert"><p>{dirty||save.isPending?'تغییرات هنوز ذخیره نشده است.':'تغییرات ذخیره شد؛ می‌توانید ادامه دهید.'}</p><Button onClick={blocker.reset}>ماندن در فرم</Button><Button variant="outline" disabled={save.isPending} onClick={blocker.proceed}>{dirty?'خروج بدون ذخیره تغییرات':'ادامه'}</Button></div>}</>;
 }
 
 function DraftLoader({id,onClose}:{id:string;onClose:()=>void}){

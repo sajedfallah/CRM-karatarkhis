@@ -1,5 +1,8 @@
 """Read-only registration diagnostics, not a final-submission authorization."""
+from sqlalchemy import select
 from app.models.core import Customer
+from app.models.compliance import CorporateDocument, CorporateDocumentVersion
+from app.models.drafts import DraftCorporateDocumentLink
 from app.services.product_review import product_review
 from app.services.document_expiry import latest_versions, local_today, validity
 
@@ -8,7 +11,7 @@ from app.services.document_expiry import latest_versions, local_today, validity
 WORKFLOW_GAPS = (
     ("PRD-HS", "بانک کالا و اتصال بررسی HS به ثبت نهایی"),
     ("CASE-SHIPMENT", "اطلاعات کامل حمل متناسب با نوع عملیات"),
-    ("DOC-CORE", "اتصال نسخه دقیق اسناد و بررسی الزامات مدارک پرونده"),
+    ("DOC-CORE", "تعریف الزامات اسناد حمل و بررسی کفایت نسخه‌های متصل"),
     ("AI-CORE", "پیش‌بررسی اسناد و رسیدگی انسانی به موارد لازم"),
     ("FIN-CORE", "بررسی مالی اولیه"),
     ("CASE-ASSIGNMENT", "تخصیص مسئول و بازبینی نهایی"),
@@ -44,6 +47,15 @@ def registration_readiness(db, draft):
         review=product_review(db,draft)
         shipment_checks.append({"id":"hs_human_review","title":"بررسی انسانی کد HS","complete":review["status"]=="VERIFIED"})
     documents=[]
+    linked_documents=[]
+    for link in db.scalars(select(DraftCorporateDocumentLink).where(
+            DraftCorporateDocumentLink.draft_id==draft.id,
+            DraftCorporateDocumentLink.removed_at.is_(None)).order_by(DraftCorporateDocumentLink.added_at)):
+        version=db.get(CorporateDocumentVersion,link.document_version_id)
+        document=db.get(CorporateDocument,version.document_id)
+        linked_documents.append({"link_id":link.id,"document_id":document.id,"document_version_id":version.id,
+            "title":document.title,"document_type":document.document_type,"version":version.version,
+            "status":validity(version),"starts_on":version.starts_on,"expires_on":version.expires_on})
     for document,version in latest_versions(db):
         if document.customer_id==draft.customer_id:
             documents.append({"id":document.id,"title":document.title,"version_id":version.id,
@@ -55,6 +67,6 @@ def registration_readiness(db, draft):
         "final_submission_available":False,"product_review":product_review(db,draft),
         "initial_checks":[{"id":key,"title":title,"complete":passed} for key,title,passed in fields],
         "workflow_gaps":[{"requirement":key,"title":title,"status":"NOT_IMPLEMENTED"} for key,title in WORKFLOW_GAPS],
-        "corporate_documents":documents,
-        "corporate_documents_are_linked":False}
+        "corporate_documents":documents,"linked_corporate_documents":linked_documents,
+        "corporate_documents_are_linked":bool(linked_documents)}
 

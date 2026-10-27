@@ -24,7 +24,7 @@ __all__ = [
 
 from app.models.compliance import CorporateDocument, CorporateDocumentVersion, DocumentNotification
 
-from app.models.drafts import CaseDraft
+from app.models.drafts import CaseDraft, DraftCorporateDocumentLink
 
 from app.models.declarations import DeclarationVersion, DeclarationRequest, DeclarationDecision
 
