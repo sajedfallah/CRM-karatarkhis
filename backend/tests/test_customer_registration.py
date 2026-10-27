@@ -1,6 +1,12 @@
 from sqlalchemy import select
+from datetime import timedelta
+from fastapi.testclient import TestClient
 
-from app.models.core import AuditLog, Customer
+from app.models.core import AuditLog, Customer, Organization, OrganizationMembership
+from app.models.auth import AuthSession, PasswordCredential
+from app.core.config import get_settings
+from app.main import app
+from app.services.authentication import COOKIE_NAME, token_hash, utc_now
 
 
 def test_admin_registers_and_renames_customer_with_audit(client, db, actors, auth_headers):
@@ -29,3 +35,29 @@ def test_invalid_customer_names_do_not_write(client, actors, auth_headers):
     for value in ("   ", " A ", None, "A" * 256):
         assert client.post("/api/v1/customers", headers=headers, json={"name": value}).status_code == 422
         assert client.patch("/api/v1/customers/CUS-A", headers=headers, json={"name": value}).status_code == 422
+
+
+def test_cookie_customer_registration_requires_origin_and_csrf(client, db, actors):
+    admin = actors["admin"]
+    admin.email = "admin@example.test"
+    db.add(Organization(id="REG-ORG", type="INTERNAL", name="Internal", slug="registration-org"))
+    db.flush()
+    db.add(OrganizationMembership(id="REG-MEM", organization_id="REG-ORG", user_id=admin.id,
+        role="admin", permission_profile="مدیریتی", status="ACTIVE"))
+    db.add(PasswordCredential(user_id=admin.id, password_hash="unused", verified_email=admin.email, email_verified_at=utc_now()))
+    db.add(AuthSession(user_id=admin.id, membership_id="REG-MEM", token_hash=token_hash("registration-session"),
+        csrf_hash=token_hash("registration-csrf"), expires_at=utc_now()+timedelta(hours=1)))
+    db.commit()
+    settings = get_settings()
+    previous = settings.auth_allowed_origins
+    origin = "https://crm.example.test"
+    settings.auth_allowed_origins = [origin]
+    try:
+        with TestClient(app, base_url=origin) as browser:
+            browser.cookies.set(COOKIE_NAME, "registration-session")
+            payload = {"name": "Session Customer"}
+            assert browser.post("/api/v1/customers", json=payload, headers={"Origin": origin}).status_code == 403
+            assert browser.post("/api/v1/customers", json=payload, headers={"Origin": "https://evil.example", "X-CSRF-Token": "registration-csrf"}).status_code == 403
+            assert browser.post("/api/v1/customers", json=payload, headers={"Origin": origin, "X-CSRF-Token": "registration-csrf"}).status_code == 201
+    finally:
+        settings.auth_allowed_origins = previous
