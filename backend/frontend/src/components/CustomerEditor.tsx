@@ -31,7 +31,7 @@ export function CustomerEditor({record,onClose,onSaved}:{record:RecordRow|null;o
       <small id="customer-name-help">بین ۲ تا ۲۵۵ نویسه</small>
       <div className="customer-grid"><div><label htmlFor="customer-type">نوع مشتری</label>
         <select id="customer-type" value={values.customer_type} disabled={save.isPending} onChange={event=>change('customer_type',event.target.value)}>
-          <option value="">مشخص نشده</option value="company">حقوقی (شرکت)</option><option value="person">حقیقی (شخص)</option>
+          <option value="">مشخص نشده</option><option value="company">حقوقی (شرکت)</option><option value="person">حقیقی (شخص)</option>
         </select></div></div>
       {([{key:'identity',title:'مشخصات هویتی و ثبتی'},{key:'contact',title:'اطلاعات تماس'},{key:'address',title:'نشانی'}] as const).map(group=><fieldset key={group.key}>
         <legend>{group.title}</legend><div className="customer-grid">{customerProfileFields.filter(field=>field.group===group.key).map(field=><div key={field.key} className={field.key==='address'?'full-width':''}>
