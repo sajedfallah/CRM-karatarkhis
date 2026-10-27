@@ -89,3 +89,9 @@ remain PARTIAL/NOT_STARTED until their own command workflows are implemented.
 
 Initial draft runtime 631a7b6bdedcb74cbd4f70385a95a9c01b089358 deployed;
 menu, real customer selection and draft listing verified in browser.
+
+
+Terminology correction (UI-WEB / CASE-DRAFT): initial case-data UI is labelled
+«پرونده‌های در حال ثبت». External declaration draft upload/customer approval
+(IMP-DRAFT) remains a separate missing workflow; no declaration sending or
+customer approval is claimed. Existing draft IDs, API, content and autosave remain intact.

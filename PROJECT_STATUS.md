@@ -156,3 +156,9 @@ Deployed /app/drafts verified with the existing administrator: menu, active
 customer selector and saved-draft list load successfully. The agent created no
 fabricated draft in staging. Save/resume/conflict/replay validation is PostgreSQL
 CI evidence; final confirmation/submission workflows remain unimplemented.
+
+
+Terminology correction (UI-WEB / CASE-DRAFT): initial case-data UI is labelled
+«پرونده‌های در حال ثبت». External declaration draft upload/customer approval
+(IMP-DRAFT) remains a separate missing workflow; no declaration sending or
+customer approval is claimed. Existing draft IDs, API, content and autosave remain intact.
