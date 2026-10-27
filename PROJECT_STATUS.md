@@ -69,8 +69,9 @@ The initial administrator accepted the invitation and completed a real login.
 Current task: UI-WEB initial read-only operations panel — IN_PROGRESS.
 React/TypeScript/Vite, Tailwind, TanStack Query/Table/Router, self-hosted Vazirmatn.
 Real API lists and counts, role-aware navigation, explicit detail fields,
-loading/error/empty states. No fabricated records. Build, CI and deployed browser
-verification remain pending. Forms, organization selector and full product UI
+loading/error/empty states. No fabricated records. 42 PostgreSQL backend tests,
+3 frontend tests, TypeScript/Vite build and secret scan passed. Deployed browser
+verification remains pending. Forms, organization selector and full product UI
 remain future slices.
 
 compileall and git diff --check passed for the previous slices. Local pip downloads

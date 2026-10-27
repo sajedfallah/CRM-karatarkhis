@@ -48,11 +48,11 @@
 | SRCH-GLOBAL | Global Search | MISSING | permission-aware unified search absent | NOT_STARTED |
 | RPT-TEMPLATES | Report Templates | MISSING | admin/customer operational reports absent | NOT_STARTED |
 | UI-CHARTS | Actionable Dashboard Charts | MISSING | admin/customer chart policy not implemented | NOT_STARTED |
-# Current UI slice (2026-10-27)
 
-UI-WEB / SEC-004: PARTIAL, CI_PENDING. Initial Persian RTL read-only React
+## Current UI slice (2026-10-27)
+
+UI-WEB / SEC-004: PARTIAL. 42 backend PostgreSQL tests, 3 frontend tests and Vite/TypeScript build passed. Deployed browser verification pending. Initial Persian RTL read-only React
 panel at /app uses existing authenticated API lists, session identity, real counts,
 search/sort and explicit detail fields. Server authorization remains authoritative.
 Panel route and asset boundary tests plus frontend request/CSRF tests added.
 CRUD workflows, complete canonical screens and UAT remain outstanding.
-

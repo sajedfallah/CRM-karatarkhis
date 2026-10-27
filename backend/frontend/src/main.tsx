@@ -2,7 +2,7 @@ import React,{createContext,useContext,useEffect,useRef,useState} from 'react';
 import { createRoot } from 'react-dom/client';
 import { QueryClient,QueryClientProvider,useQuery,useQueryClient } from '@tanstack/react-query';
 import { createRootRoute,createRoute,createRouter,RouterProvider,Link,Outlet } from '@tanstack/react-router';
-import { Building2,Files,ListTodo,LayoutDashboard,FileText,RefreshCw,LogOut,ChevronLeft,ArrowUpLeft,ShieldCheck,X,Menu,Search } from 'lucide-react';
+import { Building2,Files,ListTodo,LayoutDashboard,FileText,RefreshCw,LogOut,ChevronLeft,ArrowUpLeft,ShieldCheck,X,Menu } from 'lucide-react';
 import {request,logout,type User,type RecordRow} from './api';
 import { Button } from './components/Button';
 import { DataTable,display,type Field } from './components/DataTable';
@@ -45,7 +45,7 @@ function Overview(){
 function Detail({record,fields,onClose}:{record:RecordRow|null;fields:Field[];onClose:()=>void}){
   const dialog=useRef<HTMLDialogElement>(null);
   useEffect(()=>{if(record&&!dialog.current?.open)dialog.current?.showModal();if(!record&&dialog.current?.open)dialog.current.close();},[record]);
-  return <dialog ref={dialog} onCancel={onClose} onClose={onClose} className="detail-dialog"><header><h2>جزئیات رکورد</h2><Button variant="ghost" size="icon" aria-label="بستن جزئیات" onClick={onClose}><X size={20}/></Button></header><dl>{record&&fields.map(field=><div key={field.key}><dt>{field.label}</dt><dd>{display(record[field.key])}</dd></div>)}</dl><p className="muted">شناسه: <bdi>{record?.id}</bdi></p></dialog>;
+  return <dialog ref={dialog} onCancel={onClose} onClose={onClose} className="detail-dialog" aria-labelledby="detail-title"><header><h2 id="detail-title">جزئیات رکورد</h2><Button variant="ghost" size="icon" aria-label="بستن جزئیات" onClick={onClose}><X size={20}/></Button></header><dl>{record&&fields.map(field=><div key={field.key}><dt>{field.label}</dt><dd>{display(record[field.key])}</dd></div>)}</dl><p className="muted">شناسه: <bdi>{record?.id}</bdi></p></dialog>;
 }
 
 function ResourcePage({resource}:{resource:Resource}){
