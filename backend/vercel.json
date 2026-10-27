@@ -1,11 +1,12 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "cd frontend && npm ci --no-audit --no-fund && npm run build && node -e \"require('node:fs').rmSync('node_modules', {recursive:true,force:true})\"",
+  "installCommand": "cd frontend && npm ci --no-audit --no-fund",
+  "buildCommand": "cd frontend && npm run build && node -e \"require('node:fs').rmSync('node_modules', {recursive:true,force:true})\"",
   "outputDirectory": "app/web/panel",
   "functions": {
     "api/index.py": {
       "maxDuration": 60,
-      "excludeFiles": "{frontend/**,tests/**,__pycache__/**}"
+      "excludeFiles": "{frontend/**,tests/**,__pycache__/**,.venv/**}"
     }
   },
   "routes": [
