@@ -59,7 +59,7 @@ jobs:
         run: pytest
       - name: Generate reviewed staging upgrade SQL
         working-directory: backend
-        run: alembic upgrade 0010_customer_documents:head --sql
+        run: alembic upgrade 0011_case_drafts:head --sql
   secret-scan:
     runs-on: ubuntu-latest
     permissions:
