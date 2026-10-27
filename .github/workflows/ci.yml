@@ -20,12 +20,9 @@ jobs:
         with:
           node-version: '24'
       - name: Install frontend dependencies
-        run: |
-          if [ -f package-lock.json ]; then npm ci --no-audit --no-fund; else npm install --no-audit --no-fund; fi
+        run: npm ci --no-audit --no-fund
       - name: Verify frontend
         run: npm test && npm run build
-      - name: Export reproducible lockfile
-        run: python -c "import base64,gzip,pathlib; print('FRONTEND_LOCK_GZIP='+base64.b64encode(gzip.compress(pathlib.Path('package-lock.json').read_bytes())).decode())"
   backend:
     runs-on: ubuntu-latest
     services:
