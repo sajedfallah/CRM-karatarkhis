@@ -3,6 +3,7 @@ import {useBlocker} from '@tanstack/react-router';
 import {useMutation,useQuery,useQueryClient} from '@tanstack/react-query';
 import {request,ApiError,type RecordRow} from '../api';
 import {createDraft,saveDraft,draftValidation,type CaseDraft,type DraftContent} from '../drafts';
+import {RegistrationReadiness} from './RegistrationReadiness';
 import {Button} from './Button';
 
 const operations:Record<string,string>={import:'واردات',export:'صادرات',transit:'ترانزیت'};
@@ -34,7 +35,7 @@ function DraftEditor({initial,onClose,onReload}:{initial:CaseDraft;onClose:()=>v
     {save.isError&&<div className="form-error" role="alert"><p>{conflict?'اطلاعات این پرونده در جای دیگری تغییر کرده است. برای جلوگیری از بازنویسی، ذخیره متوقف شد.':'ذخیره انجام نشد. اطلاعات شما در فرم باقی مانده است؛ دوباره ذخیره کنید.'}</p>
       {conflict&&<><p>با دریافت نسخه جدید، تغییرات ذخیره‌نشده این فرم کنار گذاشته می‌شوند.</p><Button type="button" variant="outline" onClick={onReload}>دریافت نسخه جدید</Button></>}</div>}
     <div className="form-actions"><Button type="submit" disabled={!dirty||!!invalid||save.isPending||conflict}>ذخیره اطلاعات</Button>{dirty&&!save.isPending&&<Button type="button" variant="ghost" onClick={onClose}>بستن بدون ذخیره تغییرات</Button>}</div>
-    </form></section>{blocker.status==='blocked'&&<div className="draft-navigation-alert" role="alert"><p>{dirty||save.isPending?'تغییرات هنوز ذخیره نشده است.':'تغییرات ذخیره شد؛ می‌توانید ادامه دهید.'}</p><Button onClick={blocker.reset}>ماندن در فرم</Button><Button variant="outline" disabled={save.isPending} onClick={blocker.proceed}>{dirty?'خروج بدون ذخیره تغییرات':'ادامه'}</Button></div>}</>;
+    </form></section><RegistrationReadiness id={record.id} version={record.version} unsaved={dirty||save.isPending}/>{blocker.status==='blocked'&&<div className="draft-navigation-alert" role="alert"><p>{dirty||save.isPending?'تغییرات هنوز ذخیره نشده است.':'تغییرات ذخیره شد؛ می‌توانید ادامه دهید.'}</p><Button onClick={blocker.reset}>ماندن در فرم</Button><Button variant="outline" disabled={save.isPending} onClick={blocker.proceed}>{dirty?'خروج بدون ذخیره تغییرات':'ادامه'}</Button></div>}</>;
 }
 
 function DraftLoader({id,onClose}:{id:string;onClose:()=>void}){
@@ -54,9 +55,10 @@ export function DraftsPage({allowed}:{allowed:boolean}){
   const create=useMutation({retry:false,mutationFn:()=>createDraft(customer,requestId),onSuccess:data=>{void cache.invalidateQueries({queryKey:['case-drafts']});setRequestId(crypto.randomUUID());open(data.id);}});
   if(!allowed)return <p role="alert">دسترسی به پرونده‌های در حال ثبت برای این نقش فعال نیست.</p>;
   if(opened)return <DraftLoader id={opened} onClose={close}/>;
-  return <><div className="page-heading"><div><p className="eyebrow">ثبت اولیه پرونده</p><h1>پرونده‌های در حال ثبت</h1><p>اطلاعات اولیه را ذخیره کنید و بعداً ادامه دهید. پیش‌نویس اظهارنامه، سند جداگانه‌ای برای بررسی و تأیید مشتری است و گردش ارسال آن هنوز فعال نشده است.</p></div></div>
+  return <><div className="page-heading"><div><p className="eyebrow">ثبت اولیه پرونده</p><h1>پرونده‌های در حال ثبت</h1><p>اطلاعات اولیه را ذخیره کنید و بعداً ادامه دهید. برای دیدن مراحل تکمیل، یک پرونده ذخیره‌شده را باز کنید. پیش‌نویس اظهارنامه سند جداگانه‌ای در گروه پرونده‌ها است.</p></div></div>
     <section className="surface draft-editor"><h2>شروع ثبت پرونده جدید</h2><label htmlFor="draft-customer">مشتری</label><select id="draft-customer" value={customer} disabled={create.isPending} onChange={e=>{setCustomer(e.target.value);setRequestId(crypto.randomUUID());}}><option value="">مشتری را انتخاب کنید</option>{customers.data?.filter(c=>c.is_active).map(c=><option key={c.id} value={c.id}>{String(c.name)}</option>)}</select>
       {customers.isError&&<p role="alert">دریافت مشتریان انجام نشد.</p>}{create.isError&&<p role="alert" className="form-error">شروع ثبت پرونده انجام نشد؛ دوباره تلاش کنید.</p>}
       <Button disabled={!customers.data?.some(c=>c.id===customer&&c.is_active)||customers.isPending||create.isPending} onClick={()=>create.mutate()}>{create.isPending?'در حال ایجاد…':'شروع ثبت پرونده'}</Button></section>
     <section className="surface draft-list"><h2>ادامه ثبت پرونده‌ها</h2>{drafts.isPending?<p role="status">در حال دریافت…</p>:drafts.isError?<p role="alert">دریافت فهرست انجام نشد.</p>:!drafts.data.length?<p>هنوز پرونده‌ای در حال ثبت ندارید.</p>:drafts.data.map(draft=><article key={draft.id}><div><strong>{draft.content.title||'پرونده بدون عنوان'}</strong><p>{draft.customer_name} · {operations[draft.content.operation_type??'']||'نوع عملیات انتخاب نشده'}</p></div><Button variant="outline" onClick={()=>open(draft.id)}>ادامه و ویرایش</Button></article>)}</section></>;
 }
+

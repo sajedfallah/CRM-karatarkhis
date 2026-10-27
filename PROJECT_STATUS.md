@@ -189,3 +189,10 @@ Preview verification: compact four-item navigation, keyboard disclosure and empt
 reviewer invitation form load with the existing admin. No customer profile or
 invitation was changed. /health/db returns 200. Full final submission remains open.
 
+
+CASE-DRAFT / UI-WEB / SUB-001/002: registration-readiness diagnostics IN_PROGRESS.
+Read-only, exact saved-version initial-data checklist, latest customer corporate
+document validity and explicit unimplemented canonical wizard dependencies.
+Completing initial fields cannot enable final submission. No case/snapshot/customer
+confirmation is fabricated. No migration; tests and Preview verification pending.
+

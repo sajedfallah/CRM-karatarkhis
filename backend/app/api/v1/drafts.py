@@ -1,7 +1,7 @@
 from decimal import Decimal
 from typing import Literal
 from uuid import UUID
-from fastapi import APIRouter, HTTPException, Response
+from fastapi import APIRouter, HTTPException, Response, Query
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from sqlalchemy import select, update, func
 from sqlalchemy.exc import IntegrityError
@@ -122,3 +122,16 @@ def save_draft(draft_id: str, payload: DraftSave, db: DbSession, user: CurrentUs
     db.commit()
     db.expire_all()
     return read_draft(db, db.get(CaseDraft, draft_id))
+
+
+@router.get("/{draft_id}/readiness")
+def readiness(draft_id: str, db: DbSession, user: CurrentUser, response: Response,
+              expected_version: int = Query(ge=1)):
+    _require_admin(user)
+    row=db.get(CaseDraft,draft_id)
+    if not row: raise HTTPException(404,"draft_not_found")
+    if row.version!=expected_version: raise HTTPException(409,"draft_changed_reload_required")
+    from app.services.registration_readiness import registration_readiness
+    response.headers["Cache-Control"]="private, no-store"
+    return registration_readiness(db,row)
+
