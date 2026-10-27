@@ -37,9 +37,10 @@ export function CustomerDocuments({customerId}:{customerId:string}){
       <label>عنوان مدرک<input required minLength={2} maxLength={255} value={title} disabled={!!form.document||save.isPending} onChange={e=>{setTitle(e.target.value);changed();}}/></label>
       <div className="customer-grid"><label>تاریخ شروع اعتبار (میلادی)<input type="date" required={kind==='power_of_attorney'} value={starts} disabled={save.isPending} onChange={e=>{setStarts(e.target.value);changed();}}/></label>
       <label>تاریخ انقضا (میلادی)<input type="date" required={kind==='power_of_attorney'} min={starts||undefined} value={expires} disabled={save.isPending} onChange={e=>{setExpires(e.target.value);changed();}}/></label></div>
+      <small>هر دو تاریخ برای وکالت‌نامه الزامی است. مجوز بدون تاریخ انقضا، هشدار انقضا ندارد.</small>
       <label>هشدار از چند روز قبل از انقضا<input type="number" min={1} max={365} required value={days} disabled={save.isPending} onChange={e=>{setDays(Number(e.target.value));changed();}}/></label>
       <label>فایل مدرک<input ref={input} type="file" accept=".pdf,.png,.jpg,.jpeg" required disabled={save.isPending} onChange={changed}/></label><small>PDF، PNG یا JPEG؛ حداکثر ۳ مگابایت. جایگزینی، نسخه جدید می‌سازد و نسخه قبلی باقی می‌ماند.</small>
-      {storage.isPending&&<p role="status">در حال آماده‌سازی بارگذاری…</p>}{storage.isError&&<p role="alert" className="form-error">بارگذاری فایل فعلاً در دسترس نیست.</p>}
+      {storage.isPending&&<p role="status">در حال آماده‌سازی بارگذاری…</p>}{storage.isError&&<div role="alert"><p className="form-error">بارگذاری فایل فعلاً در دسترس نیست.</p><Button type="button" variant="outline" onClick={()=>void storage.refetch()}>تلاش دوباره</Button></div>}
       {save.isError&&<p role="alert" className="form-error">{save.error.message}</p>}
       <div className="form-actions"><Button type="submit" disabled={save.isPending||storage.isPending||storage.isError}>{save.isPending?'در حال بارگذاری…':'ذخیره مدرک'}</Button><Button type="button" variant="outline" disabled={save.isPending} onClick={()=>setForm(null)}>انصراف</Button></div>
     </form>}
