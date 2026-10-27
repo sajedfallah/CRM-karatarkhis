@@ -1,5 +1,6 @@
 """Opaque, hashed-at-rest sessions. Authorization remains in the domain layer."""
 import hashlib
+import hmac
 import secrets
 from datetime import datetime, timedelta, timezone
 
@@ -21,6 +22,15 @@ _DUMMY_HASH = password_hasher.hash(secrets.token_urlsafe(32))
 
 def token_hash(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
+
+
+def session_csrf_token(session_token: str) -> str:
+    """A domain-separated token bound to the random HttpOnly session secret.
+
+    Recoverable by an authenticated same-origin tab without rotating other tabs
+    or exposing the bearer cookie. Neither raw value is persisted in the DB.
+    """
+    return hmac.new(session_token.encode(), b"karatarkhis-csrf-v1", hashlib.sha256).hexdigest()
 
 
 def utc_now() -> datetime:
@@ -83,7 +93,8 @@ def authenticate_password(db: Session, email: str, password: str, request: Reque
 
 def create_session(db: Session, user: User, organization_id: str | None = None) -> tuple[str, str]:
     identity = resolve_membership(db, user, organization_id=organization_id)
-    token, csrf = secrets.token_urlsafe(32), secrets.token_urlsafe(32)
+    token = secrets.token_urlsafe(32)
+    csrf = session_csrf_token(token)
     db.add(AuthSession(token_hash=token_hash(token), user_id=user.id, membership_id=identity.membership_id, csrf_hash=token_hash(csrf),
                        expires_at=utc_now() + timedelta(hours=8)))
     db.add(SecurityEvent(user_id=user.id, event_type="login_succeeded"))
@@ -107,6 +118,8 @@ def session_user(db: Session, request: Request) -> User | None:
     if request.method not in {"GET", "HEAD", "OPTIONS"}:
         require_origin(request)
         csrf = request.headers.get("x-csrf-token", "")
-        if not secrets.compare_digest(session.csrf_hash, token_hash(csrf)):
+        # Existing random tokens remain valid until their sessions expire.
+        if not (secrets.compare_digest(session.csrf_hash, token_hash(csrf))
+                or secrets.compare_digest(token_hash(session_csrf_token(token)), token_hash(csrf))):
             raise HTTPException(403, "invalid_csrf_token")
     return resolve_membership(db, user, membership_id=session.membership_id)

@@ -5,7 +5,7 @@ from app.api.deps import CurrentUser, DbSession
 from app.models.auth import AuthSession, PasswordCredential
 from app.models.core import SecurityEvent
 from app.services.authentication import COOKIE_NAME, authenticate_password, create_session, require_origin, token_hash, utc_now
-from app.services.authentication import consume_login_attempt
+from app.services.authentication import consume_login_attempt, session_csrf_token
 from app.services.invitations import accept_invitation, issue_internal_invitation
 from app.core.config import get_settings
 from app.models.core import Organization, User
@@ -82,3 +82,20 @@ def logout(request: Request, response: Response, db: DbSession, user: CurrentUse
         db.commit()
     response.delete_cookie(COOKIE_NAME, path="/", secure=True, httponly=True, samesite="strict")
     response.headers["Cache-Control"] = "no-store"
+
+
+@router.get("/csrf")
+def csrf_token(request: Request, response: Response, user: CurrentUser):
+    token = request.cookies.get(COOKIE_NAME)
+    if not token:
+        raise HTTPException(401, "session_required")
+    # A custom header prevents acquisition through cross-site images/forms.
+    # Cross-origin JavaScript is blocked by the browser's preflight/SOP.
+    if request.headers.get("x-csrf-request") != "1":
+        raise HTTPException(403, "csrf_request_header_required")
+    origin = request.headers.get("origin")
+    if origin is not None:
+        require_origin(request)
+    response.headers["Cache-Control"] = "private, no-store"
+    response.headers["Vary"] = "Cookie"
+    return {"csrf_token": session_csrf_token(token)}

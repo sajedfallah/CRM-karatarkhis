@@ -60,5 +60,18 @@ def test_cookie_customer_registration_requires_origin_and_csrf(client, db, actor
             assert browser.post("/api/v1/customers", json=payload, headers={"Origin": origin}).status_code == 403
             assert browser.post("/api/v1/customers", json=payload, headers={"Origin": "https://evil.example", "X-CSRF-Token": "registration-csrf"}).status_code == 403
             assert browser.post("/api/v1/customers", json=payload, headers={"Origin": origin, "X-CSRF-Token": "registration-csrf"}).status_code == 201
+            assert browser.get("/api/v1/auth/csrf").status_code == 403
+            assert browser.get("/api/v1/auth/csrf", headers={"X-CSRF-Request": "1", "Origin": "https://evil.example"}).status_code == 403
+            recovered = browser.get("/api/v1/auth/csrf", headers={"X-CSRF-Request": "1"})
+            assert recovered.status_code == 200
+            assert "no-store" in recovered.headers["cache-control"]
+            csrf = recovered.json()["csrf_token"]
+            assert csrf != "registration-session"
+            for invalid in ("wrong-session-token", "نامعتبر"):
+                assert browser.post("/api/v1/customers", json=payload, headers={"Origin": origin, "X-CSRF-Token": invalid.encode().hex()}).status_code == 403
+            assert browser.get("/api/v1/auth/csrf", headers={"X-CSRF-Request": "1"}).json()["csrf_token"] == csrf
+            assert browser.post("/api/v1/customers", json={"name": "New Tab Customer"}, headers={"Origin": origin, "X-CSRF-Token": csrf}).status_code == 201
+            assert browser.post("/api/v1/auth/logout", headers={"Origin": origin, "X-CSRF-Token": csrf}).status_code == 204
+            assert browser.get("/api/v1/auth/csrf", headers={"X-CSRF-Request": "1"}).status_code == 401
     finally:
         settings.auth_allowed_origins = previous
