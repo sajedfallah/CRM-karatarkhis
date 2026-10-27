@@ -149,6 +149,8 @@ slice. Packaging, package count, total value/currency, driver mobile and vehicle
 identifier persist in the resumable draft; readiness checks them alongside
 product/quantity/weights/customs/HS and explicit human HS review. Import and transit
 shipment requirements remain undefined and are not guessed. No final submission,
-snapshot, lock or migration is introduced. PostgreSQL CI and Preview verification
-are pending; local pytest/npm are unavailable in this workstation session.
+snapshot, lock or migration is introduced. PostgreSQL CI run 40596279931 passed
+with 73 backend tests, 11 frontend tests, TypeScript/Vite build, migration
+rehearsal and secret scan. Preview commit 7273b710a7c15756f1de449457babc0b7af9286a
+is READY. Existing draft/customer data was not edited for export verification.
 

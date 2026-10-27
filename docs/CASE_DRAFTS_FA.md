@@ -59,6 +59,11 @@ Migration افزایشی 0011_case_drafts در شاخه آزمایشی اجرا 
 GET /case-drafts/{id}/readiness?expected_version=N برای نسخه قدیمی 409 می‌دهد.
 هنگام تغییر ذخیره‌نشده، نتیجه قدیمی در رابط نمایش داده نمی‌شود.
 
+برای برش جزئیات صادرات: CI شماره 40596279931 شامل ۷۳ آزمون PostgreSQL، ۱۱ آزمون
+فرانت‌اند، build، تمرین migration و اسکن secret است؛ همگی PASS شدند. پیش‌نمایش
+محافظت‌شده روی commit `7273b710a7c15756f1de449457babc0b7af9286a` آماده است.
+برای این بررسی هیچ پیش‌نویس یا مشتری واقعی تغییر داده نشد.
+
 Readiness runtime 8c6ea4758e02b34b3ba90a05c27224e752049b41 deployed READY.
 Saved-version checklist and canonical missing-step list verified in browser;
 existing draft stayed at version 9. Final submission remains unavailable.

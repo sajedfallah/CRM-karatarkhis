@@ -219,6 +219,9 @@ product, quantity, weight, customs and HS data plus a separate human-HS-review
 check. Import/transit requirements are not inferred. These fields stay inside the
 existing versioned draft JSON, so no migration or final-case creation is added.
 Customer confirmation, immutable submission snapshot, final-submit lock, and
-document linkage remain unavailable. Local pytest/npm runners are unavailable;
-PostgreSQL CI and deployed-preview verification are pending.
+document linkage remain unavailable. PostgreSQL CI run 40596279931 passed: 73
+backend tests, 11 frontend tests, TypeScript/Vite build, migration rehearsal and
+secret scan. The code is deployed READY on the existing protected Preview alias
+at commit 7273b710a7c15756f1de449457babc0b7af9286a. Staging schema stayed at 0013;
+no real draft/customer was edited to test export fields.
 
