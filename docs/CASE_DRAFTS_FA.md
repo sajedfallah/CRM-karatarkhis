@@ -51,3 +51,7 @@ Migration افزایشی 0011_case_drafts در شاخه آزمایشی اجرا 
 GET /case-drafts/{id}/readiness?expected_version=N برای نسخه قدیمی 409 می‌دهد.
 هنگام تغییر ذخیره‌نشده، نتیجه قدیمی در رابط نمایش داده نمی‌شود.
 
+Readiness runtime 8c6ea4758e02b34b3ba90a05c27224e752049b41 deployed READY.
+Saved-version checklist and canonical missing-step list verified in browser;
+existing draft stayed at version 9. Final submission remains unavailable.
+

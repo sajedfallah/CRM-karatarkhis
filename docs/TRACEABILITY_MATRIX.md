@@ -123,9 +123,13 @@ reviewer invitation form load with the existing admin. No customer profile or
 invitation was changed. /health/db returns 200. Full final submission remains open.
 
 
-CASE-DRAFT / UI-WEB / SUB-001/002: registration-readiness diagnostics IN_PROGRESS.
+CASE-DRAFT / UI-WEB / SUB-001/002: registration-readiness diagnostics PASS for this read-only slice; full submission remains PARTIAL.
 Read-only, exact saved-version initial-data checklist, latest customer corporate
 document validity and explicit unimplemented canonical wizard dependencies.
 Completing initial fields cannot enable final submission. No case/snapshot/customer
-confirmation is fabricated. No migration; tests and Preview verification pending.
+confirmation is fabricated. No migration; 69 PostgreSQL tests, 10 frontend tests, TypeScript/Vite build and secret scan PASS (CI 40540571845; runtime 8c6ea4758e02b34b3ba90a05c27224e752049b41). Authenticated Preview verified with existing saved draft version 9; no data changed.
+
+Readiness runtime 8c6ea4758e02b34b3ba90a05c27224e752049b41 deployed READY.
+Saved-version checklist and canonical missing-step list verified in browser;
+existing draft stayed at version 9. Final submission remains unavailable.
 
