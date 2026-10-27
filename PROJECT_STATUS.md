@@ -118,7 +118,7 @@ sections and save button render correctly, and write-session preparation complet
 The agent did not modify the real customer profile or create test records in staging.
 
 ## Active task — corporate documents and expiry notifications
-DOC-CORE / CMP-001 / CMP-005 / NTF-INAPP: CI_PENDING. Private branch-scoped Neon
+DOC-CORE / CMP-001 / CMP-005 / NTF-INAPP: PASS for this corporate-document/in-app slice; full compliance remains PARTIAL. Private branch-scoped Neon
 object storage, authenticated upload/download, immutable versions, POA date range,
 configurable reminder window (30 days default), deduplicated per-recipient in-app
 alerts and read state. 3 MiB PDF/JPEG/PNG cap. No AI extraction/malware-scan claim.
@@ -126,3 +126,15 @@ Expiry alerts refresh on the authenticated panel poll (60 seconds) and next visi
 background/offline email/push delivery and daily standalone worker remain future.
 Vercel storage provisioning returned 403; existing Neon branch storage used.
 Additive migration 0010 required; prior migrations unchanged.
+
+Corporate documents: 53 PostgreSQL tests, 8 frontend tests, TypeScript/Vite build
+and secret scan PASS. Runtime candidate 8e9760510e893295cc414eea01e3f77ee8f25f3e.
+Staging upgraded with Alembic-generated SQL to 0010_customer_documents.
+Private Neon bucket and scoped server credentials provisioned on staging only.
+Live authenticated storage probe and upload-form readiness verified without
+uploading a fabricated customer document. See docs/CUSTOMER_DOCUMENTS_FA.md.
+
+Final runtime 8e9760510e893295cc414eea01e3f77ee8f25f3e deployed and verified:
+customer document tab/deep link, upload fields, actual private-storage readiness,
+notification bell and empty notification center. The agent uploaded no customer
+file and modified no real profile. No independent offline scheduler is claimed.

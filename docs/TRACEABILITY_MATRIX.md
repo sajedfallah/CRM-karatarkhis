@@ -14,7 +14,7 @@
 | SUB-001 | Customer Confirmation | MISSING | no final confirmation command | NOT_STARTED |
 | SUB-003 | Submission Lock | MISSING | no immutable submission/lock model | NOT_STARTED |
 | SUB-005 | Admin Reopen | MISSING | no limited reopen/revision workflow | NOT_STARTED |
-| CMP-004 | Expiry Worker | MISSING | document expiry metadata only; no deterministic worker | NOT_STARTED |
+| CMP-004 | Expiry Worker | PARTIAL | Deterministic expiry service and panel materialization; independent daily worker not wired | PARTIAL |
 | FIN-CORE | Finance Ledger | MISSING | canonical finance domain absent | NOT_STARTED |
 | COM-CORE | Communication Hub | MISSING | V5 full communication/notification engine absent | NOT_STARTED |
 | COM-TG | Telegram V5 | PARTIAL/MISSING | legacy V4 bot exists; V5 adapter incomplete | NOT_STARTED |
@@ -37,7 +37,7 @@
 | OPS-FLAG | Feature Flags | MISSING | rollout control not implemented | NOT_STARTED |
 | OPS-OBS | Observability | MISSING/PARTIAL | structured monitoring baseline incomplete | NOT_STARTED |
 | OPS-BACKUP | Backup/Restore Drill | MISSING | production drill not established | NOT_STARTED |
-| NTF-INAPP | In-App Notification Center | MISSING | unread badge/deep-link notifications not implemented | NOT_STARTED |
+| NTF-INAPP | In-App Notification Center | PARTIAL | Recipient-bound expiry alerts, unread badge/read state and customer-document deep links implemented; other event types pending | PARTIAL |
 | ANN-HOME | Customer Home Announcements | MISSING | targeted/scheduled announcement board not implemented | NOT_STARTED |
 | CASE-TIMELINE | Stage Timeline | MISSING/PARTIAL | current Case backend lacks canonical stage timeline UX/model | NOT_STARTED |
 | CASE-COMMENT | Stage Comments | MISSING | customer-visible/internal stage threads not implemented | NOT_STARTED |
@@ -74,7 +74,10 @@ Customer profile runtime 188e67e132988d5fa1e7ffae6d83928b54795bba deployed;
 existing-customer details/edit form and all contact/address sections verified
 in-browser. Staging schema 0009. Persistence/clear/partial-update tests PASS.
 
-Corporate-document/notification slice: CI_PENDING. Private immutable file versions
+Corporate-document/notification slice: PARTIAL; 53 PostgreSQL tests and 8 frontend tests PASS. Private immutable file versions
 with effective/expiry dates, recipient-bound deduplicated expiry alerts, badge and
 customer-context link. Panel polling implements in-app freshness; independent
 daily worker/offline delivery remain incomplete (CMP-004 stays PARTIAL).
+
+Corporate runtime 8e9760510e893295cc414eea01e3f77ee8f25f3e: deployed tab,
+private-storage readiness, upload fields and notification center verified in browser.
