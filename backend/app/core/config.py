@@ -9,6 +9,8 @@ class Settings(BaseSettings):
     app_version: str = "5.0.0-dev"
     database_url: str
     log_level: str = "INFO"
+    dev_identity_enabled: bool = False
+    auth_allowed_origins: list[str] = []
 
     google_spreadsheet_id: str | None = None
     google_service_account_file: str | None = None

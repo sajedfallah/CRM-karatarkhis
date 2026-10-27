@@ -1,4 +1,6 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
 from app.api.v1.router import api_router
@@ -15,6 +17,13 @@ app = FastAPI(
     redoc_url=None,
 )
 app.include_router(api_router)
+
+
+@app.exception_handler(RequestValidationError)
+async def safe_validation_error(request, exc):
+    # Validation errors must not echo passwords or other submitted secrets.
+    errors = [{key: error[key] for key in ("type", "loc", "msg") if key in error} for error in exc.errors()]
+    return JSONResponse(status_code=422, content={"detail": errors})
 
 
 @app.get("/health", tags=["system"])

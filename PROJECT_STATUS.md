@@ -2,8 +2,8 @@
 
 ## Current State
 Current Epic: EPIC-001 FOUNDATION
-Current Task: KRT-IAM-001
-Branch: codex/canonical-v5-build
+Current Task: KRT-IAM-001B — password/session authentication foundation
+Branch: codex/iam-session-auth-20261027
 Base: feature/v5-backend-foundation
 Environment: repository baseline only; no production deployment
 
@@ -15,7 +15,27 @@ KRT-IAM-001A: PASS — identity/organization schema and ORM foundation; CI gate
 verified on 2026-09-23 by GitHub Actions run 35802057875 at commit
 `b772ddcc786c96cb0e3f9ef61b64c65c5b57ffa7`.
 
-Next Subtask: KRT-IAM-001B
+Next Subtask: invitation/email-verification enrollment and organization authorization
+
+## 2026-10-27 — Session authentication slice
+
+KRT-IAM-001B: PARTIAL pending runtime CI and the remaining enrollment dependencies.
+
+Implemented Argon2id password verification, verified-email binding, hashed opaque
+server-side sessions, Secure/HttpOnly/SameSite cookies, Origin/CSRF checks,
+revocation/expiry checks, persistent atomic login throttles and security events.
+Production/staging reject X-User-ID; local development must explicitly opt in.
+Added migration 0007; migrations 0001–0006 are unchanged.
+
+Local compileall and git diff --check: PASS. Local dependency installation failed
+because files.pythonhosted.org timed out; no local pytest PASS is claimed.
+The PostgreSQL migration/API regression gate must pass in GitHub Actions before merge.
+No production deployment, account enrollment, email sending or customer migration
+was performed. Organization membership enforcement, invitations, email verification,
+password reset, MFA, UI and the other canonical P0 milestones remain open.
+See docs/IAM_SESSION_AUTH.md for exact behavior/configuration and limitations.
+
+Historical sections below describe earlier tasks and may contain superseded status.
 
 ## KRT-FOUNDATION-002R — Automated QA + CI Foundation
 
