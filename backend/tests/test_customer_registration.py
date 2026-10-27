@@ -45,6 +45,7 @@ def test_cookie_customer_registration_requires_origin_and_csrf(client, db, actor
     db.add(OrganizationMembership(id="REG-MEM", organization_id="REG-ORG", user_id=admin.id,
         role="admin", permission_profile="مدیریتی", status="ACTIVE"))
     db.add(PasswordCredential(user_id=admin.id, password_hash="unused", verified_email=admin.email, email_verified_at=utc_now()))
+    db.flush()
     db.add(AuthSession(user_id=admin.id, membership_id="REG-MEM", token_hash=token_hash("registration-session"),
         csrf_hash=token_hash("registration-csrf"), expires_at=utc_now()+timedelta(hours=1)))
     db.commit()
