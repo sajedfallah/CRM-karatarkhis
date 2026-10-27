@@ -9,7 +9,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from app.api.deps import CurrentUser, DbSession
 from app.api.v1.compliance import validate_file
-from app.models.core import AuditLog, Case, Customer, OrganizationMembership, User
+from app.models.core import AuditLog, Case, Customer, OrganizationMembership, Permission, User
 from app.models.auth import PasswordCredential
 from app.models.declarations import DeclarationVersion, DeclarationRequest, DeclarationDecision
 from app.services.authorization import Action, AuthorizationDenied, AuthorizationService
@@ -23,6 +23,18 @@ def audit(db, user, entity, action):
     db.add(AuditLog(actor_user_id=user.id, entity_type="declaration", entity_id=entity, action=action, source="api"))
 
 
+def require_review(db, user, case):
+    auth=AuthorizationService(db)
+    dedicated=db.scalar(select(Permission.id).where(Permission.user_id==user.id,
+        Permission.role==user.role,Permission.profile==user.permission_profile,
+        Permission.scope_type=="DECLARATION_REVIEW",Permission.scope_id==case.customer_id,
+        Permission.is_active.is_(True),Permission.can_approve_documents.is_(True)))
+    if dedicated and user.role=="customer_manager" and user.customer_id==case.customer_id:
+        auth._require_membership_case_scope(user,case.id,Action.APPROVE_DOCUMENTS)
+        return
+    auth.require_case_action(user,case,Action.APPROVE_DOCUMENTS)
+
+
 def case_access(db, user, case_id, write=False, lock=False):
     query = select(Case).where(Case.id == case_id)
     case = db.scalar(query.with_for_update() if lock else query)
@@ -32,7 +44,10 @@ def case_access(db, user, case_id, write=False, lock=False):
     if not customer or not customer.is_active:
         raise HTTPException(404, "case_not_found")
     try:
-        AuthorizationService(db).require_case_action(user, case, Action.EDIT if write else Action.VIEW)
+        if user.role=="customer_manager" and not write:
+            require_review(db,user,case)
+        else:
+            AuthorizationService(db).require_case_action(user, case, Action.EDIT if write else Action.VIEW)
     except AuthorizationDenied:
         raise HTTPException(403 if write else 404, "case_not_allowed") from None
     if case.operation_type != "import":
@@ -55,7 +70,7 @@ def reviewer(db, membership_id, case):
     if identity.role != "customer_manager" or identity.customer_id != case.customer_id:
         raise HTTPException(403, "customer_reviewer_required")
     try:
-        AuthorizationService(db).require_case_action(identity, case, Action.APPROVE_DOCUMENTS)
+        require_review(db,identity,case)
     except AuthorizationDenied:
         raise HTTPException(403, "customer_review_permission_required") from None
     return identity
@@ -88,6 +103,24 @@ def visible_version(db, user, version_id, lock=False):
             raise HTTPException(404, "declaration_not_found")
         reviewer(db, user.membership_id, case)
     return version, case
+
+
+@router.get("/cases")
+def review_cases(db: DbSession, user: CurrentUser, response: Response):
+    response.headers["Cache-Control"]="private, no-store"
+    if user.role=="admin":
+        rows=list(db.scalars(select(Case).where(Case.operation_type=="import")))
+    elif user.role=="customer_manager" and getattr(user,"membership_id",None):
+        rows=list(db.scalars(select(Case).join(DeclarationVersion).join(DeclarationRequest).where(
+            DeclarationRequest.recipient_membership_id==user.membership_id).distinct()))
+    else: return []
+    result=[]
+    for case in rows:
+        try:
+            case_access(db,user,case.id)
+            result.append({"id":case.id,"real_case_number":case.real_case_number,"operation_type":case.operation_type})
+        except HTTPException: continue
+    return result
 
 
 @router.get("/inbox")
@@ -247,3 +280,4 @@ def download(version_id: str, db: DbSession, user: CurrentUser):
     return Response(data,media_type=mime,headers={"Cache-Control":"private, no-store",
         "Content-Disposition":"attachment; filename*=UTF-8''"+quote(name),"X-Content-Type-Options":"nosniff",
         "Content-Security-Policy":"sandbox; default-src 'none'","Referrer-Policy":"no-referrer"})
+

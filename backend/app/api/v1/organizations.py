@@ -44,10 +44,12 @@ def _org(db, organization_id):
     return organization
 
 
-def _manage(actor, organization):
+def _manage(db, actor, organization):
     if actor.role == "admin":
         return
     if actor.role != "customer_manager" or getattr(actor, "organization_id", None) != organization.id:
+        raise HTTPException(403, "organization_management_denied")
+    if not any(p.can_assign for p in AuthorizationService(db).effective_permissions(actor)):
         raise HTTPException(403, "organization_management_denied")
 
 
@@ -141,13 +143,13 @@ def create_organization(payload: OrganizationCreate, db: DbSession, actor: Curre
 
 @router.get("/{organization_id}/memberships")
 def memberships(organization_id: str, db: DbSession, actor: CurrentUser):
-    organization=_org(db,organization_id);_manage(actor,organization)
+    organization=_org(db,organization_id);_manage(db,actor,organization)
     return [_membership_dict(row) for row in db.scalars(select(OrganizationMembership).where(OrganizationMembership.organization_id == organization.id))]
 
 
 @router.post("/{organization_id}/memberships",status_code=201)
 def create_membership(organization_id: str, payload: MembershipCreate, db: DbSession, actor: CurrentUser):
-    organization=_org(db,organization_id);_manage(actor,organization)
+    organization=_org(db,organization_id);_manage(db,actor,organization)
     if not db.get(User,payload.user_id): raise HTTPException(400,"user_not_found")
     if db.scalar(select(OrganizationMembership.id).where(OrganizationMembership.organization_id == organization.id,OrganizationMembership.user_id == payload.user_id)):
         raise HTTPException(409,"membership_exists")
@@ -160,10 +162,11 @@ def create_membership(organization_id: str, payload: MembershipCreate, db: DbSes
 
 @router.patch("/{organization_id}/memberships/{membership_id}")
 def update_membership(organization_id: str,membership_id: str,payload: MembershipWrite,db: DbSession,actor: CurrentUser):
-    organization=_org(db,organization_id);_manage(actor,organization)
+    organization=_org(db,organization_id);_manage(db,actor,organization)
     member=db.get(OrganizationMembership,membership_id)
     if not member or member.organization_id != organization.id: raise HTTPException(404,"membership_not_found")
     if member.user_id == actor.id: raise HTTPException(409,"self_membership_change_denied")
     if actor.role != "admin" and member.role != "customer_employee": raise HTTPException(403,"role_escalation_denied")
     _apply(db,actor,organization,member,payload);db.commit()
     return _membership_dict(member)
+

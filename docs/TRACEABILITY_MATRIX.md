@@ -108,3 +108,13 @@ Authenticated Preview verification: /app/declarations renders the separate menu,
 import-case selector and honest empty state; /health/db returns 200. No real
 case or file was fabricated. Runtime e05eed0a3456fa89b05c4c0672e98fba7d079161
 was READY on the active Preview alias. Full customer workflow remains PARTIAL.
+
+
+UI-WEB / IAM-INVITE / IMP-DRAFT: grouped case navigation and customer reviewer
+enrollment IN_PROGRESS. Case lists, registration drafts, declarations and documents
+share an accessible disclosure. Admin-only email invitation creates a dedicated
+DECLARATION_REVIEW permission, not generic customer data or delegation rights.
+Customer activation still verifies email and consumes a one-use 24h token. Existing
+accounts and general customer portal invitations remain outside this slice.
+No migration; CI and authenticated Preview verification pending.
+

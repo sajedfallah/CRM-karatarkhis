@@ -1,13 +1,14 @@
 import React,{createContext,useContext,useEffect,useRef,useState} from 'react';
 import { createRoot } from 'react-dom/client';
 import { QueryClient,QueryClientProvider,useQuery,useQueryClient } from '@tanstack/react-query';
-import { createRootRoute,createRoute,createRouter,RouterProvider,Link,Outlet } from '@tanstack/react-router';
-import { Building2,Files,ListTodo,LayoutDashboard,FileText,RefreshCw,LogOut,ChevronLeft,ArrowUpLeft,ShieldCheck,X,Menu,Bell } from 'lucide-react';
+import { createRootRoute,createRoute,createRouter,RouterProvider,Link,Outlet,useRouterState } from '@tanstack/react-router';
+import { Building2,Files,ListTodo,LayoutDashboard,FileText,RefreshCw,LogOut,ChevronDown,ChevronLeft,ArrowUpLeft,ShieldCheck,X,Menu,Bell } from 'lucide-react';
 import {request,logout,type User,type RecordRow} from './api';
 import { Button } from './components/Button';
 import { DataTable,display,type Field } from './components/DataTable';
 import {CustomerEditor} from './components/CustomerEditor';
 import {customerProfileFields} from './customerProfile';
+import {CustomerReviewer} from './components/CustomerReviewer';
 import {CustomerDocuments} from './components/CustomerDocuments';
 import {Notifications,type AppNotification} from './components/Notifications';
 import {DeclarationsPage} from './components/Declarations';
@@ -32,6 +33,22 @@ function EmptyState({icon:Icon=Files,title,description}:{icon?:typeof Files;titl
 function Loading(){return <p className="loading" role="status">در حال دریافت اطلاعات…</p>;}
 function ErrorState({retry}:{retry:()=>void}){return <div className="error-state" role="alert"><p>دریافت اطلاعات انجام نشد.</p><Button variant="outline" onClick={retry}>تلاش دوباره</Button></div>;}
 
+function CaseNavigation({user,pendingCount,onNavigate}:{user:User;pendingCount:number;onNavigate:()=>void}){
+  const pathname=useRouterState({select:state=>state.location.pathname});
+  const inGroup=/\/(cases|drafts|declarations|documents)\/?$/.test(pathname);
+  const [open,setOpen]=useState(inGroup);
+  useEffect(()=>{if(inGroup)setOpen(true);},[pathname,inGroup]);
+  return <details className={'nav-group'+(inGroup?' is-current':'')} open={open} onToggle={event=>setOpen(event.currentTarget.open)}>
+    <summary className="nav-item"><Files size={18}/><span>پرونده‌ها</span>{pendingCount>0&&<span className="nav-count" aria-label="درخواست‌های نیازمند بررسی">{pendingCount.toLocaleString('fa-IR')}</span>}<ChevronDown size={15} className="nav-chevron"/></summary>
+    <div className="nav-children">
+      <Link to="/cases" onClick={onNavigate} activeProps={{className:'nav-item active'}} className="nav-item">فهرست پرونده‌ها</Link>
+      {user.role==='admin'&&<Link to="/drafts" onClick={onNavigate} activeProps={{className:'nav-item active'}} className="nav-item">پرونده‌های در حال ثبت</Link>}
+      {(user.role==='admin'||user.role==='customer_manager')&&<Link to="/declarations" onClick={onNavigate} activeProps={{className:'nav-item active'}} className="nav-item">پیش‌نویس اظهارنامه</Link>}
+      <Link to="/documents" onClick={onNavigate} activeProps={{className:'nav-item active'}} className="nav-item">اسناد پرونده‌ها</Link>
+    </div>
+  </details>;
+}
+
 function Frame(){
   const me=useQuery({queryKey:['me'],queryFn:()=>request<User>('users/me'),retry:false});
   const inbox=useQuery({queryKey:['notifications'],queryFn:()=>request<AppNotification[]>('notifications'),enabled:me.data?.role==='admin',refetchInterval:60000});
@@ -39,8 +56,8 @@ function Frame(){
   const [menu,setMenu]=useState(false);const [error,setError]=useState('');const cache=useQueryClient();
   if(me.isPending)return <Loading/>;
   if(me.isError)return <main className="session-error"><ShieldCheck size={34}/><h1>ورود به حساب لازم است</h1><p>{me.error.message}</p><a href="/login">باز کردن صفحه ورود</a></main>;
-  const user=me.data;const visible=resources.filter(r=>r.key!=='customers'||user.role==='admin');
-  return <UserContext.Provider value={user}><div className="app-shell"><aside className={menu?'sidebar is-open':'sidebar'}><a className="brand" href="/app"><span className="brand-symbol"><Files size={23}/></span><span>کاراترخیص<small>مدیریت عملیات ترخیص</small></span></a><p className="nav-label">فضای کاری</p><nav aria-label="ناوبری اصلی"><Link to="/" onClick={()=>setMenu(false)} activeOptions={{exact:true}} activeProps={{className:'nav-item active'}} className="nav-item"><LayoutDashboard size={18}/>نمای کلی</Link>{user.role==='admin'&&<Link to="/drafts" activeProps={{className:'nav-item active'}} className="nav-item"><Files size={18}/>پرونده‌های در حال ثبت</Link>}{(user.role==='admin'||user.role==='customer_manager')&&<Link to="/declarations" activeProps={{className:'nav-item active'}} className="nav-item"><FileText size={18}/>پیش‌نویس اظهارنامه{!!declarationInbox.data?.length&&<span aria-label="درخواست‌های نیازمند بررسی">{declarationInbox.data.length.toLocaleString('fa-IR')}</span>}</Link>}{visible.map(r=><Link key={r.key} to={'/'+r.key as '/cases'} onClick={()=>setMenu(false)} activeProps={{className:'nav-item active'}} className="nav-item"><r.icon size={18}/>{r.name}</Link>)}</nav><div className="sidebar-bottom"><div className="scope-note"><ShieldCheck size={17}/><span>{user.scope_type==='SELECTED_CASES'?'دسترسی به پرونده‌های انتخاب‌شده':'دسترسی متناسب با نقش شما'}</span></div><span className="environment">محیط آزمایشی</span></div></aside>{menu&&<button className="menu-backdrop" aria-label="بستن منو" onClick={()=>setMenu(false)}/>}<div className="workspace"><header className="topbar"><div className="topbar-title"><Button className="mobile-menu" variant="ghost" size="icon" aria-label="باز کردن منو" onClick={()=>setMenu(true)}><Menu size={21}/></Button><span>فضای کاری کاراترخیص</span><ChevronLeft size={14}/><span className="muted">پنل عملیات</span></div><div className="topbar-user">{user.role==='admin'&&<Link to="/notifications" className="notification-bell" aria-label="اعلان‌ها"><Bell size={19}/>{!!inbox.data?.filter(n=>!n.read_at).length&&<span>{inbox.data.filter(n=>!n.read_at).length.toLocaleString('fa-IR')}</span>}</Link>}<span className="avatar">{user.full_name.slice(0,1)}</span><div><strong>{user.full_name}</strong><small>{roleNames[user.role]||'کاربر'}</small></div><Button variant="ghost" size="icon" aria-label="خروج از حساب" onClick={async()=>{try{await logout();location.assign('/login');}catch(e){setError(e instanceof Error?e.message:'خروج انجام نشد.');}}}><LogOut size={18}/></Button></div></header>{error&&<p className="global-error" role="alert">{error}</p>}<main className="content"><div className="toolbar"><p className="today">{new Intl.DateTimeFormat('fa-IR',{dateStyle:'full'}).format(new Date())}</p><Button variant="outline" onClick={()=>void cache.invalidateQueries({queryKey:['records']})}><RefreshCw size={15}/>تازه‌سازی اطلاعات</Button></div><Outlet/></main><footer className="app-footer"><span>کاراترخیص</span><span>نسخه اولیه · مدیریت عملیات</span></footer></div></div></UserContext.Provider>;
+  const user=me.data;
+  return <UserContext.Provider value={user}><div className="app-shell"><aside className={menu?'sidebar is-open':'sidebar'}><a className="brand" href="/app"><span className="brand-symbol"><Files size={23}/></span><span>کاراترخیص<small>مدیریت عملیات ترخیص</small></span></a><p className="nav-label">فضای کاری</p><nav aria-label="ناوبری اصلی"><Link to="/" onClick={()=>setMenu(false)} activeOptions={{exact:true}} activeProps={{className:'nav-item active'}} className="nav-item"><LayoutDashboard size={18}/>نمای کلی</Link>{user.role==='admin'&&<Link to="/customers" onClick={()=>setMenu(false)} activeProps={{className:'nav-item active'}} className="nav-item"><Building2 size={18}/>مشتریان</Link>}<CaseNavigation user={user} pendingCount={declarationInbox.data?.length??0} onNavigate={()=>setMenu(false)}/><Link to="/tasks" onClick={()=>setMenu(false)} activeProps={{className:'nav-item active'}} className="nav-item"><ListTodo size={18}/>وظایف</Link></nav><div className="sidebar-bottom"><div className="scope-note"><ShieldCheck size={17}/><span>{user.scope_type==='SELECTED_CASES'?'دسترسی به پرونده‌های انتخاب‌شده':'دسترسی متناسب با نقش شما'}</span></div><span className="environment">محیط آزمایشی</span></div></aside>{menu&&<button className="menu-backdrop" aria-label="بستن منو" onClick={()=>setMenu(false)}/>}<div className="workspace"><header className="topbar"><div className="topbar-title"><Button className="mobile-menu" variant="ghost" size="icon" aria-label="باز کردن منو" onClick={()=>setMenu(true)}><Menu size={21}/></Button><span>فضای کاری کاراترخیص</span><ChevronLeft size={14}/><span className="muted">پنل عملیات</span></div><div className="topbar-user">{user.role==='admin'&&<Link to="/notifications" className="notification-bell" aria-label="اعلان‌ها"><Bell size={19}/>{!!inbox.data?.filter(n=>!n.read_at).length&&<span>{inbox.data.filter(n=>!n.read_at).length.toLocaleString('fa-IR')}</span>}</Link>}<span className="avatar">{user.full_name.slice(0,1)}</span><div><strong>{user.full_name}</strong><small>{roleNames[user.role]||'کاربر'}</small></div><Button variant="ghost" size="icon" aria-label="خروج از حساب" onClick={async()=>{try{await logout();location.assign('/login');}catch(e){setError(e instanceof Error?e.message:'خروج انجام نشد.');}}}><LogOut size={18}/></Button></div></header>{error&&<p className="global-error" role="alert">{error}</p>}<main className="content"><div className="toolbar"><p className="today">{new Intl.DateTimeFormat('fa-IR',{dateStyle:'full'}).format(new Date())}</p><Button variant="outline" onClick={()=>void cache.invalidateQueries({queryKey:['records']})}><RefreshCw size={15}/>تازه‌سازی اطلاعات</Button></div><Outlet/></main><footer className="app-footer"><span>کاراترخیص</span><span>نسخه اولیه · مدیریت عملیات</span></footer></div></div></UserContext.Provider>;
 }
 
 function Overview(){
@@ -57,11 +74,12 @@ function Detail({record,fields,onClose,onEdit,customerDocuments=false}:{record:R
   useEffect(()=>{setTab(new URLSearchParams(location.search).get('tab')==='documents'?'documents':'profile');},[record?.id]);
   return <dialog ref={dialog} onCancel={onClose} onClose={onClose} className={customerDocuments?'detail-dialog customer-detail':'detail-dialog'} aria-labelledby="detail-title">
     <header><h2 id="detail-title">{customerDocuments?'پرونده مشتری · '+String(record?.name??''):'جزئیات رکورد'}</h2><Button variant="ghost" size="icon" aria-label="بستن جزئیات" onClick={onClose}><X size={20}/></Button></header>
-    {customerDocuments&&<div className="detail-tabs" role="tablist" aria-label="بخش‌های مشتری"><button role="tab" id="profile-tab" aria-selected={tab==='profile'} aria-controls="profile-panel" onClick={()=>setTab('profile')}>مشخصات مشتری</button><button role="tab" id="documents-tab" aria-selected={tab==='documents'} aria-controls="documents-panel" onClick={()=>setTab('documents')}>مدارک و مجوزها</button></div>}
+    {customerDocuments&&<div className="detail-tabs" role="tablist" aria-label="بخش‌های مشتری"><button role="tab" id="profile-tab" aria-selected={tab==='profile'} aria-controls="profile-panel" onClick={()=>setTab('profile')}>مشخصات مشتری</button><button role="tab" id="documents-tab" aria-selected={tab==='documents'} aria-controls="documents-panel" onClick={()=>setTab('documents')}>مدارک و مجوزها</button><button role="tab" id="reviewer-tab" aria-selected={tab==='reviewer'} aria-controls="reviewer-panel" onClick={()=>setTab('reviewer')}>دسترسی بررسی اسناد</button></div>}
     <div id="profile-panel" role={customerDocuments?'tabpanel':undefined} aria-labelledby={customerDocuments?'profile-tab':undefined} hidden={customerDocuments&&tab!=='profile'}>
       <dl>{record&&fields.map(field=><div key={field.key}><dt>{field.label}</dt><dd>{display(record[field.key])}</dd></div>)}</dl><p className="muted">شناسه: <bdi>{record?.id}</bdi></p>{onEdit&&<Button onClick={onEdit}>ویرایش اطلاعات مشتری</Button>}
     </div>
     {customerDocuments&&record&&<div id="documents-panel" role="tabpanel" aria-labelledby="documents-tab" hidden={tab!=='documents'}><CustomerDocuments key={record.id} customerId={record.id}/></div>}
+    {customerDocuments&&record&&tab==='reviewer'&&<div id="reviewer-panel" role="tabpanel" aria-labelledby="reviewer-tab"><CustomerReviewer key={record.id} customerId={record.id}/></div>}
   </dialog>;
 }
 
@@ -89,3 +107,4 @@ const router=createRouter({routeTree:rootRoute.addChildren([overviewRoute,custom
 declare module '@tanstack/react-router'{interface Register{router:typeof router}}
 const client=new QueryClient({defaultOptions:{queries:{retry:false,staleTime:30000}}});
 createRoot(document.getElementById('root')!).render(<React.StrictMode><QueryClientProvider client={client}><RouterProvider router={router}/></QueryClientProvider></React.StrictMode>);
+

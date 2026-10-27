@@ -1,4 +1,4 @@
-"""Email-verified internal enrollment. Customer enrollment is a later slice."""
+"""Email-verified internal enrollment and least-privilege customer reviewers."""
 import secrets
 from datetime import timedelta
 from urllib.parse import urlparse
@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.models.auth import PasswordCredential
-from app.models.core import Invitation, Organization, OrganizationMembership, Permission, SecurityEvent, User
+from app.models.core import Customer, Invitation, Organization, OrganizationMembership, Permission, SecurityEvent, User
 from app.services.authentication import aware, hash_password, token_hash, utc_now
 
 
@@ -43,8 +43,23 @@ def send_invitation_email(invitation: Invitation, token: str) -> str:
 
 
 def issue_internal_invitation(db: Session, organization: Organization, email: str, role: str, actor_id: str | None):
+    if organization.type != "INTERNAL" or role not in {"admin", "internal_employee"}:
+        raise HTTPException(403, "invitation_scope_not_allowed")
+    return _issue_invitation(db, organization, email, role, actor_id)
+
+
+def issue_customer_reviewer(db: Session, organization: Organization, email: str, actor_id: str):
+    if organization.type != "CUSTOMER" or not organization.customer_id:
+        raise HTTPException(403, "invitation_scope_not_allowed")
+    customer = db.get(Customer, organization.customer_id)
+    if not customer or not customer.is_active:
+        raise HTTPException(409, "inactive_customer")
+    return _issue_invitation(db, organization, email, "customer_manager", actor_id)
+
+
+def _issue_invitation(db: Session, organization: Organization, email: str, role: str, actor_id: str | None):
     email = email.strip().lower()
-    if organization.type != "INTERNAL" or organization.status.lower() != "active" or role not in {"admin", "internal_employee"}:
+    if organization.status.lower() != "active":
         raise HTTPException(403, "invitation_scope_not_allowed")
     existing = db.scalars(select(User).where(func.lower(User.email) == email)).all()
     if existing:
@@ -79,7 +94,18 @@ def accept_invitation(db: Session, token: str, password: str, full_name: str):
     if not invitation or invitation.status != "pending" or invitation.revoked_at or aware(invitation.expires_at) <= utc_now():
         raise HTTPException(400, "invalid_or_expired_invitation")
     organization = db.get(Organization, invitation.organization_id)
-    if not organization or organization.type != "INTERNAL" or organization.status.lower() != "active" or invitation.role not in {"admin", "internal_employee"}:
+    if not organization or organization.status.lower() != "active" or invitation.scope_type != "ORGANIZATION":
+        raise HTTPException(403, "invitation_scope_not_allowed")
+    customer_id = None
+    if organization.type == "INTERNAL":
+        if invitation.role not in {"admin", "internal_employee"}:
+            raise HTTPException(403, "invitation_scope_not_allowed")
+    elif organization.type == "CUSTOMER":
+        customer = db.get(Customer, organization.customer_id) if organization.customer_id else None
+        if invitation.role != "customer_manager" or not customer or not customer.is_active:
+            raise HTTPException(403, "invitation_scope_not_allowed")
+        customer_id = customer.id
+    else:
         raise HTTPException(403, "invitation_scope_not_allowed")
     if db.scalar(select(User.id).where(func.lower(User.email) == invitation.email.lower())):
         raise HTTPException(409, "existing_account_requires_sign_in")
@@ -90,7 +116,7 @@ def accept_invitation(db: Session, token: str, password: str, full_name: str):
     if claimed.rowcount != 1:
         raise HTTPException(400, "invalid_or_expired_invitation")
     user = User(id="USR-" + uuid4().hex, full_name=full_name, email=invitation.email,
-        role=invitation.role, permission_profile="مدیریتی" if invitation.role == "admin" else "عملیاتی", is_active=True)
+        role=invitation.role, customer_id=customer_id, permission_profile="مدیریتی" if invitation.role == "admin" else "عملیاتی", is_active=True)
     db.add(user)
     db.flush()
     db.add(PasswordCredential(user_id=user.id, password_hash=hash_password(password),
@@ -102,6 +128,14 @@ def accept_invitation(db: Session, token: str, password: str, full_name: str):
         db.add(Permission(id="PERM-" + uuid4().hex, user_id=user.id, role=user.role,
             scope_type="ASSIGNED", scope_id="OWN_ASSIGNMENTS", profile=user.permission_profile,
             can_view=True, can_create=True, can_edit=True, can_assign=False))
+    if customer_id:
+        # This initial reviewer can only review explicitly delivered declarations.
+        # Generic case/task/document APIs still require their own view/write rights.
+        db.add(Permission(id="PERM-"+uuid4().hex,user_id=user.id,role=user.role,
+            scope_type="DECLARATION_REVIEW",scope_id=customer_id,profile=user.permission_profile,
+            can_view=False,can_create=False,can_edit=False,can_assign=False,
+            can_approve_documents=True,can_finance=False))
     db.add(SecurityEvent(user_id=user.id, organization_id=organization.id, event_type="invitation_accepted"))
     db.commit()
     return {"ok": True}
+

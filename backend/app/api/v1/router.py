@@ -18,7 +18,10 @@ from app.api.v1.drafts import router as drafts_router
 
 from app.api.v1.declarations import router as declarations_router
 
+from app.api.v1.customer_portal import router as customer_portal_router
+
 api_router = APIRouter(prefix="/api/v1")
+api_router.include_router(customer_portal_router)
 api_router.include_router(declarations_router)
 api_router.include_router(drafts_router)
 api_router.include_router(compliance_router)
@@ -33,3 +36,4 @@ api_router.include_router(manual_sync_router)
 api_router.include_router(tasks_router)
 api_router.include_router(telegram_router)
 api_router.include_router(users_router)
+

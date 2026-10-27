@@ -35,7 +35,7 @@ function CaseDeclarations({caseId,admin}:{caseId:string;admin:boolean}){
 
 export function DeclarationsPage({admin}:{admin:boolean}){
   const [caseId,setCaseId]=useState(()=>new URLSearchParams(location.search).get('case')??'');
-  const cases=useQuery({queryKey:['declaration-cases'],queryFn:()=>request<RecordRow[]>('cases')});
+  const cases=useQuery({queryKey:['declaration-cases'],queryFn:()=>request<RecordRow[]>('declarations/cases')});
   const inbox=useQuery({queryKey:['declaration-inbox'],queryFn:()=>request<Version[]>('declarations/inbox'),enabled:!admin,refetchInterval:30000});
   function select(id:string){setCaseId(id);history.replaceState(null,'','/app/declarations'+(id?'?case='+encodeURIComponent(id):''));}
   return <><div className="page-heading"><div><p className="eyebrow">بررسی سند توسط مشتری</p><h1>پیش‌نویس اظهارنامه</h1><p>این بخش برای بررسی سند است؛ اظهار گمرکی و ثبت نهایی پرونده از این صفحه انجام نمی‌شود.</p></div></div>
@@ -44,3 +44,4 @@ export function DeclarationsPage({admin}:{admin:boolean}){
     {caseId&&<CaseDeclarations key={caseId} caseId={caseId} admin={admin}/>}
   </>;
 }
+
