@@ -1,11 +1,17 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "cd frontend && npm ci --no-audit --no-fund && npm run build",
   "functions": {
     "api/index.py": {
       "maxDuration": 60
     }
   },
   "routes": [
+    {
+      "src": "/app(?:/(.*))?",
+      "dest": "/api/index",
+      "transforms": [{"type":"request.path","op":"set","args":"/app/$1"}]
+    },
     {
       "src": "/(activate|login|account|auth-assets/.*)",
       "dest": "/api/index",

@@ -41,7 +41,7 @@ if (location.pathname === '/activate') {
   fetch('/api/v1/users/me',{credentials:'same-origin'}).then(async response=>{
     if(!response.ok){location.replace('/login');return;}
     const me=await response.json();byId('identity').textContent=me.full_name;byId('account').hidden=false;
-    byId('intro').textContent='ورود شما موفق بود. پنل عملیاتی هنوز در دسترس نیست.';
+    byId('intro').textContent='ورود شما موفق بود. می‌توانید پنل عملیات را باز کنید.';
   }).catch(()=>{statusLine.textContent='ارتباط برقرار نشد.';});
   byId('logout').addEventListener('click',async()=>{
     try{await api('/api/v1/auth/logout',null,sessionStorage.getItem('krt_csrf'));sessionStorage.removeItem('krt_csrf');location.replace('/login');}
@@ -51,6 +51,6 @@ if (location.pathname === '/activate') {
   byId('title').textContent='ورود به کاراترخیص';byId('intro').textContent='با ایمیل و رمز حساب فعال‌شده وارد شوید.';byId('login').hidden=false;
   action(byId('login'),async()=>{
     const result=await api('/api/v1/auth/login',{email:byId('email').value,password:byId('password').value});
-    byId('login').reset();sessionStorage.setItem('krt_csrf',result.csrf_token);location.assign('/account');
+    byId('login').reset();sessionStorage.setItem('krt_csrf',result.csrf_token);location.assign('/app');
   });
 }

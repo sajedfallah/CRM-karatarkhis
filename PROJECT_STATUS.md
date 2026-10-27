@@ -62,6 +62,17 @@ The full roadmap and product authority remain docs/MASTER_SPEC_FA.md,
 docs/IMPLEMENTATION_ROADMAP_FA.md and docs/TRACEABILITY_MATRIX.md.
 
 ## Local verification limits
+Organization scope slice: PASS — 40 PostgreSQL CI tests and secret scan passed
+on 9668fc10b2559207d8b972c0924cde8d6a71a27f. Staging migration 0008 applied.
+The initial administrator accepted the invitation and completed a real login.
+
+Current task: UI-WEB initial read-only operations panel — IN_PROGRESS.
+React/TypeScript/Vite, Tailwind, TanStack Query/Table/Router, self-hosted Vazirmatn.
+Real API lists and counts, role-aware navigation, explicit detail fields,
+loading/error/empty states. No fabricated records. Build, CI and deployed browser
+verification remain pending. Forms, organization selector and full product UI
+remain future slices.
+
 compileall and git diff --check passed for the previous slices. Local pip downloads
 timed out, so runtime pytest results come from PostgreSQL CI, not this workstation.
 Do not claim complete frontend, complete organization IAM, or production readiness
