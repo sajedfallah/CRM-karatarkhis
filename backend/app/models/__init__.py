@@ -21,3 +21,5 @@ __all__ = [
     "TaskMessage",
     "User",
 ]
+
+from app.models.compliance import CorporateDocument, CorporateDocumentVersion, DocumentNotification

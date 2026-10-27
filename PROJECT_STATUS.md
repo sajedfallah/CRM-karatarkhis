@@ -116,3 +116,13 @@ Profile deployment verified with the existing administrator/customer: details
 include all new fields, editor preserves the previous name, contact/address
 sections and save button render correctly, and write-session preparation completes.
 The agent did not modify the real customer profile or create test records in staging.
+
+## Active task — corporate documents and expiry notifications
+DOC-CORE / CMP-001 / CMP-005 / NTF-INAPP: CI_PENDING. Private branch-scoped Neon
+object storage, authenticated upload/download, immutable versions, POA date range,
+configurable reminder window (30 days default), deduplicated per-recipient in-app
+alerts and read state. 3 MiB PDF/JPEG/PNG cap. No AI extraction/malware-scan claim.
+Expiry alerts refresh on the authenticated panel poll (60 seconds) and next visit;
+background/offline email/push delivery and daily standalone worker remain future.
+Vercel storage provisioning returned 403; existing Neon branch storage used.
+Additive migration 0010 required; prior migrations unchanged.

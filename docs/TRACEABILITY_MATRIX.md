@@ -73,3 +73,8 @@ Full multiple-contact Customer 360 remains out of this slice.
 Customer profile runtime 188e67e132988d5fa1e7ffae6d83928b54795bba deployed;
 existing-customer details/edit form and all contact/address sections verified
 in-browser. Staging schema 0009. Persistence/clear/partial-update tests PASS.
+
+Corporate-document/notification slice: CI_PENDING. Private immutable file versions
+with effective/expiry dates, recipient-bound deduplicated expiry alerts, badge and
+customer-context link. Panel polling implements in-app freshness; independent
+daily worker/offline delivery remain incomplete (CMP-004 stays PARTIAL).
