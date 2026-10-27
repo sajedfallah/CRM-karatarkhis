@@ -162,3 +162,11 @@ Terminology correction (UI-WEB / CASE-DRAFT): initial case-data UI is labelled
 «پرونده‌های در حال ثبت». External declaration draft upload/customer approval
 (IMP-DRAFT) remains a separate missing workflow; no declaration sending or
 customer approval is claimed. Existing draft IDs, API, content and autosave remain intact.
+
+
+IMP-DRAFT / DOC-003 / SEC-004: declaration-review slice IN_PROGRESS. Private
+immutable import-case file versions, explicit verified customer-manager recipient,
+version-bound approval/correction with required comment, append-only decisions,
+stale-version rejection and customer action inbox. No automatic EPS integration,
+email delivery, customer enrollment or case final-submission implementation.
+Migration 0012_declaration_review is additive. CI and staging verification pending.
