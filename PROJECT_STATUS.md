@@ -138,3 +138,11 @@ Final runtime 8e9760510e893295cc414eea01e3f77ee8f25f3e deployed and verified:
 customer document tab/deep link, upload fields, actual private-storage readiness,
 notification bell and empty notification center. The agent uploaded no customer
 file and modified no real profile. No independent offline scheduler is claimed.
+
+## Active task — resumable case draft foundation
+CASE-DRAFT / UI-WEB / SEC-003: CI_PENDING. Separate draft records with bounded
+initial operation/goods/shipment fields, idempotent creation/save replay, atomic
+optimistic version checks and audit. Admin-only scope initially; no final-submit
+command is exposed and no Case record is created. Web autosave/resume and
+unsaved-navigation protection added. Full wizard/confirmation/submission remain.
+Additive migration 0011 required; prior migrations unchanged.

@@ -14,7 +14,10 @@ from app.api.v1.organizations import router as organizations_router
 
 from app.api.v1.compliance import router as compliance_router
 
+from app.api.v1.drafts import router as drafts_router
+
 api_router = APIRouter(prefix="/api/v1")
+api_router.include_router(drafts_router)
 api_router.include_router(compliance_router)
 api_router.include_router(auth_router)
 api_router.include_router(organizations_router)
