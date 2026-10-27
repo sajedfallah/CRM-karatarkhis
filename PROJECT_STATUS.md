@@ -231,7 +231,11 @@ Admin can attach a specific immutable corporate-document version belonging to
 the draft's customer, or soft-detach it. Cross-customer IDs are denied; each
 change advances the draft version and appends audit. Readiness and the draft UI
 show the exact linked version and date-based validity without claiming document
-authenticity, requirement sufficiency or customer approval. Migration 0014 is
-additive; PostgreSQL CI, staging migration and protected-preview verification are
-pending. No production data changed.
+authenticity, requirement sufficiency or customer approval. Migration 0014 is additive; CI run 40598133253 passed with 75 PostgreSQL backend tests,
+11 frontend tests, TypeScript/Vite build, migration downgrade/upgrade rehearsal and
+Gitleaks. Alembic upgrade to 0014_draft_doc_links was applied only to isolated Neon
+staging; production was untouched. Runtime commit f5683515bf3b625a9a69aa9dd354e70d3b47d84e
+deployed READY on the protected Preview alias. Authenticated browser verification
+confirmed exact-version links and readiness render; the existing real draft remained
+at version 9, with no customer data changed. No final submission is enabled.
 
