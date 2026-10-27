@@ -11,6 +11,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Security and synchronization regression tests
+        run: node --test tests/*.test.cjs
+
       - name: JavaScript syntax check
         run: |
           cp src/apps-script/Code.gs /tmp/karatarkhis-code.js
@@ -42,3 +49,4 @@ jobs:
           else
             echo "No duplicate function declarations detected."
           fi
+

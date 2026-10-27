@@ -11,7 +11,7 @@ const WEB_APP_URL = PropertiesService.getScriptProperties().getProperty('WEB_APP
 const SPREADSHEET_ID = '1hpDV0ikEldIqnnICnfzULhmxABHxQLS9A3gXG9loeUM';
 const CRM_FOLDER_ID = '17LGzt2z04D9KhlXrW1YJc_AmEtA1g-ZM';
 const CRM_DOCUMENTS_ROOT_FOLDER_ID = '13h-NyW6CQgJAAB3EtBGjowNypHLZn2-s';
-const APP_VERSION = 'V4.26-2026-09-19';
+const APP_VERSION = 'V4.27-2026-10-27';
 
 const DASHBOARD_TEMPLATES = {
   'مدیر': '1Zt890HbsaHUS20ldmzWSrH0rRIEAuDgpavr8dqxxHBw',
@@ -127,7 +127,7 @@ function rememberCurrentWebAppUrl() {
 }
 
 function doGet() {
-  return jsonResponse({ ok: true, service: 'Karatarkhis CRM Bot', version: APP_VERSION, webhook: getWebAppUrl(), scriptId: ScriptApp.getScriptId(), time: new Date().toISOString() });
+  return jsonResponse({ ok:true, service:'Karatarkhis CRM Bot', version:APP_VERSION });
 }
 
 function doPost(e) {
@@ -1600,6 +1600,8 @@ function deactivateEntity(entity, id) {
     const ok1 = updateEntityField(entity, id, 'وضعیت', 'غیرفعال');
     updateRowById(SHEETS.usersRaw, id, { 'وضعیت': 'غیرفعال', 'آخرین بروزرسانی': nowFa() });
     upsertPermissionForUser(Object.assign({}, getEntityById('users', id) || {}, { 'User ID': id, 'وضعیت': 'غیرفعال' }));
+    const user = getRowById(SHEETS.usersRaw, id) || getEntityById('users', id);
+    revokeWorkspaceAccessV427_(user);
     return ok1;
   }
   return false;
@@ -2247,21 +2249,15 @@ function runV47PreflightAudit() {
 }
 
 function resetTelegramWebhook() {
-  const expectedUrl = rememberCurrentWebAppUrl();
-  const del = telegramApi('deleteWebhook', { drop_pending_updates: true });
-  Utilities.sleep(1200);
-  const set = telegramApi('setWebhook', { url: expectedUrl, allowed_updates: ['message','callback_query'], drop_pending_updates: true });
-  Utilities.sleep(800);
-  const info = getTelegramWebhookInfo();
-  Logger.log(JSON.stringify({ expectedUrl: expectedUrl, deleted: del, installed: set, info: info }, null, 2));
-  return { expectedUrl: expectedUrl, deleted: del, installed: set, info: info };
+  // setWebhook replaces the endpoint atomically and preserves pending updates.
+  const set = setTelegramWebhook();
+  if (!set || !set.ok) throw new Error('webhook_registration_failed');
+  return { expectedUrl:getTelegramWebhookConfigV427_().url, installed:set, info:getTelegramWebhookInfo() };
 }
 
 function setTelegramWebhook() {
-  const expectedUrl = rememberCurrentWebAppUrl();
-  const result = telegramApi('setWebhook', { url: expectedUrl, allowed_updates: ['message','callback_query'], drop_pending_updates: true });
-  Logger.log(JSON.stringify({ expectedUrl: expectedUrl, result: result },null,2));
-  return result;
+  const config = getTelegramWebhookConfigV427_();
+  return telegramApi('setWebhook', { url:config.url, secret_token:config.secret, allowed_updates:['message','callback_query'], drop_pending_updates:false });
 }
 
 function getTelegramWebhookInfo() {
@@ -2889,10 +2885,10 @@ function getWorkspaceSourceSnapshotV412_() {
 }
 
 function textContainsAnyV412_(value, needles) {
-  const hay = normalize(value);
+  const tokens = String(value == null ? '' : value).split(/[,،;؛|\n]+/).map(normalize);
   return (needles || []).some(function(n) {
-    const x = normalize(n);
-    return x && hay.indexOf(x) >= 0;
+    const token = normalize(n);
+    return !!token && tokens.indexOf(token) >= 0;
   });
 }
 
@@ -4158,7 +4154,7 @@ function handleInternalActionV414_(payload) {
   const actorEmail = String(payload.actor_email || '').trim().toLowerCase();
   if (ctx.email && actorEmail && ctx.email !== actorEmail) return { ok:false, error:'email_scope_mismatch' };
   const user = getRowById(SHEETS.usersRaw, ctx.userId) || getRowById(SHEETS.users, ctx.userId);
-  if (!user) return { ok:false, error:'manager_user_not_found' };
+  if (!isActiveUserV427_(user)) return { ok:false, error:'inactive_user' };
 
   if (payload.internal_action === 'manager_refresh') {
     const counts = syncWorkspaceDataV412_({ fileId:ctx.spreadsheetId, url:'https://docs.google.com/spreadsheets/d/' + ctx.spreadsheetId + '/edit', type:ctx.role }, user);
@@ -5124,7 +5120,7 @@ function getTelegramUserContextV419_(telegramId) {
   }
 
   const status = String(found['وضعیت'] || '').trim();
-  if (status === 'غیرفعال' || status === 'آرشیو') {
+  if (!isActiveUserV427_(found)) {
     return {
       authorized:false,
       isAdmin:false,
@@ -5383,16 +5379,11 @@ function getPersonalTaskOwnerTokensV420_(user) {
 }
 
 function personalTaskBelongsToUserV420_(row, user) {
-  const userId = normalizeTextV420_(user && user['User ID']);
+  if (!isActiveUserV427_(user)) return false;
+  const userId = normalizeTextV420_(user['User ID']);
   const source = normalizeTextV420_(row && row['منبع']);
-  if (userId && source === 'PERSONAL:' + userId) return true;
-
-  const owner = normalizeTextV420_(row && row['مسئول']);
-  if (!owner) return false;
-
-  return getPersonalTaskOwnerTokensV420_(user).some(function(t) {
-    return owner === t || owner.indexOf(t) >= 0;
-  });
+  if (source.indexOf('PERSONAL:') === 0) return !!userId && source === 'PERSONAL:' + userId;
+  return textContainsAnyV412_(row && row['مسئول'], getAssignmentIdentityTokensV427_(user));
 }
 
 function getPersonalDailyTasksV420_(user) {
@@ -5470,6 +5461,7 @@ function workspaceLocalTaskObjectV420_(headers, values) {
 }
 
 function upsertPersonalTaskFromWorkspaceV420_(localRow, user) {
+  if (!isActiveUserV427_(user)) return { skipped:true, reason:'inactive_user' };
   const taskText = normalizeTextV420_(localRow['کار روزانه']);
   let taskId = normalizeTextV420_(localRow['شناسه کار']);
 
@@ -5506,7 +5498,7 @@ function upsertPersonalTaskFromWorkspaceV420_(localRow, user) {
     'تعداد یادآوری': (existing && existing['تعداد یادآوری']) || 0,
     'آخرین تغییر وضعیت': oldStatus !== status ? nowFa() : ((existing && existing['آخرین تغییر وضعیت']) || nowFa()),
     'بسته شده در': status === 'انجام شد' ? ((existing && existing['بسته شده در']) || nowFa()) : '',
-    'منبع': (existing && existing['منبع']) || ('PERSONAL:' + userId),
+    'منبع': 'PERSONAL:' + userId,
     'شماره پرونده': localRow['شماره پرونده'] || ''
   });
 
@@ -5633,7 +5625,7 @@ function syncWorkspaceDataV412_(workspace, user) {
 
 function getAdminPersonalUserV420_() {
   const adminRows = readRows(SHEETS.usersRaw).filter(function(r) {
-    return normalizeRole(r['نقش']) === 'مدیر' && String(r['وضعیت'] || '') !== 'غیرفعال';
+    return normalizeRole(r['نقش']) === 'مدیر' && isActiveUserV427_(r);
   });
 
   if (adminRows.length) return adminRows[0];
@@ -5659,14 +5651,23 @@ function syncAllActiveWorkspacesV412(limit) {
   try {
     __WORKSPACE_SOURCE_SNAPSHOT_V412 = null;
 
-    const mappings = readRows(SHEETS.mapping)
-      .filter(function(r){ return String(r['Workspace URL'] || '').trim(); })
-      .slice(0, limit);
+    const mappings = readRows(SHEETS.mapping).filter(function(r) {
+      if (!String(r['Workspace URL'] || r['Spreadsheet ID'] || '').trim()) return false;
+      return isActiveUserV427_(getRowById(SHEETS.usersRaw, String(r['User ID'] || '').trim()));
+    });
+    const props = PropertiesService.getScriptProperties();
+    const cursorKey = 'WORKSPACE_SYNC_CURSOR_V427';
+    const stored = Number(props.getProperty(cursorKey));
+    const start = mappings.length && Number.isFinite(stored) && stored >= 0 ? Math.floor(stored) % mappings.length : 0;
+    const batch = [];
+    for (let i = 0; i < Math.min(limit, mappings.length); i++) batch.push(mappings[(start + i) % mappings.length]);
 
-    mappings.forEach(function(m) {
+    batch.forEach(function(m, batchIndex) {
+      // Advance before work so even a terminated invocation does not starve later users.
+      props.setProperty(cursorKey, String((start + batchIndex + 1) % mappings.length));
       const userId = String(m['User ID'] || '').trim();
       const user = getRowById(SHEETS.usersRaw, userId);
-      if (!user || String(user['وضعیت'] || '').trim() === 'غیرفعال') return;
+      if (!isActiveUserV427_(user)) return;
 
       report.processed++;
       try {
@@ -6065,6 +6066,7 @@ function harvestWorkspaceCategoriesV421_(dailySh, user) {
 
 // Final V4.21 personal daily sync override.
 function syncPersonalDailyTasksV420_(ss, user) {
+  if (!isActiveUserV427_(user)) throw new Error('inactive_user');
   const sh = ensurePersonalDailySheetV420_(ss);
 
   // First harvest any new free-typed categories.
@@ -7398,7 +7400,8 @@ function doPost(e) {
       return jsonResponse(handleInternalActionV414_(raw));
     }
 
-    const update = raw;
+    if (!isTrustedTelegramEnvelopeV427_(raw)) return jsonResponse({ ok:false, error:'unauthorized' });
+    const update = raw.update;
     updateId = String(update.update_id || '');
 
     if (updateId && isDuplicateUpdate(updateId)) {
@@ -7427,10 +7430,10 @@ function doPost(e) {
     } catch (_) {}
 
     return jsonResponse({
-      ok:true,
+      ok:false,
       handled_error:true,
       version:APP_VERSION,
-      error:String(err && err.message ? err.message : err)
+      error:'handler_failed'
     });
   }
 }
@@ -7798,16 +7801,13 @@ function normalizeRoleViewTextV424_(v) {
 }
 
 function getScopedWorkspaceDataV412_(user) {
+  if (!isActiveUserV427_(user)) return emptyWorkspaceScopeV427_();
   const src = getWorkspaceSourceSnapshotV412_();
   const role = normalizeRole(user['نقش']);
 
   if (role === 'مدیر') return src;
 
-  const userTokens = [
-    user['User ID'],
-    user['نام کامل'],
-    user['Telegram User ID']
-  ].filter(Boolean);
+  const userTokens = getAssignmentIdentityTokensV427_(user);
 
   let cases = [];
   let customers = [];
@@ -7857,6 +7857,7 @@ function getScopedWorkspaceDataV412_(user) {
 
   } else if (role === 'مدیر مشتری' || role === 'کارمند مشتری') {
     const customerId = String(user['Customer ID'] || '').trim();
+    if (!customerId) return emptyWorkspaceScopeV427_();
 
     customers = src.customers.filter(function(r) {
       return String(r['مشتری ID'] || '').trim() === customerId;
@@ -8318,7 +8319,10 @@ function handleRoleWorkspaceEditV424_(e) {
       getRowById(SHEETS.usersRaw, ctx.userId) ||
       getRowById(SHEETS.users, ctx.userId);
 
-    if (!user) return;
+    if (!isActiveUserV427_(user)) {
+      try { revokeWorkspaceAccessV427_(user, ctx); } catch (_) {}
+      return;
+    }
 
     const role = normalizeRole(user['نقش']);
     const sh = e.range.getSheet();
@@ -9575,6 +9579,7 @@ function prepareRoleTemplatesV424_() {
 // Final workspace sync override: canonical hidden data + role views +
 // role-specific landing dashboard.
 function syncWorkspaceDataV412_(workspace, user) {
+  if (!isActiveUserV427_(user)) throw new Error('inactive_user');
   const fileId = workspace.fileId || parseDriveFileId_(workspace.url);
   if (!fileId) throw new Error('Workspace File ID نامعتبر است.');
 
@@ -9896,3 +9901,91 @@ function testV426TemplateSource() {
   Logger.log(JSON.stringify(result, null, 2));
   return result;
 }
+
+/************************************************************
+ * V4.27 — authenticated ingress and workspace access guards
+ ************************************************************/
+function isActiveUserV427_(user) {
+  return !!user && String(user['وضعیت'] || '').trim() === 'فعال';
+}
+
+function emptyWorkspaceScopeV427_() {
+  return { customers:[], cases:[], tasks:[], leads:[], customerTasks:[], caseDocuments:[] };
+}
+
+function getAssignmentIdentityTokensV427_(user) {
+  if (!user) return [];
+  const tokens = [user['User ID'], user['Telegram User ID']].map(normalize).filter(Boolean);
+  const name = normalize(user['نام کامل']);
+  if (!name) return tokens;
+  // Legacy names are accepted only if they resolve to one immutable user ID.
+  const owners = {};
+  [SHEETS.usersRaw, SHEETS.users].forEach(function(cfg) {
+    readRows(cfg).forEach(function(row) {
+      if (normalize(row['نام کامل']) !== name) return;
+      const id = String(row['User ID'] || '').trim();
+      if (id) owners[id] = true;
+    });
+  });
+  const ids = Object.keys(owners);
+  if (ids.length === 1 && ids[0] === String(user['User ID'] || '').trim()) tokens.push(name);
+  return tokens;
+}
+
+function isTrustedTelegramEnvelopeV427_(payload) {
+  const expected = PropertiesService.getScriptProperties().getProperty('TELEGRAM_RELAY_SECRET') || '';
+  if (expected.length < 32 || !payload || typeof payload.relay_secret !== 'string') return false;
+  if (payload.relay_secret !== expected) return false;
+  const update = payload.update;
+  return !!update && typeof update === 'object' && !Array.isArray(update) &&
+    Number.isSafeInteger(update.update_id) && update.update_id >= 0 &&
+    (!!update.message || !!update.callback_query);
+}
+
+function getTelegramWebhookConfigV427_() {
+  const props = PropertiesService.getScriptProperties();
+  const url = String(props.getProperty('TELEGRAM_WEBHOOK_URL') || '').trim();
+  const secret = String(props.getProperty('TELEGRAM_WEBHOOK_SECRET') || '');
+  const relaySecret = String(props.getProperty('TELEGRAM_RELAY_SECRET') || '');
+  if (!/^https:\/\/[^/]+\/api\/telegram-webhook$/.test(url)) throw new Error('TELEGRAM_WEBHOOK_URL must be an HTTPS relay endpoint');
+  if (!/^[A-Za-z0-9_-]{32,256}$/.test(secret)) throw new Error('TELEGRAM_WEBHOOK_SECRET must contain 32-256 URL-safe characters');
+  if (relaySecret.length < 32) throw new Error('TELEGRAM_RELAY_SECRET must contain at least 32 characters');
+  return { url:url, secret:secret };
+}
+
+function revokeWorkspaceAccessV427_(user, context) {
+  const id = String(user && user['User ID'] || context && context.userId || '').trim();
+  if (!id) return { revoked:0 };
+  const mappings = context ? [context] : readRows(SHEETS.mapping).filter(function(row) {
+    return String(row['User ID'] || '').trim() === id;
+  });
+  let revoked = 0;
+  mappings.forEach(function(row) {
+    const fileId = String(row.spreadsheetId || row['Spreadsheet ID'] || parseDriveFileId_(row['Workspace URL'] || '') || '').trim();
+    const email = String(row.email || row['Gmail مشترک‌شده'] || user && user['Gmail / Email'] || '').trim();
+    if (!fileId || !email || protectedDriveIdsV413_()[fileId]) return;
+    // Fail visibly on inherited permissions; do not claim that ACL revocation succeeded.
+    const file = DriveApp.getFileById(fileId);
+    file.removeEditor(email);
+    file.removeViewer(email);
+    revoked++;
+  });
+  return { revoked:revoked };
+}
+
+function checkReleaseReadinessV427() {
+  // Read-only: does not install triggers, copy files, or send Telegram messages.
+  const report = { version:APP_VERSION, ok:true, checks:[] };
+  const check = function(name, fn) {
+    try { fn(); report.checks.push({ name:name, ok:true }); }
+    catch (_) { report.ok = false; report.checks.push({ name:name, ok:false }); }
+  };
+  check('telegram_config', function() { getTelegramWebhookConfigV427_(); if (!BOT_TOKEN || !ADMIN_TELEGRAM_ID) throw new Error('missing_config'); });
+  check('crm_access', function() { getCRMSpreadsheet().getId(); });
+  check('drive_templates', function() { Object.keys(DASHBOARD_TEMPLATES).forEach(function(role) { DriveApp.getFileById(DASHBOARD_TEMPLATES[role]).getId(); }); });
+  check('schema', function() { [SHEETS.usersRaw,SHEETS.mapping,SHEETS.customers,SHEETS.cases,SHEETS.tasks,SHEETS.dailyTasks].forEach(function(cfg) { if (getHeaders(cfg).indexOf(cfg.idHeader) < 0) throw new Error('missing_id_column'); }); });
+  Logger.log(JSON.stringify(report));
+  return report;
+}
+
+
