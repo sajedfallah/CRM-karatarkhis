@@ -42,7 +42,12 @@ See docs/IAM_SESSION_AUTH.md for exact behavior/configuration and limitations.
 User confirmed V5 web completion and migration as the target on 2026-10-27.
 Resend key was connected to the isolated Preview branch. Internal invitation
 delivery, one-time acceptance and Persian account utility pages are now implemented;
-runtime CI and live delivery verification are pending. No customer/organization
+31 PostgreSQL/API regressions and CI secret scanning: PASS at commit
+867cd57c888051b91b9436fc191db85a84d027a0. Live activation HTML returned 200.
+The staging bootstrap returned 202 and Resend accepted the initial invitation;
+database status is pending, awaiting the user's email confirmation and password.
+Bootstrap secret is disabled for future deployments after this send.
+No inbox-delivery or real-user login PASS is claimed. No customer/organization
 authorization completion is claimed. Staging-only bootstrap is fixed to an env
 recipient, requires a separate random secret and closes after a verified admin exists.
 Email-provider integration is required for invitation/verification delivery;
