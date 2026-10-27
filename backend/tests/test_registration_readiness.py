@@ -19,6 +19,7 @@ def test_readiness_is_read_only_and_never_enables_final_submission(client,db,act
     assert response.status_code==200,response.text
     data=response.json()
     assert not data['initial_data_complete'] and not data['final_submission_available']
+    assert not data['finance_estimate']['complete'] and data['finance_estimate']['amount'] is None
     assert next(c for c in data['initial_checks'] if c['id']=='customer')['complete']
     assert not next(c for c in data['initial_checks'] if c['id']=='quantity')['complete']
     assert {g['requirement'] for g in data['workflow_gaps']} >= {'SUB-001','SUB-002','PRD-HS','DOC-CORE'}
@@ -27,11 +28,24 @@ def test_readiness_is_read_only_and_never_enables_final_submission(client,db,act
     assert client.get(path+'/readiness?expected_version=1',headers=headers).status_code==409
     data=client.get(path+'/readiness?expected_version=2',headers=headers).json()
     assert data['initial_data_complete'] and not data['final_submission_available']
+    assert not data['finance_estimate']['complete']
     assert db.get(CaseDraft,row['id']).version==2
     assert db.scalar(select(func.count()).select_from(Case))==0
     assert db.scalar(select(func.count()).select_from(DocumentNotification))==0
     assert db.scalar(select(func.count()).select_from(AuditLog))==audits+1
     assert 'no-store' in response.headers['cache-control']
+
+
+def test_readiness_reports_internal_draft_estimate_without_financial_posting(client,db,actors,auth_headers):
+    headers=auth_headers(actors['admin'].id);row=draft(client,headers)
+    path='/api/v1/case-drafts/'+row['id']
+    content={'finance_estimate':{'description':'Internal estimate','amount':'987.50','currency':'USD'}}
+    saved=client.put(path,headers=headers,json={'expected_version':1,'content':content})
+    assert saved.status_code==200,saved.text
+    readiness=client.get(path+'/readiness?expected_version=2',headers=headers).json()
+    assert readiness['finance_estimate']=={'complete':True,'description':'Internal estimate','amount':'987.50','currency':'USD'}
+    assert not readiness['final_submission_available']
+    assert db.scalar(select(func.count()).select_from(Case))==0
 
 
 def test_readiness_admin_only_and_strict_version_validation(client,actors,auth_headers):

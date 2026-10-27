@@ -2,7 +2,7 @@ import {useEffect,useState,type FormEvent} from 'react';
 import {useBlocker} from '@tanstack/react-router';
 import {useMutation,useQuery,useQueryClient} from '@tanstack/react-query';
 import {request,ApiError,type RecordRow} from '../api';
-import {createDraft,saveDraft,draftValidation,emptyProductDetails,emptyExportShipment,type CaseDraft,type DraftContent} from '../drafts';
+import {createDraft,saveDraft,draftValidation,emptyProductDetails,emptyExportShipment,emptyFinanceEstimate,type CaseDraft,type DraftContent} from '../drafts';
 import {ProductReview} from './ProductReview';
 import {DraftDocuments} from './DraftDocuments';
 import {RegistrationReadiness} from './RegistrationReadiness';
@@ -15,6 +15,7 @@ function DraftEditor({initial,onClose,onReload}:{initial:CaseDraft;onClose:()=>v
   const [record,setRecord]=useState(initial);const [content,setContent]=useState<DraftContent>(initial.content);
   const details=content.product_details??emptyProductDetails;
   const shipment=content.export_shipment??emptyExportShipment;
+  const estimate=content.finance_estimate??emptyFinanceEstimate;
   const cache=useQueryClient();const dirty=!same(content,record.content);const invalid=draftValidation(content);
   const save=useMutation({retry:false,mutationFn:(input:{version:number;content:DraftContent})=>saveDraft(record.id,input.version,input.content),
     onSuccess:(data,input)=>{setRecord(data);setContent(current=>same(current,input.content)?data.content:current);void cache.invalidateQueries({queryKey:['case-drafts']});}});
@@ -47,7 +48,7 @@ function DraftEditor({initial,onClose,onReload}:{initial:CaseDraft;onClose:()=>v
       <label>ارز سه‌حرفی<input maxLength={3} autoCapitalize="characters" placeholder="USD" value={shipment.currency} onChange={e=>change('export_shipment',{...shipment,currency:e.target.value.toUpperCase()})}/></label>
       <label>موبایل راننده<input type="tel" maxLength={32} value={shipment.driver_mobile} onChange={e=>change('export_shipment',{...shipment,driver_mobile:e.target.value})}/></label>
       <label>خودرو / پلاک<input maxLength={128} value={shipment.vehicle_identifier} onChange={e=>change('export_shipment',{...shipment,vehicle_identifier:e.target.value})}/></label>
-    </div><p className="muted">این مشخصات فقط برای عملیات صادرات نمایش داده می‌شود. ثبت آن‌ها هنوز بسته‌بندی نهایی یا ثبت پرونده نیست.</p></fieldset>}{invalid&&<p className="form-error" role="alert">{invalid}</p>}
+    </div><p className="muted">این مشخصات فقط برای عملیات صادرات نمایش داده می‌شود. ثبت آن‌ها هنوز بسته‌بندی نهایی یا ثبت پرونده نیست.</p></fieldset>}<fieldset><legend>برآورد مالی اولیه (داخلی)</legend><p className="muted">این مبلغ فقط برآورد داخلیِ همین پیش‌نویس است؛ پرداخت، فاکتور یا ثبت در دفتر مالی ایجاد نمی‌کند و به مشتری نمایش داده نمی‌شود.</p><label>شرح برآورد<textarea maxLength={500} rows={3} value={estimate.description} onChange={e=>change('finance_estimate',{...estimate,description:e.target.value})}/></label><div className="customer-grid"><label>مبلغ برآورد<input type="text" inputMode="decimal" maxLength={19} placeholder="مثلاً 1250000.00" value={estimate.amount??''} onChange={e=>change('finance_estimate',{...estimate,amount:e.target.value||null})}/></label><label>ارز · کد سه‌حرفی<input maxLength={3} autoCapitalize="characters" placeholder="IRR یا USD" value={estimate.currency} onChange={e=>change('finance_estimate',{...estimate,currency:e.target.value.toUpperCase()})}/></label></div></fieldset>{invalid&&<p className="form-error" role="alert">{invalid}</p>}
     {save.isError&&<div className="form-error" role="alert"><p>{conflict?'اطلاعات این پرونده در جای دیگری تغییر کرده است. برای جلوگیری از بازنویسی، ذخیره متوقف شد.':'ذخیره انجام نشد. اطلاعات شما در فرم باقی مانده است؛ دوباره ذخیره کنید.'}</p>
       {conflict&&<><p>با دریافت نسخه جدید، تغییرات ذخیره‌نشده این فرم کنار گذاشته می‌شوند.</p><Button type="button" variant="outline" onClick={onReload}>دریافت نسخه جدید</Button></>}</div>}
     <div className="form-actions"><Button type="submit" disabled={!dirty||!!invalid||save.isPending||conflict}>ذخیره اطلاعات</Button>{dirty&&!save.isPending&&<Button type="button" variant="ghost" onClick={onClose}>بستن بدون ذخیره تغییرات</Button>}</div>

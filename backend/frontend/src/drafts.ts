@@ -3,7 +3,9 @@ export type ProductDetails={brand:string;model:string;material:string;intended_u
 export const emptyProductDetails:ProductDetails={brand:'',model:'',material:'',intended_use:'',technical_attributes:'',country_of_origin:'',hs_code:''};
 export type ExportShipmentDetails={package_type:string;package_count:number|null;total_value:string|null;currency:string;driver_mobile:string;vehicle_identifier:string};
 export const emptyExportShipment:ExportShipmentDetails={package_type:'',package_count:null,total_value:null,currency:'',driver_mobile:'',vehicle_identifier:''};
-export type DraftContent={title:string;operation_type:'import'|'export'|'transit'|null;customs:string;product_description:string;shipment_reference:string;product_details?:ProductDetails;export_shipment?:ExportShipmentDetails;quantity:number|null;net_weight:string|null;gross_weight:string|null};
+export type DraftFinanceEstimate={description:string;amount:string|null;currency:string};
+export const emptyFinanceEstimate:DraftFinanceEstimate={description:'',amount:null,currency:''};
+export type DraftContent={title:string;operation_type:'import'|'export'|'transit'|null;customs:string;product_description:string;shipment_reference:string;product_details?:ProductDetails;export_shipment?:ExportShipmentDetails;finance_estimate?:DraftFinanceEstimate;quantity:number|null;net_weight:string|null;gross_weight:string|null};
 export type CaseDraft={id:string;customer_id:string;customer_name:string;version:number;content:DraftContent;status:'DRAFT';product_review?:{status:'VERIFIED'|'NEEDS_REVIEW';product_revision:number;reason?:string};created_at:string;updated_at:string};
 export type DraftDocument={link_id?:string;document_id:string;document_version_id:string;title:string;document_type:string;version:number;file_name:string;starts_on:string|null;expires_on:string|null;status:string;added_at?:string};
 export type DraftDocumentState={draft_id:string;draft_version:number;linked:DraftDocument[];available:DraftDocument[]};
@@ -17,6 +19,11 @@ export function draftValidation(content:DraftContent):string{
   if(content.quantity!==null&&(!Number.isInteger(content.quantity)||content.quantity<1||content.quantity>1_000_000_000))return 'تعداد باید عدد صحیح مثبت باشد.';
   for(const weight of [content.net_weight,content.gross_weight])if(weight!==null&&(!Number.isFinite(Number(weight))||Number(weight)<0))return 'وزن باید عدد نامنفی باشد.';
   if(content.net_weight!==null&&content.gross_weight!==null&&Number(content.gross_weight)<Number(content.net_weight))return 'وزن ناخالص نمی‌تواند کمتر از وزن خالص باشد.';
+  const estimate=content.finance_estimate??emptyFinanceEstimate;
+  const hasEstimate=!!estimate.description.trim()||estimate.amount!==null&&estimate.amount!==''||!!estimate.currency.trim();
+  if(hasEstimate&&(!estimate.description.trim()||estimate.amount===null||estimate.amount===''||!estimate.currency.trim()))return 'برای ثبت برآورد، شرح، مبلغ و ارز را کامل کنید.';
+  if(estimate.amount!==null&&estimate.amount!==''&&!/^\d{1,16}(?:\.\d{1,2})?$/.test(estimate.amount))return 'مبلغ برآورد باید نامنفی و حداکثر با دو رقم اعشار باشد.';
+  if(estimate.currency&&!/^[A-Z]{3}$/.test(estimate.currency))return 'ارز باید با کد سه‌حرفی بزرگ مانند IRR یا USD ثبت شود.';
   return '';
 }
 

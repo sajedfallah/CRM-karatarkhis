@@ -36,6 +36,20 @@ class ExportShipmentDetails(BaseModel):
     vehicle_identifier: str = Field(default="", max_length=128)
 
 
+class DraftFinanceEstimate(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    description: str = Field(default="", max_length=500)
+    amount: Decimal | None = Field(default=None, ge=0, max_digits=18, decimal_places=2)
+    currency: str = Field(default="", max_length=3, pattern=r"^(?:[A-Z]{3})?$")
+
+    @model_validator(mode="after")
+    def complete_or_empty(self):
+        entered = bool(self.description) or self.amount is not None or bool(self.currency)
+        if entered and not (self.description and self.amount is not None and self.currency):
+            raise ValueError("finance_estimate_requires_description_amount_and_currency")
+        return self
+
+
 class DraftContent(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
     title: str = Field(default="", max_length=200)
@@ -44,6 +58,7 @@ class DraftContent(BaseModel):
     product_description: str = Field(default="", max_length=2000)
     product_details: ProductDetails = Field(default_factory=ProductDetails)
     export_shipment: ExportShipmentDetails = Field(default_factory=ExportShipmentDetails)
+    finance_estimate: DraftFinanceEstimate = Field(default_factory=DraftFinanceEstimate)
     shipment_reference: str = Field(default="", max_length=128)
     quantity: int | None = Field(default=None, ge=1, le=1_000_000_000)
     net_weight: Decimal | None = Field(default=None, ge=0, max_digits=18, decimal_places=3)

@@ -29,6 +29,8 @@ def registration_readiness(db, draft):
         ("quantity","تعداد"),("net_weight","وزن خالص"),("gross_weight","وزن ناخالص")):
         value=data.get(key)
         fields.append((key,title,value is not None and (not isinstance(value,str) or bool(value.strip()))))
+    finance_estimate=data.get("finance_estimate") or {}
+    estimate_complete=bool(finance_estimate.get("description")) and finance_estimate.get("amount") is not None and bool(finance_estimate.get("currency"))
     shipment_checks=[]
     if data.get("operation_type")=="export":
         shipment=data.get("export_shipment") or {}
@@ -65,6 +67,8 @@ def registration_readiness(db, draft):
         "shipment_check_status":"COMPLETE" if shipment_checks and all(item["complete"] for item in shipment_checks) else "INCOMPLETE" if shipment_checks else "NOT_DEFINED",
         "shipment_checks":shipment_checks,
         "final_submission_available":False,"product_review":product_review(db,draft),
+        "finance_estimate":{"complete":estimate_complete,"description":finance_estimate.get("description",""),
+            "amount":finance_estimate.get("amount"),"currency":finance_estimate.get("currency","")},
         "initial_checks":[{"id":key,"title":title,"complete":passed} for key,title,passed in fields],
         "workflow_gaps":[{"requirement":key,"title":title,"status":"NOT_IMPLEMENTED"} for key,title in WORKFLOW_GAPS],
         "corporate_documents":documents,"linked_corporate_documents":linked_documents,
