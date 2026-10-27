@@ -7,12 +7,12 @@ export async function request<T>(path:string,init:RequestInit={}):Promise<T>{
   return response.status===204?undefined as T:response.json();
 }
 export async function logout(){
-  const csrf=await csrfToken();
+  const csrf=await prepareWriteSession();
   await request('auth/logout',{method:'POST',headers:{'X-CSRF-Token':csrf}});
   sessionStorage.removeItem('krt_csrf');
 }
 
-async function csrfToken():Promise<string>{
+export async function prepareWriteSession():Promise<string>{
   const stored=sessionStorage.getItem('krt_csrf');
   if(stored)return stored;
   const data=await request<{csrf_token:string}>('auth/csrf',{headers:{'X-CSRF-Request':'1'}});
@@ -24,7 +24,7 @@ async function csrfToken():Promise<string>{
 export async function saveCustomer(name:string,id?:string):Promise<RecordRow>{
   const normalized=name.trim();
   if(normalized.length<2||normalized.length>255)throw new Error('نام مشتری باید بین ۲ تا ۲۵۵ نویسه باشد.');
-  const csrf=await csrfToken();
+  const csrf=await prepareWriteSession();
   return request<RecordRow>(id?'customers/'+encodeURIComponent(id):'customers',{
     method:id?'PATCH':'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':csrf},
     body:JSON.stringify({name:normalized}),
