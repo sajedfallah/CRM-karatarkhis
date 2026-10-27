@@ -66,12 +66,15 @@ Organization scope slice: PASS — 40 PostgreSQL CI tests and secret scan passed
 on 9668fc10b2559207d8b972c0924cde8d6a71a27f. Staging migration 0008 applied.
 The initial administrator accepted the invitation and completed a real login.
 
-Current task: UI-WEB initial read-only operations panel — IN_PROGRESS.
+Current task: UI-WEB initial read-only operations panel — PASS for this slice; full UI remains PARTIAL.
 React/TypeScript/Vite, Tailwind, TanStack Query/Table/Router, self-hosted Vazirmatn.
 Real API lists and counts, role-aware navigation, explicit detail fields,
 loading/error/empty states. No fabricated records. 42 PostgreSQL backend tests,
 3 frontend tests, TypeScript/Vite build and secret scan passed. Deployed browser
-verification remains pending. Forms, organization selector and full product UI
+verification passed on the active Preview alias with the signed-in administrator.
+HTML, hashed JS/CSS responses and real zero-count/empty states verified.
+Runtime code SHA: 512eb353088aa8370537da8673296446db06d30c.
+Forms, organization selector and full product UI
 remain future slices.
 
 compileall and git diff --check passed for the previous slices. Local pip downloads

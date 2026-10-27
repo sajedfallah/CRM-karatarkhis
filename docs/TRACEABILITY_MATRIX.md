@@ -51,7 +51,7 @@
 
 ## Current UI slice (2026-10-27)
 
-UI-WEB / SEC-004: PARTIAL. 42 backend PostgreSQL tests, 3 frontend tests and Vite/TypeScript build passed. Deployed browser verification pending. Initial Persian RTL read-only React
+UI-WEB / SEC-004: PARTIAL. 42 backend PostgreSQL tests, 3 frontend tests and Vite/TypeScript build passed. Deployed browser verification passed on the active Preview alias with the signed-in administrator. Hashed JS/CSS return 200; real empty lists render. Initial Persian RTL read-only React
 panel at /app uses existing authenticated API lists, session identity, real counts,
 search/sort and explicit detail fields. Server authorization remains authoritative.
 Panel route and asset boundary tests plus frontend request/CSRF tests added.
