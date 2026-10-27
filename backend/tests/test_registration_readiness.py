@@ -43,7 +43,7 @@ def test_readiness_admin_only_and_strict_version_validation(client,actors,auth_h
     assert client.get('/api/v1/case-drafts/MISSING/readiness?expected_version=1',headers=headers).status_code==404
 
 
-def test_export_shipment_readiness_lists_canonical_fields_without_claiming_submission(client,actors,auth_headers):
+def test_export_shipment_readiness_lists_canonical_fields_without_claiming_submission(client,db,actors,auth_headers):
     headers=auth_headers(actors['admin'].id);row=draft(client,headers)
     path='/api/v1/case-drafts/'+row['id']
     content={'operation_type':'export','customs':'Bandar Abbas','product_description':'Goods','quantity':4,
