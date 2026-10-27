@@ -133,3 +133,10 @@ Readiness runtime 8c6ea4758e02b34b3ba90a05c27224e752049b41 deployed READY.
 Saved-version checklist and canonical missing-step list verified in browser;
 existing draft stayed at version 9. Final submission remains unavailable.
 
+
+PRD-HS / PRD-002/003/004: draft technical product details and explicit admin human
+review IN_PROGRESS. Immutable review snapshots and source fingerprint plus monotonic
+product revision invalidate reviews on material change, including change-and-revert.
+No AI suggestion, Product Master promotion or final submission is claimed.
+Additive migration 0013 required; tests and Preview verification pending.
+

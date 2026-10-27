@@ -1,5 +1,5 @@
 import {afterEach,expect,test,vi} from 'vitest';
-import {saveDraft,draftValidation,type DraftContent} from './drafts';
+import {saveDraft,draftValidation,type DraftContent,emptyProductDetails} from './drafts';
 const content:DraftContent={title:'Draft',operation_type:null,customs:'',product_description:'',shipment_reference:'',quantity:null,net_weight:null,gross_weight:null};
 afterEach(()=>vi.unstubAllGlobals());
 test('draft save carries expected version and csrf without using the final case API',async()=>{
@@ -15,3 +15,10 @@ test('partial drafts are allowed and weight/quantity inconsistencies block autos
   expect(draftValidation({...content,quantity:0})).not.toBe('');
   expect(draftValidation({...content,quantity:1.5})).not.toBe('');
 });
+
+test('technical product input accepts a partial draft but rejects malformed HS values',()=>{
+  expect(draftValidation({...content,product_details:{...emptyProductDetails,technical_attributes:'Specification'}})).toBe('');
+  expect(draftValidation({...content,product_details:{...emptyProductDetails,hs_code:'123456'}})).toBe('');
+  expect(draftValidation({...content,product_details:{...emptyProductDetails,hs_code:'ABC123'}})).not.toBe('');
+});
+

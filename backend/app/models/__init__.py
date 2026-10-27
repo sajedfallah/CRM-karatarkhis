@@ -27,3 +27,6 @@ from app.models.compliance import CorporateDocument, CorporateDocumentVersion, D
 from app.models.drafts import CaseDraft
 
 from app.models.declarations import DeclarationVersion, DeclarationRequest, DeclarationDecision
+
+from app.models.product_review import DraftProductReview
+

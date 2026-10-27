@@ -59,7 +59,7 @@ jobs:
         run: pytest
       - name: Generate reviewed staging upgrade SQL
         working-directory: backend
-        run: alembic upgrade 0011_case_drafts:head --sql
+        run: alembic upgrade 0012_declaration_review:head --sql
   secret-scan:
     runs-on: ubuntu-latest
     permissions:
@@ -73,3 +73,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_ENABLE_COMMENTS: 'false'
+

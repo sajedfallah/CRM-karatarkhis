@@ -1,11 +1,12 @@
 """Read-only registration diagnostics, not a final-submission authorization."""
 from app.models.core import Customer
+from app.services.product_review import product_review
 from app.services.document_expiry import latest_versions, local_today, validity
 
 # Canonical wizard dependencies not yet implemented. Never infer PASS from
 # populated initial fields or from a declaration-document customer approval.
 WORKFLOW_GAPS = (
-    ("PRD-HS", "اطلاعات کامل کالا و بررسی انسانی HS"),
+    ("PRD-HS", "بانک کالا و اتصال بررسی HS به ثبت نهایی"),
     ("CASE-SHIPMENT", "اطلاعات کامل حمل متناسب با نوع عملیات"),
     ("DOC-CORE", "اتصال نسخه دقیق اسناد و بررسی الزامات مدارک پرونده"),
     ("AI-CORE", "پیش‌بررسی اسناد و رسیدگی انسانی به موارد لازم"),
@@ -32,7 +33,7 @@ def registration_readiness(db, draft):
                 "version":version.version,"status":validity(version)})
     return {"draft_id":draft.id,"draft_version":draft.version,"evaluated_on":local_today(),
         "initial_data_complete":all(passed for _,_,passed in fields),
-        "final_submission_available":False,
+        "final_submission_available":False,"product_review":product_review(db,draft),
         "initial_checks":[{"id":key,"title":title,"complete":passed} for key,title,passed in fields],
         "workflow_gaps":[{"requirement":key,"title":title,"status":"NOT_IMPLEMENTED"} for key,title in WORKFLOW_GAPS],
         "corporate_documents":documents,

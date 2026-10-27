@@ -2,7 +2,8 @@ import {useEffect,useState,type FormEvent} from 'react';
 import {useBlocker} from '@tanstack/react-router';
 import {useMutation,useQuery,useQueryClient} from '@tanstack/react-query';
 import {request,ApiError,type RecordRow} from '../api';
-import {createDraft,saveDraft,draftValidation,type CaseDraft,type DraftContent} from '../drafts';
+import {createDraft,saveDraft,draftValidation,emptyProductDetails,type CaseDraft,type DraftContent} from '../drafts';
+import {ProductReview} from './ProductReview';
 import {RegistrationReadiness} from './RegistrationReadiness';
 import {Button} from './Button';
 
@@ -11,6 +12,7 @@ const same=(a:DraftContent,b:DraftContent)=>JSON.stringify(a)===JSON.stringify(b
 
 function DraftEditor({initial,onClose,onReload}:{initial:CaseDraft;onClose:()=>void;onReload:()=>void}){
   const [record,setRecord]=useState(initial);const [content,setContent]=useState<DraftContent>(initial.content);
+  const details=content.product_details??emptyProductDetails;
   const cache=useQueryClient();const dirty=!same(content,record.content);const invalid=draftValidation(content);
   const save=useMutation({retry:false,mutationFn:(input:{version:number;content:DraftContent})=>saveDraft(record.id,input.version,input.content),
     onSuccess:(data,input)=>{setRecord(data);setContent(current=>same(current,input.content)?data.content:current);void cache.invalidateQueries({queryKey:['case-drafts']});}});
@@ -31,11 +33,16 @@ function DraftEditor({initial,onClose,onReload}:{initial:CaseDraft;onClose:()=>v
       <label>تعداد<input type="number" min={1} max={1000000000} step={1} value={content.quantity??''} onChange={e=>change('quantity',e.target.value===''?null:Number(e.target.value))}/></label>
       <label>وزن خالص (کیلوگرم)<input type="number" min={0} step="0.001" value={content.net_weight??''} onChange={e=>change('net_weight',e.target.value||null)}/></label>
       <label>وزن ناخالص (کیلوگرم)<input type="number" min={0} step="0.001" value={content.gross_weight??''} onChange={e=>change('gross_weight',e.target.value||null)}/></label></div>
-    </fieldset>{invalid&&<p className="form-error" role="alert">{invalid}</p>}
+    </fieldset><fieldset><legend>مشخصات فنی کالا و کد HS</legend><div className="customer-grid">
+      {([{key:'brand',label:'برند'},{key:'model',label:'مدل'},{key:'country_of_origin',label:'کشور سازنده / مبدأ'},{key:'hs_code',label:'کد HS پیشنهادی'}] as const).map(field=><label key={field.key}>{field.label}<input maxLength={field.key==='hs_code'?12:field.key==='country_of_origin'?100:120} inputMode={field.key==='hs_code'?'numeric':undefined} value={details[field.key]} onChange={e=>change('product_details',{...details,[field.key]:e.target.value})}/></label>)}
+      <label className="full-width">جنس / مواد تشکیل‌دهنده<textarea maxLength={500} value={details.material} onChange={e=>change('product_details',{...details,material:e.target.value})}/></label>
+      <label className="full-width">کاربرد کالا<textarea maxLength={1000} value={details.intended_use} onChange={e=>change('product_details',{...details,intended_use:e.target.value})}/></label>
+      <label className="full-width">ویژگی‌های فنی<textarea rows={4} maxLength={4000} value={details.technical_attributes} onChange={e=>change('product_details',{...details,technical_attributes:e.target.value})}/></label>
+    </div><p className="muted">کد HS ورودی انسانی است. ثبت آن به‌تنهایی تأیید کارشناسی محسوب نمی‌شود.</p></fieldset>{invalid&&<p className="form-error" role="alert">{invalid}</p>}
     {save.isError&&<div className="form-error" role="alert"><p>{conflict?'اطلاعات این پرونده در جای دیگری تغییر کرده است. برای جلوگیری از بازنویسی، ذخیره متوقف شد.':'ذخیره انجام نشد. اطلاعات شما در فرم باقی مانده است؛ دوباره ذخیره کنید.'}</p>
       {conflict&&<><p>با دریافت نسخه جدید، تغییرات ذخیره‌نشده این فرم کنار گذاشته می‌شوند.</p><Button type="button" variant="outline" onClick={onReload}>دریافت نسخه جدید</Button></>}</div>}
     <div className="form-actions"><Button type="submit" disabled={!dirty||!!invalid||save.isPending||conflict}>ذخیره اطلاعات</Button>{dirty&&!save.isPending&&<Button type="button" variant="ghost" onClick={onClose}>بستن بدون ذخیره تغییرات</Button>}</div>
-    </form></section><RegistrationReadiness id={record.id} version={record.version} unsaved={dirty||save.isPending} onReload={onReload}/>{blocker.status==='blocked'&&<div className="draft-navigation-alert" role="alert"><p>{dirty||save.isPending?'تغییرات هنوز ذخیره نشده است.':'تغییرات ذخیره شد؛ می‌توانید ادامه دهید.'}</p><Button onClick={blocker.reset}>ماندن در فرم</Button><Button variant="outline" disabled={save.isPending} onClick={blocker.proceed}>{dirty?'خروج بدون ذخیره تغییرات':'ادامه'}</Button></div>}</>;
+    </form></section><ProductReview record={record} unsaved={dirty||save.isPending} onReviewed={data=>{setRecord(current=>data.version>=current.version?data:current);void cache.invalidateQueries({queryKey:['registration-readiness',record.id]});}}/><RegistrationReadiness id={record.id} version={record.version} unsaved={dirty||save.isPending} onReload={onReload}/>{blocker.status==='blocked'&&<div className="draft-navigation-alert" role="alert"><p>{dirty||save.isPending?'تغییرات هنوز ذخیره نشده است.':'تغییرات ذخیره شد؛ می‌توانید ادامه دهید.'}</p><Button onClick={blocker.reset}>ماندن در فرم</Button><Button variant="outline" disabled={save.isPending} onClick={blocker.proceed}>{dirty?'خروج بدون ذخیره تغییرات':'ادامه'}</Button></div>}</>;
 }
 
 function DraftLoader({id,onClose}:{id:string;onClose:()=>void}){
