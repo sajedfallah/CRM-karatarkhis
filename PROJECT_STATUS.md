@@ -267,5 +267,9 @@ certificate, clearance assignment and warehouse receipt. PDF/PNG/JPEG uploads
 are immutable, hash-checked, audited and stored in versioned draft JSON with a
 private object key; only admins can download them in this slice. Reuploads append
 a version. Other product/shipment/finance/assignee fields are hidden for imports.
-No schema migration is needed. CI and Preview verification are pending.
+No schema migration is needed. CI run 40654476767 passed on commit
+3960a1d374f56af4d658e4c66a16f798beb8ebca. The matching Vercel Preview is
+READY; `/app/drafts` returned HTTP 200 and its built JavaScript contains all ten
+document labels and the categorized upload field. Authenticated upload against a
+real case was not exercised.
 
