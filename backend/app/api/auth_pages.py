@@ -41,7 +41,7 @@ def panel_page(path: str = ""):
         if not target.is_relative_to(directory / "assets") or not target.is_file():
             raise HTTPException(404)
         return FileResponse(target,headers={"Cache-Control":"public, max-age=31536000, immutable","X-Content-Type-Options":"nosniff"})
-    if path not in {"","customers","cases","tasks","documents","notifications","drafts","declarations"}:
+    if path not in {"","customers","cases","tasks","documents","notifications","drafts","declarations","customer-reviews"}:
         raise HTTPException(404)
     if not (directory / "index.html").is_file():
         raise HTTPException(503,"panel_build_not_available")
