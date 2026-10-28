@@ -29,7 +29,9 @@ def test_readiness_is_read_only_and_never_enables_final_submission(client,db,act
     assert client.put(path,headers=headers,json={'expected_version':1,'content':content}).status_code==200
     assert client.get(path+'/readiness?expected_version=1',headers=headers).status_code==409
     data=client.get(path+'/readiness?expected_version=2',headers=headers).json()
-    assert data['initial_data_complete'] and not data['final_submission_available']
+    assert not data['initial_data_complete'] and not data['final_submission_available']
+    assert not next(c for c in data['initial_checks'] if c['id']=='hs_code')['complete']
+    assert not next(c for c in data['initial_checks'] if c['id']=='import_documents')['complete']
     assert not data['finance_estimate']['complete']
     assert db.get(CaseDraft,row['id']).version==2
     assert db.scalar(select(func.count()).select_from(Case))==0
