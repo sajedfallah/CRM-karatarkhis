@@ -289,11 +289,12 @@ customs quota number, which starts the case and removes it from the review queue
 Export documents are accepted as titled supporting files because no canonical
 export checklist has been specified. The chosen dual document mode is not complete:
 APS/EPS upload is supported; generating the official declaration PDF requires an
-approved template and field mapping. No migration has been applied to staging.
-Migration 0016 is prepared; local Python syntax compilation passed. Local pytest
-and frontend build were unavailable because pytest/npm packages are not installed
-and network package access is blocked. GitHub Actions run 40662240684 passed
-(backend PostgreSQL suite, frontend build/tests, secret scan); Vercel reported both
-Preview builds successful. Browser confirmed the shortened admin menu and new
-submission queue UI. The queue API currently fails because migration 0016 has not
-been applied to staging; no live records were created or changed.
+approved template and field mapping. Migration 0016 was applied only to staging branch staging-iam-20261027. Verified
+Alembic head, request table and unique quota-number constraint on that branch;
+production was not changed. Local Python syntax compilation passed. Local pytest
+and frontend build were unavailable because packages are not installed and network
+package access is blocked. GitHub Actions run 40662240684 passed (backend
+PostgreSQL suite, frontend build/tests, secret scan); both Preview builds succeeded.
+Authenticated Preview browser check confirmed the admin-only submitted/registered
+queue and its successful empty state. No customer requests, files or cases were
+created for live verification.
