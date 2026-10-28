@@ -42,7 +42,7 @@ export function DeclarationsPage({admin}:{admin:boolean}){
   return <><div className="page-heading"><div><p className="eyebrow">بررسی سند توسط مشتری</p><h1>پیش‌نویس اظهارنامه</h1><p>این بخش برای بررسی سند است؛ اظهار گمرکی و ثبت نهایی پرونده از این صفحه انجام نمی‌شود.</p></div></div>
     {!admin&&!!inbox.data?.length&&<section className="surface draft-editor"><h2>نیازمند اقدام شما</h2>{inbox.data.map(v=><p key={v.id}><Button variant="outline" onClick={()=>select(v.case_id)}>بررسی نسخه {v.version.toLocaleString('fa-IR')} · {v.case_id}</Button></p>)}</section>}
     <section className="surface draft-editor"><label>پرونده<select value={caseId} onChange={e=>select(e.target.value)}><option value="">پرونده را انتخاب کنید</option>{cases.data?.filter(c=>['import','export'].includes(String(c.operation_type))).map(c=><option key={c.id} value={c.id}>{c.operation_type==='export'?'صادرات':'واردات'} · {String(c.real_case_number||c.id)}</option>)}</select></label>{cases.isPending?<p role="status">در حال دریافت پرونده‌ها…</p>:cases.isError?<p role="alert">دریافت پرونده‌ها انجام نشد.</p>:!cases.data.some(c=>['import','export'].includes(String(c.operation_type)))?<p>پرونده وارداتی یا صادراتی در محدوده دسترسی شما وجود ندارد.</p>:null}</section>
-    {caseId&&<CaseDeclarations key={caseId} caseId={caseId} operationType={cases.data?.find(c=>c.id===caseId)?.operation_type} admin={admin}/>}
+    {caseId&&<CaseDeclarations key={caseId} caseId={caseId} operationType={cases.data?.find(c=>c.id===caseId)?String(cases.data.find(c=>c.id===caseId)?.operation_type):undefined} admin={admin}/>}
   </>;
 }
 
