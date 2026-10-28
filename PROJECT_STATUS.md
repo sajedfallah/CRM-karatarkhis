@@ -260,10 +260,12 @@ table/revision were verified. Production remains untouched.
 
 ## Import initial-registration form — implementation in progress
 Per the latest business instruction, import drafts show only case title,
-operation, customs and HS fields; at least one private case document is required
-for initial-data completeness. PDF/PNG/JPEG uploads are immutable, hash-checked,
-audited and stored in versioned draft JSON with a private object key; only admins
-can download them in this slice. Other product/shipment/finance/assignee fields
-are hidden for imports. No schema migration is needed. Specific required
-document categories have not been defined, so uploads use a free title and the
-form does not claim document sufficiency. CI and Preview verification are pending.
+operation, customs and HS fields; all ten specified private document categories
+are required for initial-data completeness: bill of lading, insurance, order
+registration, certificate of origin, invoice, packing list, proforma, inspection
+certificate, clearance assignment and warehouse receipt. PDF/PNG/JPEG uploads
+are immutable, hash-checked, audited and stored in versioned draft JSON with a
+private object key; only admins can download them in this slice. Reuploads append
+a version. Other product/shipment/finance/assignee fields are hidden for imports.
+No schema migration is needed. CI and Preview verification are pending.
+

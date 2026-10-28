@@ -30,8 +30,8 @@ def test_readiness_is_read_only_and_never_enables_final_submission(client,db,act
     assert client.get(path+'/readiness?expected_version=1',headers=headers).status_code==409
     data=client.get(path+'/readiness?expected_version=2',headers=headers).json()
     assert not data['initial_data_complete'] and not data['final_submission_available']
-    assert not next(c for c in data['initial_checks'] if c['id']=='hs_code')['complete']
-    assert not next(c for c in data['initial_checks'] if c['id']=='import_documents')['complete']
+    assert len(data['import_document_checks'])==10
+    assert all(not item['complete'] for item in data['import_document_checks'])
     assert not data['finance_estimate']['complete']
     assert db.get(CaseDraft,row['id']).version==2
     assert db.scalar(select(func.count()).select_from(Case))==0
@@ -92,3 +92,4 @@ def test_only_latest_own_customer_document_validity_is_informational(client,db,a
     assert [(d['id'],d['version'],d['status']) for d in data['corporate_documents']]==[('OWN',2,'VALID')]
     assert not data['corporate_documents_are_linked'] and not data['final_submission_available']
     assert 'object_key' not in str(data) and 'sha256' not in str(data)
+

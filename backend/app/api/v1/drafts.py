@@ -18,6 +18,7 @@ from app.models.drafts import CaseDraft, DraftCorporateDocumentLink
 from app.models.draft_review import DraftCustomerReview
 from app.services.product_review import product_fingerprint, product_review
 from app.services.private_files import MAX_FILE_BYTES, PrivateFileStore
+from app.services.import_requirements import IMPORT_DOCUMENT_LABELS
 from app.api.v1.compliance import validate_file
 
 router = APIRouter(prefix="/case-drafts", tags=["case drafts"])
@@ -61,6 +62,7 @@ class DraftFinanceEstimate(BaseModel):
 class DraftImportDocument(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
     id: str = Field(pattern=r"^DID-[0-9a-f]{32}$")
+    document_type: str | None = Field(default=None, min_length=1, max_length=40)
     title: str = Field(min_length=1, max_length=120)
     file_name: str = Field(min_length=1, max_length=180)
     object_key: str = Field(pattern=r"^case-draft-imports/[A-Za-z0-9_-]+/[0-9a-f]{32}$", max_length=255)
@@ -69,6 +71,12 @@ class DraftImportDocument(BaseModel):
     sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     uploaded_by: str = Field(min_length=1, max_length=64)
     uploaded_at: str = Field(min_length=1, max_length=40)
+
+    @model_validator(mode="after")
+    def known_type_and_label(self):
+        if self.document_type is not None and (self.document_type not in IMPORT_DOCUMENT_LABELS or self.title != IMPORT_DOCUMENT_LABELS[self.document_type]):
+            raise ValueError("unsupported_import_document_type")
+        return self
 
 
 class DraftContent(BaseModel):
@@ -411,14 +419,14 @@ def save_draft(draft_id: str, payload: DraftSave, db: DbSession, user: CurrentUs
 @router.post("/{draft_id}/import-documents", status_code=201)
 def upload_import_document(draft_id: str, db: DbSession, user: CurrentUser,
         file: UploadFile = File(...), upload_id: UUID = Form(...),
-        title: str = Form(..., min_length=1, max_length=120), expected_version: int = Form(..., ge=1)):
+        document_type: str = Form(..., min_length=1, max_length=40), expected_version: int = Form(..., ge=1)):
     _require_admin(user)
     row=db.scalar(select(CaseDraft).where(CaseDraft.id==draft_id).with_for_update())
     if not row: raise HTTPException(404,"draft_not_found")
     require_customer(db,row.customer_id)
     if (row.content.get("operation_type") or "").lower()!="import":
         raise HTTPException(409,"import_documents_only_for_import_drafts")
-    if not title.strip(): raise HTTPException(422,"document_title_required")
+    if document_type not in IMPORT_DOCUMENT_LABELS: raise HTTPException(422,"unsupported_import_document_type")
     data=file.file.read(MAX_FILE_BYTES+1)
     if not data or len(data)>MAX_FILE_BYTES: raise HTTPException(413,"file_too_large_or_empty")
     filename,mime=validate_file(file,data)
@@ -427,7 +435,7 @@ def upload_import_document(draft_id: str, db: DbSession, user: CurrentUser,
     old_docs=row.content.get("import_documents",[])
     existing=next((item for item in old_docs if item.get("id")==document_id),None)
     if existing:
-        if existing.get("sha256")!=digest or existing.get("title")!=title.strip() or existing.get("uploaded_by")!=user.id:
+        if existing.get("sha256")!=digest or existing.get("document_type")!=document_type or existing.get("uploaded_by")!=user.id:
             raise HTTPException(409,"upload_id_conflict")
         return {"draft_id":row.id,"draft_version":row.version,"documents":old_docs}
     if len(old_docs)>=100: raise HTTPException(409,"import_document_limit_reached")
@@ -447,12 +455,13 @@ def upload_import_document(draft_id: str, db: DbSession, user: CurrentUser,
         docs=list(row.content.get("import_documents",[]))
         duplicate=next((item for item in docs if item.get("id")==document_id),None)
         if duplicate:
-            if duplicate.get("sha256")==digest and duplicate.get("title")==title.strip() and duplicate.get("uploaded_by")==actor_id:
+            if duplicate.get("sha256")==digest and duplicate.get("document_type")==document_type and duplicate.get("uploaded_by")==actor_id:
                 store.remove_uncommitted(storage_path)
                 return {"draft_id":row.id,"draft_version":row.version,"documents":docs}
             raise HTTPException(409,"upload_id_conflict")
         if len(docs)>=100: raise HTTPException(409,"import_document_limit_reached")
-        metadata={"id":document_id,"title":title.strip(),"file_name":filename,"object_key":storage_path,"mime_type":mime,
+        metadata={"id":document_id,"document_type":document_type,"title":IMPORT_DOCUMENT_LABELS[document_type],
+            "file_name":filename,"object_key":storage_path,"mime_type":mime,
             "size_bytes":len(data),"sha256":digest,"uploaded_by":actor_id,
             "uploaded_at":datetime.now(timezone.utc).isoformat()}
         content=dict(row.content)
@@ -659,3 +668,4 @@ def review_product(draft_id: str,payload: ProductReviewCommand,db: DbSession,use
         action="human_verify",new_value=f"draft_id={row.id};product_revision={row.product_revision}",source="api"))
     db.commit()
     return read_draft(db,row)
+

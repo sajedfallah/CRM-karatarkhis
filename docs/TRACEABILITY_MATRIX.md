@@ -7,7 +7,7 @@
 | SEC-004 | Customer Isolation | PARTIAL | server-side tenant/scope logic exists; automated IDOR suite missing | UNTESTED |
 | CRM-CUSTOMER | Customer | IMPLEMENTED-PARTIAL | customer backend foundation exists; 360/contacts incomplete | PARTIAL |
 | CASE-CORE | Case/Assignment | IMPLEMENTED-PARTIAL | V5 case + assignments exist; draft wizard stores an org-scoped proposed assignee only, while final CaseAssignment remains after registration | PARTIAL |
-| IMP-CASE-001 | Initial import case | IMPLEMENTED-PARTIAL | Draft UI keeps only title, operation, customs and HS; private version-bound import uploads gate initial-data completeness. Required document categories, legal sufficiency and final submission remain undefined/incomplete | PARTIAL |
+| IMP-CASE-001 | Initial import case | IMPLEMENTED-PARTIAL | Draft UI keeps only title, operation, customs and HS; all ten user-specified private document categories gate initial-data completeness. Uploads are versioned; authenticity, legal sufficiency and final submission remain unimplemented | PARTIAL |
 | TASK-CORE | Tasks/Messages | IMPLEMENTED | migration 0003 and API exist | PARTIAL |
 | DOC-CORE | Documents | PARTIAL | metadata/approval/expiry exists; immutable version/file model incomplete | PARTIAL |
 | AI-CORE | AI Orchestration | MISSING | no canonical AI request/result worker stack | NOT_STARTED |
@@ -163,3 +163,4 @@ Readiness reports exact linked version and expiry validity. Required-document
 rules, shipment documents, authenticity/review, customer confirmation and submit
 remain outside this slice. Migration 0014 and PostgreSQL CI/deployment verification
 are pending.
+

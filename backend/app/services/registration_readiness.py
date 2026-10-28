@@ -5,12 +5,13 @@ from app.models.compliance import CorporateDocument, CorporateDocumentVersion
 from app.models.drafts import DraftCorporateDocumentLink
 from app.services.product_review import product_review
 from app.services.document_expiry import latest_versions, local_today, validity
+from app.services.import_requirements import IMPORT_DOCUMENT_TYPES
 
 # Canonical wizard dependencies not yet implemented. Never infer PASS from
 # populated initial fields or from a declaration-document customer approval.
 WORKFLOW_GAPS = (
     ("PRD-HS", "بانک کالا و اتصال بررسی HS به ثبت نهایی"),
-    ("CASE-SHIPMENT", "قواعد کامل حمل صادرات/ترانزیت و کنترل ثبت نهایی واردات"),
+    ("CASE-SHIPMENT", "قواعد کامل حمل صادرات/ترانزیت و کنترل نهایی ثبت پرونده واردات"),
     ("DOC-CORE", "تعریف الزامات اسناد حمل و بررسی کفایت نسخه‌های متصل"),
     ("AI-CORE", "پیش‌بررسی اسناد و رسیدگی انسانی به موارد لازم"),
     ("FIN-CORE", "تأیید و قواعد مالی پرونده"),
@@ -25,10 +26,14 @@ def registration_readiness(db, draft):
     data=draft.content
     fields=[("customer","مشتری فعال",bool(customer and customer.is_active))]
     initial_fields=[("title","عنوان پرونده"),("operation_type","نوع عملیات"),("customs","گمرک")]
+    import_document_checks=[]
     if data.get("operation_type")=="import":
         product=data.get("product_details") or {}
-        initial_fields.extend((("hs_code","کد HS",bool(product.get("hs_code"))),
-            ("import_documents","بارگذاری مدارک واردات",bool(data.get("import_documents")))))
+        initial_fields.append(("hs_code","کد HS",bool(product.get("hs_code"))))
+        uploaded_types={item.get("document_type") for item in data.get("import_documents",[]) if item.get("document_type")}
+        import_document_checks=[{"id":f"import_document:{doc_type}","document_type":doc_type,"title":title,"complete":doc_type in uploaded_types}
+            for doc_type,title in IMPORT_DOCUMENT_TYPES]
+        initial_fields.extend((item["id"],item["title"],item["complete"]) for item in import_document_checks)
     else:
         initial_fields.extend((("product_description","شرح اولیه کالا"),("shipment_reference","مرجع حمل / بارنامه"),
             ("quantity","تعداد"),("net_weight","وزن خالص"),("gross_weight","وزن ناخالص")))
@@ -80,8 +85,9 @@ def registration_readiness(db, draft):
         "finance_estimate":{"complete":estimate_complete,"description":finance_estimate.get("description",""),
             "amount":finance_estimate.get("amount"),"currency":finance_estimate.get("currency","")},
         "planned_assignment_selected":bool(data.get("planned_assignee_user_id")),
-        "import_documents_count":len(data.get("import_documents") or []),
+        "import_documents_count":len(data.get("import_documents") or []),"import_document_checks":import_document_checks,
         "initial_checks":[{"id":key,"title":title,"complete":passed} for key,title,passed in fields],
         "workflow_gaps":[{"requirement":key,"title":title,"status":"NOT_IMPLEMENTED"} for key,title in WORKFLOW_GAPS],
         "corporate_documents":documents,"linked_corporate_documents":linked_documents,
         "corporate_documents_are_linked":bool(linked_documents)}
+
