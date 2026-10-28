@@ -43,10 +43,9 @@ function CaseNavigation({user,pendingCount,onNavigate}:{user:User;pendingCount:n
     <summary className="nav-item"><Files size={18}/><span>پرونده‌ها</span>{pendingCount>0&&<span className="nav-count" aria-label="درخواست‌های نیازمند بررسی">{pendingCount.toLocaleString('fa-IR')}</span>}<ChevronDown size={15} className="nav-chevron"/></summary>
     <div className="nav-children">
       <Link to="/cases" onClick={onNavigate} activeProps={{className:'nav-item active'}} className="nav-item">فهرست پرونده‌ها</Link>
-      {user.role==='admin'&&<Link to="/drafts" onClick={onNavigate} activeProps={{className:'nav-item active'}} className="nav-item">پرونده‌های در حال ثبت</Link>}
-      {(user.role==='admin'||user.role==='customer_manager')&&<Link to="/declarations" onClick={onNavigate} activeProps={{className:'nav-item active'}} className="nav-item">پیش‌نویس اظهارنامه</Link>}
+      {user.role==='customer_manager'&&<Link to="/declarations" onClick={onNavigate} activeProps={{className:'nav-item active'}} className="nav-item">پیش‌نویس اظهارنامه</Link>}
       {user.role==='customer_manager'&&<Link to="/customer-reviews" onClick={onNavigate} activeProps={{className:'nav-item active'}} className="nav-item">بازبینی اطلاعات پرونده</Link>}
-      <Link to="/documents" onClick={onNavigate} activeProps={{className:'nav-item active'}} className="nav-item">اسناد پرونده‌ها</Link>
+      {user.role!=='admin'&&<Link to="/documents" onClick={onNavigate} activeProps={{className:'nav-item active'}} className="nav-item">اسناد پرونده‌ها</Link>}
     </div>
   </details>;
 }
@@ -111,3 +110,4 @@ const router=createRouter({routeTree:rootRoute.addChildren([overviewRoute,custom
 declare module '@tanstack/react-router'{interface Register{router:typeof router}}
 const client=new QueryClient({defaultOptions:{queries:{retry:false,staleTime:30000}}});
 createRoot(document.getElementById('root')!).render(<React.StrictMode><QueryClientProvider client={client}><RouterProvider router={router}/></QueryClientProvider></React.StrictMode>);
+
