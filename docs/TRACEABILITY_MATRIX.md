@@ -34,7 +34,7 @@
 | OPS-AUTH | Production Auth | PARTIAL | password/session runtime tested; enrollment and organization integration remain open | PARTIAL |
 | IAM-SESSION | Revocable cookie sessions | IMPLEMENTED | migration 0007; CSRF/expiry/revocation/rate-limit regressions; PostgreSQL CI and isolated staging verified | PASS |
 
-| IAM-INVITE | Organization/User Invitation | IMPLEMENTED-PARTIAL | Distinct invitation purpose preserves restricted declaration reviewers; customer-manager and employee invitation paths are implemented. Migration 0017 applied to staging; Preview deployment and authenticated UAT pending. Existing-account safe linkage remains open. | PENDING (Preview/UAT) |
+| IAM-INVITE | Organization/User Invitation | IMPLEMENTED-PARTIAL | Distinct invitation purpose preserves restricted declaration reviewers; customer-manager and employee invitation paths are implemented. Migration 0017 applied to staging; Preview deployment READY; authenticated UAT pending. Existing-account safe linkage remains open. | PENDING (Preview/UAT) |
 | IAM-CUSTOMER-TEAM | Customer organization users | IMPLEMENTED-PARTIAL | Admin records company-manager email; manager invitation and manager-only employee administration are organization-scoped. Migration 0017 applied on staging; Preview/UAT pending. | PENDING (Preview/UAT) |
 | IAM-CASE-SCOPE | Customer Case Scope | MISSING | organization + selected-case access model not implemented | NOT_STARTED |
 | AUD-CORE | Audit/Security Logs | PARTIAL | audit exists; comprehensive auth/security events incomplete | PARTIAL |
