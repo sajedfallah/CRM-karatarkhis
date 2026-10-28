@@ -1,4 +1,4 @@
-"""Private declaration versions and explicit recipient-bound customer review."""
+"""Private import/export document versions and explicit recipient-bound customer review."""
 import hashlib
 from typing import Literal
 from urllib.parse import quote
@@ -50,8 +50,8 @@ def case_access(db, user, case_id, write=False, lock=False):
             AuthorizationService(db).require_case_action(user, case, Action.EDIT if write else Action.VIEW)
     except AuthorizationDenied:
         raise HTTPException(403 if write else 404, "case_not_allowed") from None
-    if case.operation_type != "import":
-        raise HTTPException(409, "import_case_required")
+    if case.operation_type not in {"import", "export"}:
+        raise HTTPException(409, "import_or_export_case_required")
     return case
 
 
@@ -109,7 +109,7 @@ def visible_version(db, user, version_id, lock=False):
 def review_cases(db: DbSession, user: CurrentUser, response: Response):
     response.headers["Cache-Control"]="private, no-store"
     if user.role=="admin":
-        rows=list(db.scalars(select(Case).where(Case.operation_type=="import")))
+        rows=list(db.scalars(select(Case).where(Case.operation_type.in_(("import","export")))))
     elif user.role=="customer_manager" and getattr(user,"membership_id",None):
         rows=list(db.scalars(select(Case).join(DeclarationVersion).join(DeclarationRequest).where(
             DeclarationRequest.recipient_membership_id==user.membership_id).distinct()))
@@ -118,7 +118,7 @@ def review_cases(db: DbSession, user: CurrentUser, response: Response):
     for case in rows:
         try:
             case_access(db,user,case.id)
-            result.append({"id":case.id,"real_case_number":case.real_case_number,"operation_type":case.operation_type})
+        result.append({"id":case.id,"real_case_number":case.real_case_number,"operation_type":case.operation_type})
         except HTTPException: continue
     return result
 
