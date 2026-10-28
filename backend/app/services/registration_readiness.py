@@ -10,7 +10,7 @@ from app.services.document_expiry import latest_versions, local_today, validity
 # populated initial fields or from a declaration-document customer approval.
 WORKFLOW_GAPS = (
     ("PRD-HS", "بانک کالا و اتصال بررسی HS به ثبت نهایی"),
-    ("CASE-SHIPMENT", "اطلاعات کامل حمل متناسب با نوع عملیات"),
+    ("CASE-SHIPMENT", "قواعد کامل حمل صادرات/ترانزیت و کنترل ثبت نهایی واردات"),
     ("DOC-CORE", "تعریف الزامات اسناد حمل و بررسی کفایت نسخه‌های متصل"),
     ("AI-CORE", "پیش‌بررسی اسناد و رسیدگی انسانی به موارد لازم"),
     ("FIN-CORE", "تأیید و قواعد مالی پرونده"),
@@ -24,9 +24,19 @@ def registration_readiness(db, draft):
     customer=db.get(Customer,draft.customer_id)
     data=draft.content
     fields=[("customer","مشتری فعال",bool(customer and customer.is_active))]
-    for key,title in (("title","عنوان پرونده"),("operation_type","نوع عملیات"),("customs","گمرک"),
-        ("product_description","شرح اولیه کالا"),("shipment_reference","مرجع حمل / بارنامه"),
-        ("quantity","تعداد"),("net_weight","وزن خالص"),("gross_weight","وزن ناخالص")):
+    initial_fields=[("title","عنوان پرونده"),("operation_type","نوع عملیات"),("customs","گمرک")]
+    if data.get("operation_type")=="import":
+        product=data.get("product_details") or {}
+        initial_fields.extend((("hs_code","کد HS",bool(product.get("hs_code"))),
+            ("import_documents","بارگذاری مدارک واردات",bool(data.get("import_documents")))))
+    else:
+        initial_fields.extend((("product_description","شرح اولیه کالا"),("shipment_reference","مرجع حمل / بارنامه"),
+            ("quantity","تعداد"),("net_weight","وزن خالص"),("gross_weight","وزن ناخالص")))
+    for field in initial_fields:
+        if len(field)==3:
+            fields.append(field)
+            continue
+        key,title=field
         value=data.get(key)
         fields.append((key,title,value is not None and (not isinstance(value,str) or bool(value.strip()))))
     finance_estimate=data.get("finance_estimate") or {}
@@ -62,7 +72,7 @@ def registration_readiness(db, draft):
         if document.customer_id==draft.customer_id:
             documents.append({"id":document.id,"title":document.title,"version_id":version.id,
                 "version":version.version,"status":validity(version)})
-    return {"draft_id":draft.id,"draft_version":draft.version,"evaluated_on":local_today(),
+    return {"draft_id":draft.id,"draft_version":draft.version,"operation_type":data.get("operation_type"),"evaluated_on":local_today(),
         "initial_data_complete":all(passed for _,_,passed in fields),
         "shipment_check_status":"COMPLETE" if shipment_checks and all(item["complete"] for item in shipment_checks) else "INCOMPLETE" if shipment_checks else "NOT_DEFINED",
         "shipment_checks":shipment_checks,
@@ -70,6 +80,7 @@ def registration_readiness(db, draft):
         "finance_estimate":{"complete":estimate_complete,"description":finance_estimate.get("description",""),
             "amount":finance_estimate.get("amount"),"currency":finance_estimate.get("currency","")},
         "planned_assignment_selected":bool(data.get("planned_assignee_user_id")),
+        "import_documents_count":len(data.get("import_documents") or []),
         "initial_checks":[{"id":key,"title":title,"complete":passed} for key,title,passed in fields],
         "workflow_gaps":[{"requirement":key,"title":title,"status":"NOT_IMPLEMENTED"} for key,title in WORKFLOW_GAPS],
         "corporate_documents":documents,"linked_corporate_documents":linked_documents,

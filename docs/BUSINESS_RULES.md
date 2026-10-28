@@ -29,6 +29,12 @@ Rule results: PASS, WARNING, BLOCK, REVIEW_REQUIRED, OVERRIDE_REQUIRED, NOT_APPL
 - PRD-003: Authorized human verification is authoritative.
 - PRD-004: Material product changes trigger HS revalidation.
 
+## Initial Import Case
+- IMP-CASE-001: Initial import registration captures case title, operation type, customs, HS code and uploaded case documents.
+- IMP-CASE-002: Import registration does not require the general shipment, package/weight, finance-estimate or proposed-assignee fields.
+- IMP-CASE-003: Until the required import document categories are approved, each upload has a user-provided title and at least one file is needed for initial-data completeness; this does not certify document sufficiency.
+- IMP-CASE-004: Import case documents are private, immutable uploads tied to the versioned draft; downloads are admin-only in this slice.
+
 ## Corporate compliance
 - CMP-001: Corporate documents are reusable customer assets with exact-version references.
 - CMP-002: AI may extract issue/expiry/scope data.

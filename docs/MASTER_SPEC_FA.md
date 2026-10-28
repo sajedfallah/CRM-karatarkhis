@@ -62,8 +62,15 @@ CASE_CREATED → INITIAL_REVIEW → DOCUMENT_COLLECTION → DOCUMENT_VALIDATION 
 Transition فقط از طریق command و با Rule Engine معتبر انجام می‌شود.
 
 ## 7. Case Registration Wizard
-ترتیب:
+ترتیب کلی:
 Customer → Operation Type → Product → Shipment → Documents → AI Pre-Check → HS Review → Initial Finance → Assignment → Final Review → Customer Confirmation → Final Submit.
+
+برای ثبت اولیهٔ واردات، فرم عملیاتی بنا به قاعدهٔ کسب‌وکار ثبت‌شده محدود است به:
+عنوان پرونده، نوع عملیات، گمرک، کد HS و بارگذاری اسناد پرونده. فیلدهای اضافی
+شرح/مشخصات فنی کالا، مرجع حمل، تعداد، وزن، برآورد مالی و مسئول پیشنهادی در فرم
+واردات درخواست نمی‌شوند. تا زمان تعریف فهرست مصوب اسناد واردات، عنوان هر سند
+هنگام بارگذاری ثبت می‌شود و حداقل یک فایل برای تکمیل اطلاعات اولیه لازم است.
+این حداقل، کفایت حقوقی یا کامل‌بودن بسته اسناد را تأیید نمی‌کند.
 
 Draft autosave/resume اجباری.
 قبل از Final Case، Draft وجود دارد.

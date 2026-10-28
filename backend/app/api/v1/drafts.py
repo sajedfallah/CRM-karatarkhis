@@ -1,9 +1,11 @@
 import hashlib
 import json
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Literal
 from uuid import UUID, uuid4
-from fastapi import APIRouter, HTTPException, Response, Query
+from urllib.parse import quote
+from fastapi import APIRouter, HTTPException, Response, Query, UploadFile, File, Form
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from sqlalchemy import select, update, func
 from sqlalchemy.exc import IntegrityError
@@ -15,6 +17,8 @@ from app.models.compliance import CorporateDocument, CorporateDocumentVersion
 from app.models.drafts import CaseDraft, DraftCorporateDocumentLink
 from app.models.draft_review import DraftCustomerReview
 from app.services.product_review import product_fingerprint, product_review
+from app.services.private_files import MAX_FILE_BYTES, PrivateFileStore
+from app.api.v1.compliance import validate_file
 
 router = APIRouter(prefix="/case-drafts", tags=["case drafts"])
 
@@ -54,6 +58,19 @@ class DraftFinanceEstimate(BaseModel):
         return self
 
 
+class DraftImportDocument(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    id: str = Field(pattern=r"^DID-[0-9a-f]{32}$")
+    title: str = Field(min_length=1, max_length=120)
+    file_name: str = Field(min_length=1, max_length=180)
+    object_key: str = Field(pattern=r"^case-draft-imports/[A-Za-z0-9_-]+/[0-9a-f]{32}$", max_length=255)
+    mime_type: Literal["application/pdf", "image/png", "image/jpeg"]
+    size_bytes: int = Field(gt=0, le=MAX_FILE_BYTES)
+    sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    uploaded_by: str = Field(min_length=1, max_length=64)
+    uploaded_at: str = Field(min_length=1, max_length=40)
+
+
 class DraftContent(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
     title: str = Field(default="", max_length=200)
@@ -68,6 +85,7 @@ class DraftContent(BaseModel):
     quantity: int | None = Field(default=None, ge=1, le=1_000_000_000)
     net_weight: Decimal | None = Field(default=None, ge=0, max_digits=18, decimal_places=3)
     gross_weight: Decimal | None = Field(default=None, ge=0, max_digits=18, decimal_places=3)
+    import_documents: list[DraftImportDocument] = Field(default_factory=list, max_length=100)
 
     @model_validator(mode="after")
     def weights(self):
@@ -142,6 +160,11 @@ def _customer_review_snapshot(db,row):
     # These are strictly internal planning fields and must never enter the customer portal.
     content.pop("finance_estimate",None)
     content.pop("planned_assignee_user_id",None)
+    if content.get("operation_type")=="import":
+        content={key:content[key] for key in ("title","operation_type","customs","product_details","import_documents")}
+        content["product_details"]={"hs_code":content["product_details"].get("hs_code","")}
+        content["import_documents"]=[{key:value for key,value in item.items() if key not in {"uploaded_by","sha256","id","object_key"}}
+            for item in content["import_documents"]]
     return {"draft_id":row.id,"draft_version":row.version,
         "customer_name":db.get(Customer,row.customer_id).name,"content":content}
 
@@ -362,7 +385,12 @@ def save_draft(draft_id: str, payload: DraftSave, db: DbSession, user: CurrentUs
     require_customer(db, row.customer_id)
     actor = user.id
     content = payload.content.model_dump(mode="json")
-    _validate_planned_assignee(db,user,content.get("planned_assignee_user_id"))
+    stored_import_documents = row.content.get("import_documents", [])
+    if content.get("import_documents", []) != stored_import_documents:
+        raise HTTPException(409, "import_documents_are_managed_by_upload_api")
+    content["import_documents"] = stored_import_documents
+    if content.get("operation_type")!="import":
+        _validate_planned_assignee(db,user,content.get("planned_assignee_user_id"))
     result = db.execute(update(CaseDraft).where(CaseDraft.id == draft_id, CaseDraft.version == payload.expected_version)
         .values(content=content, version=payload.expected_version+1, updated_at=func.now(),
             product_revision=CaseDraft.product_revision+(1 if product_fingerprint(row.content)!=product_fingerprint(content) else 0))
@@ -378,6 +406,99 @@ def save_draft(draft_id: str, payload: DraftSave, db: DbSession, user: CurrentUs
     db.commit()
     db.expire_all()
     return read_draft(db, db.get(CaseDraft, draft_id))
+
+
+@router.post("/{draft_id}/import-documents", status_code=201)
+def upload_import_document(draft_id: str, db: DbSession, user: CurrentUser,
+        file: UploadFile = File(...), upload_id: UUID = Form(...),
+        title: str = Form(..., min_length=1, max_length=120), expected_version: int = Form(..., ge=1)):
+    _require_admin(user)
+    row=db.scalar(select(CaseDraft).where(CaseDraft.id==draft_id).with_for_update())
+    if not row: raise HTTPException(404,"draft_not_found")
+    require_customer(db,row.customer_id)
+    if (row.content.get("operation_type") or "").lower()!="import":
+        raise HTTPException(409,"import_documents_only_for_import_drafts")
+    if not title.strip(): raise HTTPException(422,"document_title_required")
+    data=file.file.read(MAX_FILE_BYTES+1)
+    if not data or len(data)>MAX_FILE_BYTES: raise HTTPException(413,"file_too_large_or_empty")
+    filename,mime=validate_file(file,data)
+    digest=hashlib.sha256(data).hexdigest()
+    document_id="DID-"+upload_id.hex
+    old_docs=row.content.get("import_documents",[])
+    existing=next((item for item in old_docs if item.get("id")==document_id),None)
+    if existing:
+        if existing.get("sha256")!=digest or existing.get("title")!=title.strip() or existing.get("uploaded_by")!=user.id:
+            raise HTTPException(409,"upload_id_conflict")
+        return {"draft_id":row.id,"draft_version":row.version,"documents":old_docs}
+    if len(old_docs)>=100: raise HTTPException(409,"import_document_limit_reached")
+    if row.version!=expected_version: raise HTTPException(409,"draft_changed_reload_required")
+    actor_id=user.id
+    db.rollback()
+    storage_path=f"case-draft-imports/{draft_id}/{uuid4().hex}"
+    try:
+        store=PrivateFileStore()
+        store.put(storage_path,data,mime)
+    except Exception:
+        raise HTTPException(503,"private_storage_unavailable") from None
+    try:
+        row=db.scalar(select(CaseDraft).where(CaseDraft.id==draft_id).with_for_update())
+        if not row or row.version!=expected_version or (row.content.get("operation_type") or "").lower()!="import":
+            raise HTTPException(409,"draft_changed_reload_required")
+        docs=list(row.content.get("import_documents",[]))
+        duplicate=next((item for item in docs if item.get("id")==document_id),None)
+        if duplicate:
+            if duplicate.get("sha256")==digest and duplicate.get("title")==title.strip() and duplicate.get("uploaded_by")==actor_id:
+                store.remove_uncommitted(storage_path)
+                return {"draft_id":row.id,"draft_version":row.version,"documents":docs}
+            raise HTTPException(409,"upload_id_conflict")
+        if len(docs)>=100: raise HTTPException(409,"import_document_limit_reached")
+        metadata={"id":document_id,"title":title.strip(),"file_name":filename,"object_key":storage_path,"mime_type":mime,
+            "size_bytes":len(data),"sha256":digest,"uploaded_by":actor_id,
+            "uploaded_at":datetime.now(timezone.utc).isoformat()}
+        content=dict(row.content)
+        content["import_documents"]=[*docs,metadata]
+        next_version=expected_version+1
+        result=db.execute(update(CaseDraft).where(CaseDraft.id==draft_id,CaseDraft.version==expected_version)
+            .values(content=content,version=next_version,updated_at=func.now())
+            .execution_options(synchronize_session=False))
+        if result.rowcount!=1: raise HTTPException(409,"draft_changed_reload_required")
+        db.add(AuditLog(actor_user_id=actor_id,entity_type="case_draft_import_document",entity_id=document_id,
+            action="upload",new_value=f"draft_id={draft_id};draft_version={next_version};sha256={digest}",source="api"))
+        db.commit()
+        return {"draft_id":draft_id,"draft_version":next_version,"documents":content["import_documents"]}
+    except Exception as error:
+        db.rollback()
+        try: store.remove_uncommitted(storage_path)
+        except Exception: pass
+        if isinstance(error,HTTPException): raise
+        raise HTTPException(503,"import_document_save_failed") from None
+
+
+@router.get("/{draft_id}/import-documents/{document_id}/file")
+def download_import_document(draft_id: str,document_id: str,db: DbSession,user: CurrentUser):
+    _require_admin(user)
+    row=db.get(CaseDraft,draft_id)
+    if not row: raise HTTPException(404,"draft_not_found")
+    metadata=next((item for item in row.content.get("import_documents",[]) if item.get("id")==document_id),None)
+    if not metadata: raise HTTPException(404,"import_document_not_found")
+    if not document_id.startswith("DID-") or len(document_id)!=36:
+        raise HTTPException(404,"import_document_not_found")
+    key=metadata.get("object_key","")
+    if not key.startswith(f"case-draft-imports/{draft_id}/"):
+        raise HTTPException(404,"import_document_not_found")
+    db.add(AuditLog(actor_user_id=user.id,entity_type="case_draft_import_document",entity_id=document_id,
+        action="download",new_value=f"draft_id={draft_id}",source="api"))
+    db.commit()
+    try:
+        data=PrivateFileStore().get(key)
+        if len(data)!=metadata["size_bytes"] or hashlib.sha256(data).hexdigest()!=metadata["sha256"]:
+            raise ValueError("integrity_error")
+    except Exception:
+        raise HTTPException(503,"private_storage_unavailable") from None
+    return Response(data,media_type=metadata["mime_type"],headers={"Cache-Control":"private, no-store",
+        "Content-Disposition":"attachment; filename*=UTF-8''"+quote(metadata["file_name"]),
+        "X-Content-Type-Options":"nosniff","Content-Security-Policy":"sandbox; default-src 'none'",
+        "Referrer-Policy":"no-referrer"})
 
 
 @router.get("/{draft_id}/readiness")

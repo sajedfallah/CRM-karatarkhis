@@ -254,6 +254,16 @@ customer-facing copy omits internal finance estimate and proposed assignee;
 approval or correction binds to the exact draft version and becomes stale after
 any draft/document-link change. Correction requires a comment. This is a
 pre-final review; no final confirmation, Case, immutable submission, assignment
-or lock is created. Migration 0015 is additive. The isolated staging branch was
-read-only verified at migration 0014; migration, CI and Preview verification for
-this slice are pending. Production remains untouched.
+or lock is created. Migration 0015 is additive and applied only to isolated
+staging; the deployed Preview alias serves `/app/customer-reviews` and the review
+table/revision were verified. Production remains untouched.
+
+## Import initial-registration form — implementation in progress
+Per the latest business instruction, import drafts show only case title,
+operation, customs and HS fields; at least one private case document is required
+for initial-data completeness. PDF/PNG/JPEG uploads are immutable, hash-checked,
+audited and stored in versioned draft JSON with a private object key; only admins
+can download them in this slice. Other product/shipment/finance/assignee fields
+are hidden for imports. No schema migration is needed. Specific required
+document categories have not been defined, so uploads use a free title and the
+form does not claim document sufficiency. CI and Preview verification are pending.
