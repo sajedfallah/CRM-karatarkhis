@@ -164,3 +164,12 @@ CI 40598133253 passed (75 PostgreSQL, 11 frontend, TS/Vite build, migration rehe
 Gitleaks). Commit f5683515bf3b625a9a69aa9dd354e70d3b47d84e is READY on protected
 Preview; authenticated read-only browser review passed with real draft version 9 unchanged.
 
+
+
+FIN-CORE — Internal draft estimate capture: PARTIAL. CaseDraft stores an optional,
+all-or-none description/amount/currency estimate in its existing versioned JSON.
+Admin-only read/write; no payment, invoice, ledger, customer-visible amount or
+final submission. No migration. CI 40601462359: 77 PostgreSQL and 11 frontend tests,
+build, migration rehearsal and secret scan PASS. Preview commit
+b69776289626e579766430c941ad9dde9442b628 READY; read-only browser verified with
+existing draft version 9 unchanged. Posted payment/ledger lifecycle remains MISSING.

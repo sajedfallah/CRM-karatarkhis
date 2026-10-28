@@ -46,3 +46,11 @@ claim is inferred from a populated field. Multiple contacts remain a separate
 Customer 360 milestone. Profile reads/writes remain admin-only through the
 existing customer endpoints; no contact data is added to public pages or logs.
 
+
+
+## Draft-only finance estimate
+The optional `finance_estimate` object is stored in the existing versioned
+`case_drafts.content` JSON; it has description, nonnegative decimal amount (up to
+2 places), and a three-letter currency code, all present together or all empty.
+This does not add a migration, finance table, payment, invoice, or ledger entry.
+The endpoint remains admin-only and customer portal APIs do not expose draft content.

@@ -226,7 +226,7 @@ at commit 7273b710a7c15756f1de449457babc0b7af9286a. Staging schema stayed at 001
 no real draft/customer was edited to test export fields.
 
 ## Active slice — exact document version links
-DOC-CORE / CASE-DRAFT / SEC-004: implementation prepared; document governance remains PARTIAL.
+DOC-CORE / CASE-DRAFT / SEC-004: PASS for exact-version links; full document governance remains PARTIAL.
 Admin can attach a specific immutable corporate-document version belonging to
 the draft's customer, or soft-detach it. Cross-customer IDs are denied; each
 change advances the draft version and appends audit. Readiness and the draft UI
@@ -239,3 +239,18 @@ deployed READY on the protected Preview alias. Authenticated browser verificatio
 confirmed exact-version links and readiness render; the existing real draft remained
 at version 9, with no customer data changed. No final submission is enabled.
 
+
+## Active slice — internal draft finance estimate
+CASE-DRAFT / FIN-CORE / SEC-004: PASS for draft estimate capture only; the finance
+ledger domain remains missing. One estimate per draft captures description, a
+nonnegative amount (maximum two decimal places) and a three-letter currency code.
+All three values are required together. It is stored in the existing versioned
+CaseDraft content, is admin-only, and appears only in the internal draft/readiness
+views. It does not create a payment, invoice, ledger posting, customer-visible
+charge or final case. No migration.
+
+CI run 40601462359 passed: 77 PostgreSQL tests, 11 frontend tests, TypeScript/Vite
+build, migration rehearsal and Gitleaks. Runtime commit b69776289626e579766430c941ad9dde9442b628
+deployed READY on the protected Preview alias. Browser verification showed the
+three estimate fields and read-only readiness; the existing draft remained at
+version 9 and no value was saved to it.
