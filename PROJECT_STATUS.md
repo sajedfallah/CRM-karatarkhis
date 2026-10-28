@@ -246,3 +246,14 @@ TypeScript/Vite build, migration rehearsal and secret scan. Vercel Preview for
 commit 11f2a6b4648db5b26015d1ba641c751e87bb3dbb is READY; the deployed
 JavaScript bundle was checked for the new step, endpoint and Persian warning.
 No real draft or customer data was changed during verification.
+
+## Customer draft review — implementation in progress
+SUB-001 / SEC-004: a customer manager may review only a request explicitly
+addressed to that active, verified membership and customer. The immutable
+customer-facing copy omits internal finance estimate and proposed assignee;
+approval or correction binds to the exact draft version and becomes stale after
+any draft/document-link change. Correction requires a comment. This is a
+pre-final review; no final confirmation, Case, immutable submission, assignment
+or lock is created. Migration 0015 is additive. The isolated staging branch was
+read-only verified at migration 0014; migration, CI and Preview verification for
+this slice are pending. Production remains untouched.

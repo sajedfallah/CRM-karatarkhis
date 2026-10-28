@@ -33,6 +33,12 @@ Migration 0014 adds `draft_corporate_document_links`, a restricted FK associatio
 from a resumable case draft to one exact immutable customer corporate-document
 version. Detach is soft and audited; it never deletes a stored file/version.
 
+Migration 0015 adds `draft_customer_reviews`, an immutable copy of one safe,
+customer-facing draft version plus one recipient-bound decision. The customer
+cannot query another membership's review. This is a pre-finalization review
+record; it does not create `Case`, `CaseAssignment`, submission lock, or final
+confirmation.
+
 ## Deletion
 No hard delete for cases, submission snapshots, document versions, posted finance, audit, stage history, sent official correspondence or human AI decisions.
 
@@ -45,12 +51,3 @@ Existing rows retain NULL for unknown values. No identity or tax-verification
 claim is inferred from a populated field. Multiple contacts remain a separate
 Customer 360 milestone. Profile reads/writes remain admin-only through the
 existing customer endpoints; no contact data is added to public pages or logs.
-
-
-
-## Draft-only finance estimate
-The optional `finance_estimate` object is stored in the existing versioned
-`case_drafts.content` JSON; it has description, nonnegative decimal amount (up to
-2 places), and a three-letter currency code, all present together or all empty.
-This does not add a migration, finance table, payment, invoice, or ledger entry.
-The endpoint remains admin-only and customer portal APIs do not expose draft content.

@@ -32,4 +32,4 @@
 .detail-tabs{flex-wrap:wrap}.sidebar{overflow-y:auto}
 
 .readiness-title{font-weight:700;font-size:13px;margin-block:22px 10px}.readiness-list{list-style:none;padding:0;margin:0}.readiness-list li{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;padding:12px 0;border-bottom:1px solid #edf1f5;font-size:12px;line-height:1.9}.readiness-complete{background:#ecfdf5;color:#166534}.readiness-missing{background:#fffbeb;color:#92400e}.readiness-note{margin-block:16px;font-size:12px;color:#64748b;line-height:2}
-
+.customer-review-snapshot{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 24px;margin:22px 0}.customer-review-snapshot>div{border-bottom:1px solid #edf1f5;padding:13px 0;min-width:0}.customer-review-snapshot dt{font-size:10px;color:#82909f;margin-bottom:5px}.customer-review-snapshot dd{font-size:12px;line-height:1.9;overflow-wrap:anywhere}@media(max-width:600px){.customer-review-snapshot{grid-template-columns:1fr}}

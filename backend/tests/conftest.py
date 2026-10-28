@@ -19,6 +19,7 @@ from app.models.core import AuditLog, Case, CaseAccessGrant, CaseAssignment, Cus
 from app.models.auth import AuthSession, LoginThrottle, PasswordCredential
 from app.models.drafts import CaseDraft, DraftCorporateDocumentLink
 from app.models.product_review import DraftProductReview
+from app.models.draft_review import DraftCustomerReview
 from app.models.declarations import DeclarationVersion, DeclarationRequest, DeclarationDecision
 from app.models.compliance import CorporateDocument, CorporateDocumentVersion, DocumentNotification
 
@@ -45,13 +46,13 @@ def db(db_engine):
         # CI uses one migrated PostgreSQL database for the suite. API handlers
         # commit by design, so rollback alone cannot isolate examples there.
         # Delete in FK-safe order to keep every test independently repeatable.
-        for model in (DraftProductReview, DeclarationDecision, DeclarationRequest, DeclarationVersion, DraftCorporateDocumentLink, CaseDraft, DocumentNotification, CorporateDocumentVersion, CorporateDocument, AuthSession, PasswordCredential, LoginThrottle, SecurityEvent, CaseAccessGrant, EmailVerification, Invitation, OrganizationMembership, AuditLog, TaskMessage, Document, Task, CaseAssignment, Permission, Case, Organization, User, Customer):
+        for model in (DraftCustomerReview, DraftProductReview, DeclarationDecision, DeclarationRequest, DeclarationVersion, DraftCorporateDocumentLink, CaseDraft, DocumentNotification, CorporateDocumentVersion, CorporateDocument, AuthSession, PasswordCredential, LoginThrottle, SecurityEvent, CaseAccessGrant, EmailVerification, Invitation, OrganizationMembership, AuditLog, TaskMessage, Document, Task, CaseAssignment, Permission, Case, Organization, User, Customer):
             session.execute(delete(model))
         session.commit()
         yield session
     finally:
         session.rollback()
-        for model in (DraftProductReview, DeclarationDecision, DeclarationRequest, DeclarationVersion, DraftCorporateDocumentLink, CaseDraft, DocumentNotification, CorporateDocumentVersion, CorporateDocument, AuthSession, PasswordCredential, LoginThrottle, SecurityEvent, CaseAccessGrant, EmailVerification, Invitation, OrganizationMembership, AuditLog, TaskMessage, Document, Task, CaseAssignment, Permission, Case, Organization, User, Customer):
+        for model in (DraftCustomerReview, DraftProductReview, DeclarationDecision, DeclarationRequest, DeclarationVersion, DraftCorporateDocumentLink, CaseDraft, DocumentNotification, CorporateDocumentVersion, CorporateDocument, AuthSession, PasswordCredential, LoginThrottle, SecurityEvent, CaseAccessGrant, EmailVerification, Invitation, OrganizationMembership, AuditLog, TaskMessage, Document, Task, CaseAssignment, Permission, Case, Organization, User, Customer):
             session.execute(delete(model))
         session.commit()
         session.close()
@@ -86,4 +87,3 @@ def actors(db):
 @pytest.fixture()
 def auth_headers():
     return lambda user_id: {"X-User-ID": user_id}
-

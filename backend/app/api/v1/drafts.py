@@ -1,3 +1,5 @@
+import hashlib
+import json
 from decimal import Decimal
 from typing import Literal
 from uuid import UUID, uuid4
@@ -7,9 +9,11 @@ from sqlalchemy import select, update, func
 from sqlalchemy.exc import IntegrityError
 from app.api.deps import CurrentUser, DbSession
 from app.api.v1.customers import _require_admin
+from app.models.auth import PasswordCredential
 from app.models.core import AuditLog, Customer, Organization, OrganizationMembership, User
 from app.models.compliance import CorporateDocument, CorporateDocumentVersion
 from app.models.drafts import CaseDraft, DraftCorporateDocumentLink
+from app.models.draft_review import DraftCustomerReview
 from app.services.product_review import product_fingerprint, product_review
 
 router = APIRouter(prefix="/case-drafts", tags=["case drafts"])
@@ -121,6 +125,52 @@ def _validate_planned_assignee(db, actor, assignee_user_id):
         raise HTTPException(422,"planned_assignee_not_active_internal_member")
 
 
+def _review_recipient_query(customer_id):
+    return select(OrganizationMembership,User).join(User,User.id==OrganizationMembership.user_id).join(
+        Organization,Organization.id==OrganizationMembership.organization_id).join(
+        PasswordCredential,PasswordCredential.user_id==User.id).where(
+        Organization.type=="CUSTOMER",Organization.customer_id==customer_id,Organization.status=="active",
+        OrganizationMembership.role=="customer_manager",OrganizationMembership.scope_type=="ORGANIZATION",
+        OrganizationMembership.status=="ACTIVE",OrganizationMembership.deactivated_at.is_(None),
+        User.role=="customer_manager",User.customer_id==customer_id,User.is_active.is_(True),
+        PasswordCredential.email_verified_at.is_not(None),
+        PasswordCredential.verified_email==func.lower(User.email))
+
+
+def _customer_review_snapshot(db,row):
+    content=DraftContent.model_validate(row.content).model_dump(mode="json")
+    # These are strictly internal planning fields and must never enter the customer portal.
+    content.pop("finance_estimate",None)
+    content.pop("planned_assignee_user_id",None)
+    return {"draft_id":row.id,"draft_version":row.version,
+        "customer_name":db.get(Customer,row.customer_id).name,"content":content}
+
+
+def _customer_review_status(review,draft):
+    if not draft or draft.version!=review.draft_version:return "STALE"
+    return review.decision or "PENDING"
+
+
+def _customer_review_read(db,review,draft=None):
+    draft=draft or db.get(CaseDraft,review.draft_id)
+    status=_customer_review_status(review,draft)
+    return {"id":review.id,"draft_id":review.draft_id,"customer_id":review.customer_id,
+        "draft_version":review.draft_version,"snapshot":review.snapshot,
+        "confirmation_text_version":review.confirmation_text_version,"requested_at":review.requested_at,
+        "status":status,"decision_comment":review.decision_comment if status=="CHANGES_REQUESTED" else None,
+        "decided_at":review.decided_at if review.decision else None}
+
+
+def _require_active_review_recipient(db,review,user):
+    membership_id=getattr(user,"membership_id",None)
+    if user.role!="customer_manager" or not membership_id or getattr(user,"customer_id",None)!=review.customer_id:
+        raise HTTPException(404,"draft_customer_review_not_found")
+    row=db.execute(_review_recipient_query(review.customer_id).where(
+        OrganizationMembership.id==membership_id,OrganizationMembership.user_id==user.id)).first()
+    if not row or membership_id!=review.recipient_membership_id:
+        raise HTTPException(404,"draft_customer_review_not_found")
+
+
 @router.get("")
 def list_drafts(db: DbSession, user: CurrentUser, response: Response):
     _require_admin(user)
@@ -135,6 +185,137 @@ def list_eligible_assignees(db: DbSession, user: CurrentUser, response: Response
     organization_id=getattr(user,"organization_id",None)
     return [{"id":row.id,"full_name":row.full_name} for row in db.scalars(
         _eligible_assignee_query(organization_id).order_by(User.full_name,User.id))]
+
+
+@router.get("/customer-reviews")
+def customer_review_inbox(db: DbSession,user: CurrentUser,response: Response):
+    if user.role!="customer_manager" or not getattr(user,"membership_id",None):
+        raise HTTPException(403,"customer_review_membership_required")
+    response.headers["Cache-Control"]="private, no-store"
+    result=[]
+    for review in db.scalars(select(DraftCustomerReview).where(
+            DraftCustomerReview.recipient_membership_id==user.membership_id,
+            DraftCustomerReview.customer_id==user.customer_id).order_by(DraftCustomerReview.requested_at.desc())):
+        try:
+            _require_active_review_recipient(db,review,user)
+        except HTTPException:
+            continue
+        result.append(_customer_review_read(db,review))
+    return result
+
+
+@router.get("/customer-reviews/{review_id}")
+def customer_review_detail(review_id: str,db: DbSession,user: CurrentUser,response: Response):
+    review=db.get(DraftCustomerReview,review_id)
+    if not review:raise HTTPException(404,"draft_customer_review_not_found")
+    _require_active_review_recipient(db,review,user)
+    response.headers["Cache-Control"]="private, no-store"
+    return _customer_review_read(db,review)
+
+
+class CustomerReviewDecision(BaseModel):
+    model_config=ConfigDict(extra="forbid",str_strip_whitespace=True)
+    decision: Literal["CONFIRMED","CHANGES_REQUESTED"]
+    comment: str=Field(default="",max_length=2000)
+
+    @model_validator(mode="after")
+    def correction_comment_required(self):
+        if self.decision=="CHANGES_REQUESTED" and len(self.comment)<3:
+            raise ValueError("correction_comment_required")
+        return self
+
+
+@router.post("/customer-reviews/{review_id}/decision")
+def decide_customer_review(review_id: str,payload: CustomerReviewDecision,db: DbSession,user: CurrentUser,response: Response):
+    review=db.scalar(select(DraftCustomerReview).where(DraftCustomerReview.id==review_id).with_for_update())
+    if not review:raise HTTPException(404,"draft_customer_review_not_found")
+    _require_active_review_recipient(db,review,user)
+    draft=db.get(CaseDraft,review.draft_id)
+    if _customer_review_status(review,draft)=="STALE":raise HTTPException(409,"draft_customer_review_stale")
+    if review.decision:
+        if review.decision==payload.decision and review.decision_comment==(payload.comment or None):
+            response.headers["Cache-Control"]="private, no-store"
+            return _customer_review_read(db,review,draft)
+        raise HTTPException(409,"draft_customer_review_already_decided")
+    review.decision=payload.decision
+    review.decision_comment=payload.comment or None
+    review.decided_by=user.id
+    review.decided_at=func.now()
+    db.add(AuditLog(actor_user_id=user.id,entity_type="case_draft_customer_review",entity_id=review.id,
+        action=payload.decision.lower(),new_value=f"draft_id={review.draft_id};draft_version={review.draft_version}",source="api"))
+    db.commit()
+    db.refresh(review)
+    response.headers["Cache-Control"]="private, no-store"
+    return _customer_review_read(db,review,draft)
+
+
+@router.get("/{draft_id}/review-recipients")
+def draft_review_recipients(draft_id: str,db: DbSession,user: CurrentUser,response: Response):
+    _require_admin(user)
+    draft=db.get(CaseDraft,draft_id)
+    if not draft:raise HTTPException(404,"draft_not_found")
+    require_customer(db,draft.customer_id)
+    response.headers["Cache-Control"]="private, no-store"
+    return [{"membership_id":membership.id,"full_name":member.full_name,"email":member.email}
+        for membership,member in db.execute(_review_recipient_query(draft.customer_id).order_by(User.full_name,OrganizationMembership.id))]
+
+
+@router.get("/{draft_id}/customer-review")
+def draft_customer_review(draft_id: str,db: DbSession,user: CurrentUser,response: Response):
+    _require_admin(user)
+    draft=db.get(CaseDraft,draft_id)
+    if not draft:raise HTTPException(404,"draft_not_found")
+    review=db.scalar(select(DraftCustomerReview).where(DraftCustomerReview.draft_id==draft.id,
+        DraftCustomerReview.draft_version==draft.version))
+    response.headers["Cache-Control"]="private, no-store"
+    return _customer_review_read(db,review,draft) if review else None
+
+
+class DraftCustomerReviewRequest(BaseModel):
+    model_config=ConfigDict(extra="forbid")
+    expected_version: int=Field(ge=1)
+    recipient_membership_id: str=Field(min_length=1,max_length=64)
+
+
+@router.post("/{draft_id}/customer-review",status_code=201)
+def request_draft_customer_review(draft_id: str,payload: DraftCustomerReviewRequest,db: DbSession,user: CurrentUser,response: Response):
+    _require_admin(user)
+    draft=db.scalar(select(CaseDraft).where(CaseDraft.id==draft_id).with_for_update())
+    if not draft:raise HTTPException(404,"draft_not_found")
+    require_customer(db,draft.customer_id)
+    if draft.version!=payload.expected_version:raise HTTPException(409,"draft_changed_reload_required")
+    recipient=db.execute(_review_recipient_query(draft.customer_id).where(
+        OrganizationMembership.id==payload.recipient_membership_id)).first()
+    if not recipient:raise HTTPException(422,"customer_review_recipient_not_active_verified_manager")
+    existing=db.scalar(select(DraftCustomerReview).where(DraftCustomerReview.draft_id==draft.id,
+        DraftCustomerReview.draft_version==draft.version))
+    if existing:
+        if existing.recipient_membership_id==payload.recipient_membership_id:
+            response.headers["Cache-Control"]="private, no-store"
+            return _customer_review_read(db,existing,draft)
+        raise HTTPException(409,"customer_review_already_requested_for_version")
+    snapshot=_customer_review_snapshot(db,draft)
+    content_hash=hashlib.sha256(json.dumps(snapshot,sort_keys=True,ensure_ascii=False,
+        separators=(",",":")).encode("utf-8")).hexdigest()
+    review=DraftCustomerReview(id="DCR-"+uuid4().hex,draft_id=draft.id,customer_id=draft.customer_id,
+        recipient_membership_id=payload.recipient_membership_id,draft_version=draft.version,
+        content_hash=content_hash,snapshot=snapshot,requested_by=user.id)
+    db.add(review)
+    db.add(AuditLog(actor_user_id=user.id,entity_type="case_draft_customer_review",entity_id=review.id,
+        action="request_review",new_value=f"draft_id={draft.id};draft_version={draft.version}",source="api"))
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        existing=db.scalar(select(DraftCustomerReview).where(DraftCustomerReview.draft_id==draft.id,
+            DraftCustomerReview.draft_version==draft.version))
+        if existing and existing.recipient_membership_id==payload.recipient_membership_id:
+            response.headers["Cache-Control"]="private, no-store"
+            return _customer_review_read(db,existing,draft)
+        raise HTTPException(409,"customer_review_already_requested_for_version") from None
+    db.refresh(review)
+    response.headers["Cache-Control"]="private, no-store"
+    return _customer_review_read(db,review,draft)
 
 
 @router.post("", status_code=201)

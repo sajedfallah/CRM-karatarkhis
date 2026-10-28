@@ -11,7 +11,8 @@
 | DOC-CORE | Documents | PARTIAL | metadata/approval/expiry exists; immutable version/file model incomplete | PARTIAL |
 | AI-CORE | AI Orchestration | MISSING | no canonical AI request/result worker stack | NOT_STARTED |
 | PRD-HS | Product/HS | MISSING | canonical product/HS domain absent | NOT_STARTED |
-| SUB-001 | Customer Confirmation | MISSING | no final confirmation command | NOT_STARTED |
+| SUB-001 | Customer Confirmation | IMPLEMENTED-PARTIAL | targeted customer review/decision is bound to one sanitized draft version; canonical final confirmation after Final Review is still pending | PARTIAL |
+| SUB-002 | Submission Snapshot | MISSING | no final immutable Case submission snapshot or final submit command | NOT_STARTED |
 | SUB-003 | Submission Lock | MISSING | no immutable submission/lock model | NOT_STARTED |
 | SUB-005 | Admin Reopen | MISSING | no limited reopen/revision workflow | NOT_STARTED |
 | CMP-004 | Expiry Worker | PARTIAL | Deterministic expiry service and panel materialization; independent daily worker not wired | PARTIAL |
