@@ -1,6 +1,7 @@
 # KARATARKHIS CRM — Traceability Matrix
 
 | Requirement | Target Module | Current V5 | Evidence/Gap | Test Status |
+| CASE-INTAKE-001 | Customer case submission | IMPLEMENTED-PARTIAL | Private customer intake for import/export, admin-only submitted queue, admin registration to Case, customer declaration approval and quota-gated activation. Import enforces all 10 user-provided document types. Export checklist and official system PDF template remain unspecified. | CI PENDING |
 |---|---|---|---|---|
 | IAM-BASE | Identity/Auth | PARTIAL | Users/Permissions exist; production auth missing | PARTIAL |
 | IAM-ORG | Organization/Membership foundation | IMPLEMENTED | migration 0006_identity_access and ORM models; CI run 35802057875 verified PostgreSQL zero→head | PASS |

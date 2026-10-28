@@ -12,6 +12,7 @@ from app.api.v1.compliance import validate_file
 from app.models.core import AuditLog, Case, Customer, OrganizationMembership, Permission, User
 from app.models.auth import PasswordCredential
 from app.models.declarations import DeclarationVersion, DeclarationRequest, DeclarationDecision
+from app.models.case_registration_request import CaseRegistrationRequest
 from app.services.authorization import Action, AuthorizationDenied, AuthorizationService
 from app.services.membership_identity import resolve_membership
 from app.services.private_files import MAX_FILE_BYTES, PrivateFileStore
@@ -109,7 +110,9 @@ def visible_version(db, user, version_id, lock=False):
 def review_cases(db: DbSession, user: CurrentUser, response: Response):
     response.headers["Cache-Control"]="private, no-store"
     if user.role=="admin":
-        rows=list(db.scalars(select(Case).where(Case.operation_type.in_(("import","export")))))
+        rows=list(db.scalars(select(Case).join(CaseRegistrationRequest,
+            CaseRegistrationRequest.registered_case_id==Case.id).where(
+                CaseRegistrationRequest.status=="REGISTERED",Case.operation_type.in_(("import","export")))))
     elif user.role=="customer_manager" and getattr(user,"membership_id",None):
         rows=list(db.scalars(select(Case).join(DeclarationVersion).join(DeclarationRequest).where(
             DeclarationRequest.recipient_membership_id==user.membership_id).distinct()))
@@ -231,6 +234,7 @@ def send(version_id: str, payload: Send, db: DbSession, user: CurrentUser):
     row = DeclarationRequest(id="DR-"+uuid4().hex,version_id=version_id,
         recipient_membership_id=payload.recipient_membership_id,sent_by=user.id)
     db.add(row)
+    case.status = "در انتظار تأیید پیش‌نویس اظهارنامه توسط مشتری"
     audit(db,user,row.id,"send_customer_review")
     db.commit()
     return view(db,version,version.version)
@@ -261,6 +265,7 @@ def decide(version_id: str, payload: Decision, db: DbSession, user: CurrentUser)
         return view(db,version,version.version)
     db.add(DeclarationDecision(id="DD-"+uuid4().hex,request_id=sent.id,decision=payload.decision,comment=payload.comment,
         actor_user_id=user.id,actor_membership_id=user.membership_id))
+    case.status = "آماده ثبت کوتاژ" if payload.decision == "approved" else "نیازمند اصلاح اظهارنامه"
     audit(db,user,sent.id,"customer_"+payload.decision)
     db.commit()
     return view(db,version,version.version)

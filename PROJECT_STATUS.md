@@ -273,3 +273,23 @@ READY; `/app/drafts` returned HTTP 200 and its built JavaScript contains all ten
 document labels and the categorized upload field. Authenticated upload against a
 real case was not exercised.
 
+
+## Active slice — customer case submissions and admin review
+
+The customer-facing case-registration request flow is implemented as an additive
+slice: customers submit an import/export request with title, operation, customs,
+HS code and private documents; import requests require all ten user-specified
+document types. Admin sees only submitted requests and requests already registered
+but awaiting declaration approval/quota. Admin review creates a Case. The admin
+can upload an externally prepared APS/EPS declaration through the existing
+versioned private-document flow and send it to a verified customer reviewer.
+After that reviewer approves the latest declaration, the admin can record a unique
+customs quota number, which starts the case and removes it from the review queue.
+
+Export documents are accepted as titled supporting files because no canonical
+export checklist has been specified. The chosen dual document mode is not complete:
+APS/EPS upload is supported; generating the official declaration PDF requires an
+approved template and field mapping. No migration has been applied to staging.
+Migration 0016 is prepared; local Python syntax compilation passed. Local pytest
+and frontend build were unavailable because pytest/npm packages are not installed
+and network package access is blocked. GitHub CI and Preview verification pending.

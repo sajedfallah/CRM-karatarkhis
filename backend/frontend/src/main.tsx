@@ -12,8 +12,8 @@ import {CustomerReviewer} from './components/CustomerReviewer';
 import {CustomerDocuments} from './components/CustomerDocuments';
 import {Notifications,type AppNotification} from './components/Notifications';
 import {CaseDeclarations,DeclarationsPage} from './components/Declarations';
-import {DraftsPage} from './components/Drafts';
 import {CustomerDraftReviewsPage} from './components/DraftCustomerReview';
+import {CaseRegistrationRequestsPage} from './components/CaseRegistrationRequests';
 import '@fontsource/vazirmatn/400.css';
 import '@fontsource/vazirmatn/500.css';
 import '@fontsource/vazirmatn/700.css';
@@ -36,13 +36,14 @@ function ErrorState({retry}:{retry:()=>void}){return <div className="error-state
 
 function CaseNavigation({user,pendingCount,onNavigate}:{user:User;pendingCount:number;onNavigate:()=>void}){
   const pathname=useRouterState({select:state=>state.location.pathname});
-  const inGroup=/\/(cases|drafts|declarations|documents|customer-reviews)\/?$/.test(pathname);
+  const inGroup=/\/(cases|drafts|declarations|documents|customer-reviews|case-requests)\/?$/.test(pathname);
   const [open,setOpen]=useState(inGroup);
   useEffect(()=>{if(inGroup)setOpen(true);},[pathname,inGroup]);
   return <details className={'nav-group'+(inGroup?' is-current':'')} open={open} onToggle={event=>setOpen(event.currentTarget.open)}>
     <summary className="nav-item"><Files size={18}/><span>پرونده‌ها</span>{pendingCount>0&&<span className="nav-count" aria-label="درخواست‌های نیازمند بررسی">{pendingCount.toLocaleString('fa-IR')}</span>}<ChevronDown size={15} className="nav-chevron"/></summary>
     <div className="nav-children">
       <Link to="/cases" onClick={onNavigate} activeProps={{className:'nav-item active'}} className="nav-item">فهرست پرونده‌ها</Link>
+      {(user.role==='customer_manager'||user.role==='customer_employee')&&<Link to="/case-requests" onClick={onNavigate} activeProps={{className:'nav-item active'}} className="nav-item">درخواست ثبت پرونده</Link>}
       {user.role==='customer_manager'&&<Link to="/declarations" onClick={onNavigate} activeProps={{className:'nav-item active'}} className="nav-item">پیش‌نویس اظهارنامه</Link>}
       {user.role==='customer_manager'&&<Link to="/customer-reviews" onClick={onNavigate} activeProps={{className:'nav-item active'}} className="nav-item">بازبینی اطلاعات پرونده</Link>}
       {user.role!=='admin'&&<Link to="/documents" onClick={onNavigate} activeProps={{className:'nav-item active'}} className="nav-item">اسناد پرونده‌ها</Link>}
@@ -95,19 +96,21 @@ function ResourcePage({resource}:{resource:Resource}){
   return <><div className="page-heading"><div><p className="eyebrow">اطلاعات عملیاتی</p><h1>{config.name}</h1><p>{config.description}</p></div><div className="page-actions">{resource==='customers'&&user.role==='admin'&&<Button onClick={()=>{setNotice('');setEditor({record:null});}}>مشتری جدید</Button>}<span className="page-icon"><config.icon size={25}/></span></div></div>{notice&&<p className="save-notice" role="status">{notice}</p>}<section className="surface">{query.isPending?<Loading/>:query.isError?<ErrorState retry={()=>void query.refetch()}/>:query.data.length===0?<EmptyState icon={config.icon} title={'هنوز '+config.name+' ثبت نشده است'} description="پس از ثبت یا تخصیص اطلاعات، فهرست این بخش نمایش داده می‌شود."/>:<DataTable data={query.data} fields={config.fields} onInspect={setSelected}/>}</section><Detail customerDocuments={resource==='customers'&&user.role==='admin'} caseDocuments={resource==='cases'&&user.role==='admin'} admin={user.role==='admin'} record={selected} fields={resource==='customers'?[{key:'name',label:'نام مشتری'},{key:'customer_type',label:'نوع مشتری'},...customerProfileFields,{key:'is_active',label:'وضعیت'}]:config.fields} onClose={()=>{setSelected(null);if(requestedCustomer)history.replaceState(null,'',location.pathname);}} onEdit={resource==='customers'&&user.role==='admin'&&selected?()=>{setEditor({record:selected});setSelected(null);}:undefined}/>{editor&&<CustomerEditor record={editor.record} onClose={()=>setEditor(null)} onSaved={()=>{setEditor(null);setNotice('اطلاعات مشتری ذخیره شد.');}}/>}</>;
 }
 
-function Declarations(){const user=useUser();return user.role==='admin'?<ResourcePage resource="cases"/>:<DeclarationsPage admin={false}/>;}
-function Drafts(){const user=useUser();return user.role==='admin'?<ResourcePage resource="cases"/>:<DraftsPage allowed={false}/>;}
+function Declarations(){const user=useUser();return user.role==='admin'?<CaseRegistrationRequestsPage key={user.id} admin identityId={user.id}/>:<DeclarationsPage admin={false}/>;}
+function Drafts(){const user=useUser();return user.role==='admin'?<CaseRegistrationRequestsPage key={user.id} admin identityId={user.id}/>:user.role==='customer_manager'||user.role==='customer_employee'?<CaseRegistrationRequestsPage key={user.id} admin={false} identityId={user.id}/>:<p role="alert">دسترسی به این بخش برای این نقش فعال نیست.</p>;}
+function CaseRequests(){const user=useUser();return user.role==='admin'?<CaseRegistrationRequestsPage key={user.id} admin identityId={user.id}/>:user.role==='customer_manager'||user.role==='customer_employee'?<CaseRegistrationRequestsPage key={user.id} admin={false} identityId={user.id}/>:<ResourcePage resource="cases"/>;}
 const rootRoute=createRootRoute({component:Frame});
 const overviewRoute=createRoute({getParentRoute:()=>rootRoute,path:'/',component:Overview});
 const customersRoute=createRoute({getParentRoute:()=>rootRoute,path:'/customers',component:()=> <ResourcePage resource="customers"/>});
-const casesRoute=createRoute({getParentRoute:()=>rootRoute,path:'/cases',component:()=> <ResourcePage resource="cases"/>});
+const casesRoute=createRoute({getParentRoute:()=>rootRoute,path:'/cases',component:()=> <CaseRequests/>});
+const caseRequestsRoute=createRoute({getParentRoute:()=>rootRoute,path:'/case-requests',component:()=> <CaseRequests/>});
 const tasksRoute=createRoute({getParentRoute:()=>rootRoute,path:'/tasks',component:()=> <ResourcePage resource="tasks"/>});
 const documentsRoute=createRoute({getParentRoute:()=>rootRoute,path:'/documents',component:()=> <ResourcePage resource="documents"/>});
 const notificationsRoute=createRoute({getParentRoute:()=>rootRoute,path:'/notifications',component:Notifications});
 const declarationsRoute=createRoute({getParentRoute:()=>rootRoute,path:'/declarations',component:Declarations});
 const draftsRoute=createRoute({getParentRoute:()=>rootRoute,path:'/drafts',component:Drafts});
 const customerReviewsRoute=createRoute({getParentRoute:()=>rootRoute,path:'/customer-reviews',component:CustomerDraftReviewsPage});
-const router=createRouter({routeTree:rootRoute.addChildren([overviewRoute,customersRoute,casesRoute,tasksRoute,documentsRoute,notificationsRoute,draftsRoute,declarationsRoute,customerReviewsRoute]),basepath:'/app',defaultPreload:'intent'});
+const router=createRouter({routeTree:rootRoute.addChildren([overviewRoute,customersRoute,casesRoute,caseRequestsRoute,tasksRoute,documentsRoute,notificationsRoute,draftsRoute,declarationsRoute,customerReviewsRoute]),basepath:'/app',defaultPreload:'intent'});
 declare module '@tanstack/react-router'{interface Register{router:typeof router}}
 const client=new QueryClient({defaultOptions:{queries:{retry:false,staleTime:30000}}});
 createRoot(document.getElementById('root')!).render(<React.StrictMode><QueryClientProvider client={client}><RouterProvider router={router}/></QueryClientProvider></React.StrictMode>);
