@@ -20,6 +20,7 @@ def test_readiness_is_read_only_and_never_enables_final_submission(client,db,act
     data=response.json()
     assert not data['initial_data_complete'] and not data['final_submission_available']
     assert not data['finance_estimate']['complete'] and data['finance_estimate']['amount'] is None
+    assert next(g for g in data['workflow_gaps'] if g['requirement']=='FIN-CORE')['title']=='تأیید و قواعد مالی پرونده'
     assert next(c for c in data['initial_checks'] if c['id']=='customer')['complete']
     assert not next(c for c in data['initial_checks'] if c['id']=='quantity')['complete']
     assert {g['requirement'] for g in data['workflow_gaps']} >= {'SUB-001','SUB-002','PRD-HS','DOC-CORE'}
