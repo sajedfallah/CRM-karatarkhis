@@ -118,7 +118,7 @@ def review_cases(db: DbSession, user: CurrentUser, response: Response):
     for case in rows:
         try:
             case_access(db,user,case.id)
-        result.append({"id":case.id,"real_case_number":case.real_case_number,"operation_type":case.operation_type})
+            result.append({"id":case.id,"real_case_number":case.real_case_number,"operation_type":case.operation_type})
         except HTTPException: continue
     return result
 
