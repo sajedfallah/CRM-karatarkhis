@@ -5,7 +5,7 @@ export type ExportShipmentDetails={package_type:string;package_count:number|null
 export const emptyExportShipment:ExportShipmentDetails={package_type:'',package_count:null,total_value:null,currency:'',driver_mobile:'',vehicle_identifier:''};
 export type DraftFinanceEstimate={description:string;amount:string|null;currency:string};
 export const emptyFinanceEstimate:DraftFinanceEstimate={description:'',amount:null,currency:''};
-export type DraftContent={title:string;operation_type:'import'|'export'|'transit'|null;customs:string;product_description:string;shipment_reference:string;product_details?:ProductDetails;export_shipment?:ExportShipmentDetails;finance_estimate?:DraftFinanceEstimate;quantity:number|null;net_weight:string|null;gross_weight:string|null};
+export type DraftContent={title:string;operation_type:'import'|'export'|'transit'|null;customs:string;product_description:string;shipment_reference:string;product_details?:ProductDetails;export_shipment?:ExportShipmentDetails;finance_estimate?:DraftFinanceEstimate;planned_assignee_user_id?:string|null;quantity:number|null;net_weight:string|null;gross_weight:string|null};
 export type CaseDraft={id:string;customer_id:string;customer_name:string;version:number;content:DraftContent;status:'DRAFT';product_review?:{status:'VERIFIED'|'NEEDS_REVIEW';product_revision:number;reason?:string};created_at:string;updated_at:string};
 export type DraftDocument={link_id?:string;document_id:string;document_version_id:string;title:string;document_type:string;version:number;file_name:string;starts_on:string|null;expires_on:string|null;status:string;added_at?:string};
 export type DraftDocumentState={draft_id:string;draft_version:number;linked:DraftDocument[];available:DraftDocument[]};
@@ -26,4 +26,3 @@ export function draftValidation(content:DraftContent):string{
   if(estimate.currency&&!/^[A-Z]{3}$/.test(estimate.currency))return 'ارز باید با کد سه‌حرفی بزرگ مانند IRR یا USD ثبت شود.';
   return '';
 }
-

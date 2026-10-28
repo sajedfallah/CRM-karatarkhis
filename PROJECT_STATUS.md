@@ -226,31 +226,20 @@ at commit 7273b710a7c15756f1de449457babc0b7af9286a. Staging schema stayed at 001
 no real draft/customer was edited to test export fields.
 
 ## Active slice — exact document version links
-DOC-CORE / CASE-DRAFT / SEC-004: PASS for exact-version links; full document governance remains PARTIAL.
+DOC-CORE / CASE-DRAFT / SEC-004: implementation prepared; document governance remains PARTIAL.
 Admin can attach a specific immutable corporate-document version belonging to
 the draft's customer, or soft-detach it. Cross-customer IDs are denied; each
 change advances the draft version and appends audit. Readiness and the draft UI
 show the exact linked version and date-based validity without claiming document
-authenticity, requirement sufficiency or customer approval. Migration 0014 is additive; CI run 40598133253 passed with 75 PostgreSQL backend tests,
-11 frontend tests, TypeScript/Vite build, migration downgrade/upgrade rehearsal and
-Gitleaks. Alembic upgrade to 0014_draft_doc_links was applied only to isolated Neon
-staging; production was untouched. Runtime commit f5683515bf3b625a9a69aa9dd354e70d3b47d84e
-deployed READY on the protected Preview alias. Authenticated browser verification
-confirmed exact-version links and readiness render; the existing real draft remained
-at version 9, with no customer data changed. No final submission is enabled.
+authenticity, requirement sufficiency or customer approval. Migration 0014 is
+additive; PostgreSQL CI, staging migration and protected-preview verification are
+pending. No production data changed.
 
-
-## Active slice — internal draft finance estimate
-CASE-DRAFT / FIN-CORE / SEC-004: PASS for draft estimate capture only; the finance
-ledger domain remains missing. One estimate per draft captures description, a
-nonnegative amount (maximum two decimal places) and a three-letter currency code.
-All three values are required together. It is stored in the existing versioned
-CaseDraft content, is admin-only, and appears only in the internal draft/readiness
-views. It does not create a payment, invoice, ledger posting, customer-visible
-charge or final case. No migration.
-
-CI run 40601462359 passed: 77 PostgreSQL tests, 11 frontend tests, TypeScript/Vite
-build, migration rehearsal and Gitleaks. Runtime commit b69776289626e579766430c941ad9dde9442b628
-deployed READY on the protected Preview alias. Browser verification showed the
-three estimate fields and read-only readiness; the existing draft remained at
-version 9 and no value was saved to it.
+## Next wizard slice — proposed draft assignee
+The draft form now offers an optional internal proposed assignee. The eligible
+list and save-time validation require an active internal employee in the admin's
+selected internal organization. Selection is stored only in versioned draft
+JSON; it creates no CaseAssignment, case access grant or final Case. The
+readiness view labels final assignment as a post-registration gap. No migration
+is required. Backend organization-scope and API regressions plus a frontend
+serialization regression were added; CI and Preview deployment are pending.

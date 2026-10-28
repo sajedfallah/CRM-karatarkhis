@@ -20,6 +20,7 @@ def test_readiness_is_read_only_and_never_enables_final_submission(client,db,act
     data=response.json()
     assert not data['initial_data_complete'] and not data['final_submission_available']
     assert not data['finance_estimate']['complete'] and data['finance_estimate']['amount'] is None
+    assert not data['planned_assignment_selected']
     assert next(g for g in data['workflow_gaps'] if g['requirement']=='FIN-CORE')['title']=='تأیید و قواعد مالی پرونده'
     assert next(c for c in data['initial_checks'] if c['id']=='customer')['complete']
     assert not next(c for c in data['initial_checks'] if c['id']=='quantity')['complete']
@@ -89,4 +90,3 @@ def test_only_latest_own_customer_document_validity_is_informational(client,db,a
     assert [(d['id'],d['version'],d['status']) for d in data['corporate_documents']]==[('OWN',2,'VALID')]
     assert not data['corporate_documents_are_linked'] and not data['final_submission_available']
     assert 'object_key' not in str(data) and 'sha256' not in str(data)
-

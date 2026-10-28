@@ -1,6 +1,6 @@
 from uuid import uuid4
 from sqlalchemy import func, select
-from app.models.core import AuditLog, Case
+from app.models.core import AuditLog, Case, CaseAssignment, Organization, OrganizationMembership, User
 from app.models.drafts import CaseDraft
 
 
@@ -28,6 +28,7 @@ def test_draft_creation_idempotency_and_resume(client, db, actors, auth_headers)
     assert resumed.json()["content"]["gross_weight"]=="11.500"
     assert resumed.json()["content"]["product_description"]=="Example goods"
     assert resumed.json()["content"]["finance_estimate"]=={"description":"","amount":None,"currency":""}
+    assert resumed.json()["content"]["planned_assignee_user_id"] is None
     assert "no-store" in resumed.headers["cache-control"]
     assert client.get("/api/v1/case-drafts",headers=headers).json()[0]["customer_name"]=="Customer A"
     assert db.scalar(select(func.count()).select_from(Case))==0
@@ -92,3 +93,49 @@ def test_internal_draft_estimate_is_versioned_and_never_creates_financial_postin
     assert db.scalar(select(func.count()).select_from(Case))==0
     assert {row.action for row in db.scalars(select(AuditLog).where(AuditLog.entity_id==draft["id"]))}=={"create","save"}
 
+
+def test_planned_assignment_is_admin_only_internal_employee_only_and_not_a_case_assignment(client,db,actors,auth_headers):
+    headers=auth_headers(actors["admin"].id)
+    staff=User(id="USR-STAFF",full_name="Internal Staff",role="internal_employee",is_active=True)
+    inactive=User(id="USR-INACTIVE",full_name="Inactive Staff",role="internal_employee",is_active=False)
+    db.add_all([staff,inactive]);db.commit()
+    listed=client.get("/api/v1/case-drafts/eligible-assignees",headers=headers)
+    assert listed.status_code==200
+    assert listed.json()==[{"id":"USR-STAFF","full_name":"Internal Staff"}]
+    assert client.get("/api/v1/case-drafts/eligible-assignees",headers=auth_headers(actors["manager_a"].id)).status_code==403
+    draft=create(client,headers).json();url=f"/api/v1/case-drafts/{draft['id']}"
+    payload={"expected_version":1,"content":{"planned_assignee_user_id":staff.id}}
+    saved=client.put(url,headers=headers,json=payload)
+    assert saved.status_code==200,saved.text
+    assert saved.json()["content"]["planned_assignee_user_id"]==staff.id
+    readiness=client.get(url+"/readiness?expected_version=2",headers=headers).json()
+    assert readiness["planned_assignment_selected"] and not readiness["final_submission_available"]
+    assert client.put(url,headers=headers,json={"expected_version":2,"content":{"planned_assignee_user_id":inactive.id}}).status_code==422
+    assert client.put(url,headers=headers,json={"expected_version":2,"content":{"planned_assignee_user_id":actors["manager_a"].id}}).status_code==422
+    assert db.scalar(select(func.count()).select_from(CaseAssignment))==0
+    assert db.scalar(select(func.count()).select_from(Case))==0
+
+
+def test_planned_assignee_is_scoped_to_the_selected_internal_organization(db,actors):
+    from types import SimpleNamespace
+    from app.api.v1.drafts import _eligible_assignee_query, _validate_planned_assignee
+    first=Organization(id="ORG-INTERNAL-A",type="INTERNAL",name="A",slug="internal-a",status="active")
+    second=Organization(id="ORG-INTERNAL-B",type="INTERNAL",name="B",slug="internal-b",status="active")
+    staff_a=User(id="USR-STAFF-A",full_name="Staff A",role="internal_employee",is_active=True)
+    staff_b=User(id="USR-STAFF-B",full_name="Staff B",role="internal_employee",is_active=True)
+    db.add_all([first,second,staff_a,staff_b]);db.flush()
+    db.add_all([
+        OrganizationMembership(id="MEM-STAFF-A",organization_id=first.id,user_id=staff_a.id,role="internal_employee",permission_profile="عملیاتی",scope_type="ORGANIZATION",status="ACTIVE"),
+        OrganizationMembership(id="MEM-STAFF-B",organization_id=second.id,user_id=staff_b.id,role="internal_employee",permission_profile="عملیاتی",scope_type="ORGANIZATION",status="ACTIVE"),
+    ])
+    db.commit()
+    actor=SimpleNamespace(organization_id=first.id)
+    assert [row.id for row in db.scalars(_eligible_assignee_query(first.id))]==[staff_a.id]
+    _validate_planned_assignee(db,actor,staff_a.id)
+    from fastapi import HTTPException
+    try:
+        _validate_planned_assignee(db,actor,staff_b.id)
+    except HTTPException as exc:
+        assert exc.status_code==422
+    else:
+        raise AssertionError("cross-organization assignment was accepted")

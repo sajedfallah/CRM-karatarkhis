@@ -7,7 +7,7 @@ from sqlalchemy import select, update, func
 from sqlalchemy.exc import IntegrityError
 from app.api.deps import CurrentUser, DbSession
 from app.api.v1.customers import _require_admin
-from app.models.core import AuditLog, Customer
+from app.models.core import AuditLog, Customer, Organization, OrganizationMembership, User
 from app.models.compliance import CorporateDocument, CorporateDocumentVersion
 from app.models.drafts import CaseDraft, DraftCorporateDocumentLink
 from app.services.product_review import product_fingerprint, product_review
@@ -59,6 +59,7 @@ class DraftContent(BaseModel):
     product_details: ProductDetails = Field(default_factory=ProductDetails)
     export_shipment: ExportShipmentDetails = Field(default_factory=ExportShipmentDetails)
     finance_estimate: DraftFinanceEstimate = Field(default_factory=DraftFinanceEstimate)
+    planned_assignee_user_id: str | None = Field(default=None, min_length=1, max_length=64)
     shipment_reference: str = Field(default="", max_length=128)
     quantity: int | None = Field(default=None, ge=1, le=1_000_000_000)
     net_weight: Decimal | None = Field(default=None, ge=0, max_digits=18, decimal_places=3)
@@ -97,11 +98,43 @@ def require_customer(db, customer_id):
         raise HTTPException(409, "inactive_customer")
 
 
+def _eligible_assignee_query(organization_id=None):
+    query=select(User).where(User.is_active.is_(True))
+    if organization_id:
+        return query.join(OrganizationMembership,OrganizationMembership.user_id==User.id).join(
+            Organization,Organization.id==OrganizationMembership.organization_id).where(
+            Organization.id==organization_id,Organization.type=="INTERNAL",Organization.status=="active",
+            Organization.customer_id.is_(None),OrganizationMembership.role=="internal_employee",
+            OrganizationMembership.scope_type=="ORGANIZATION",OrganizationMembership.status=="ACTIVE",
+            OrganizationMembership.deactivated_at.is_(None))
+    # The no-organization branch is only reachable through the dev/test identity
+    # fallback; production sessions always carry a selected active membership.
+    return query.where(User.role=="internal_employee")
+
+
+def _validate_planned_assignee(db, actor, assignee_user_id):
+    if assignee_user_id is None:
+        return
+    organization_id=getattr(actor,"organization_id",None)
+    valid=db.scalar(_eligible_assignee_query(organization_id).where(User.id==assignee_user_id))
+    if not valid:
+        raise HTTPException(422,"planned_assignee_not_active_internal_member")
+
+
 @router.get("")
 def list_drafts(db: DbSession, user: CurrentUser, response: Response):
     _require_admin(user)
     response.headers["Cache-Control"] = "private, no-store"
     return [read_draft(db, row) for row in db.scalars(select(CaseDraft).order_by(CaseDraft.updated_at.desc()))]
+
+
+@router.get("/eligible-assignees")
+def list_eligible_assignees(db: DbSession, user: CurrentUser, response: Response):
+    _require_admin(user)
+    response.headers["Cache-Control"]="private, no-store"
+    organization_id=getattr(user,"organization_id",None)
+    return [{"id":row.id,"full_name":row.full_name} for row in db.scalars(
+        _eligible_assignee_query(organization_id).order_by(User.full_name,User.id))]
 
 
 @router.post("", status_code=201)
@@ -148,6 +181,7 @@ def save_draft(draft_id: str, payload: DraftSave, db: DbSession, user: CurrentUs
     require_customer(db, row.customer_id)
     actor = user.id
     content = payload.content.model_dump(mode="json")
+    _validate_planned_assignee(db,user,content.get("planned_assignee_user_id"))
     result = db.execute(update(CaseDraft).where(CaseDraft.id == draft_id, CaseDraft.version == payload.expected_version)
         .values(content=content, version=payload.expected_version+1, updated_at=func.now(),
             product_revision=CaseDraft.product_revision+(1 if product_fingerprint(row.content)!=product_fingerprint(content) else 0))
@@ -323,4 +357,3 @@ def review_product(draft_id: str,payload: ProductReviewCommand,db: DbSession,use
         action="human_verify",new_value=f"draft_id={row.id};product_revision={row.product_revision}",source="api"))
     db.commit()
     return read_draft(db,row)
-

@@ -14,7 +14,7 @@ WORKFLOW_GAPS = (
     ("DOC-CORE", "تعریف الزامات اسناد حمل و بررسی کفایت نسخه‌های متصل"),
     ("AI-CORE", "پیش‌بررسی اسناد و رسیدگی انسانی به موارد لازم"),
     ("FIN-CORE", "تأیید و قواعد مالی پرونده"),
-    ("CASE-ASSIGNMENT", "تخصیص مسئول و بازبینی نهایی"),
+    ("CASE-ASSIGNMENT", "تخصیص نهایی پرونده پس از ثبت"),
     ("SUB-001", "تأیید صریح مشتری روی نسخه اطلاعات پرونده"),
     ("SUB-002", "ثبت نسخه ثابت اطلاعات و قفل پس از ثبت نهایی"),
 )
@@ -69,8 +69,8 @@ def registration_readiness(db, draft):
         "final_submission_available":False,"product_review":product_review(db,draft),
         "finance_estimate":{"complete":estimate_complete,"description":finance_estimate.get("description",""),
             "amount":finance_estimate.get("amount"),"currency":finance_estimate.get("currency","")},
+        "planned_assignment_selected":bool(data.get("planned_assignee_user_id")),
         "initial_checks":[{"id":key,"title":title,"complete":passed} for key,title,passed in fields],
         "workflow_gaps":[{"requirement":key,"title":title,"status":"NOT_IMPLEMENTED"} for key,title in WORKFLOW_GAPS],
         "corporate_documents":documents,"linked_corporate_documents":linked_documents,
         "corporate_documents_are_linked":bool(linked_documents)}
-
