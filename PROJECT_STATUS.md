@@ -292,4 +292,8 @@ APS/EPS upload is supported; generating the official declaration PDF requires an
 approved template and field mapping. No migration has been applied to staging.
 Migration 0016 is prepared; local Python syntax compilation passed. Local pytest
 and frontend build were unavailable because pytest/npm packages are not installed
-and network package access is blocked. GitHub CI and Preview verification pending.
+and network package access is blocked. GitHub Actions run 40662240684 passed
+(backend PostgreSQL suite, frontend build/tests, secret scan); Vercel reported both
+Preview builds successful. Browser confirmed the shortened admin menu and new
+submission queue UI. The queue API currently fails because migration 0016 has not
+been applied to staging; no live records were created or changed.
