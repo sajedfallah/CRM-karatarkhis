@@ -1,15 +1,17 @@
 import json
+import re
 from typing import Literal
 from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import select
 
 from app.api.deps import CurrentUser, DbSession
-from app.models.core import AuditLog, Case, CaseAccessGrant, Customer, Organization, OrganizationMembership, Permission, User
+from app.models.core import AuditLog, Case, CaseAccessGrant, Customer, Invitation, Organization, OrganizationMembership, Permission, User
 from app.services.authentication import utc_now
 from app.services.authorization import Action, AuthorizationDenied, AuthorizationService
+from app.services.invitations import issue_customer_employee
 
 router = APIRouter(prefix="/organizations", tags=["organizations"])
 PROFILE_RANK = {"محدود":0, "عملیاتی":1, "مدیریتی":2, "پیشرفته":3}
@@ -37,6 +39,20 @@ class MembershipCreate(MembershipWrite):
     user_id: str = Field(min_length=1, max_length=64)
 
 
+class EmployeeInvitation(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    email: str = Field(min_length=5, max_length=320)
+    reason: str = Field(min_length=3, max_length=500)
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value):
+        value=value.strip().lower()
+        if not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+",value):
+            raise ValueError("invalid_email")
+        return value
+
+
 def _org(db, organization_id):
     organization = db.get(Organization, organization_id)
     if not organization:
@@ -53,8 +69,12 @@ def _manage(db, actor, organization):
         raise HTTPException(403, "organization_management_denied")
 
 
-def _membership_dict(row):
-    return {key:getattr(row,key) for key in ("id","organization_id","user_id","role","permission_profile","scope_type","status")}
+def _membership_dict(db, row):
+    user = db.get(User, row.user_id)
+    return {key:getattr(row,key) for key in ("id","organization_id","user_id","role","permission_profile","scope_type","status")} | {
+        "full_name": user.full_name if user else "",
+        "email": user.email if user else None,
+    }
 
 
 def _audit(db, actor, entity, entity_id, action, payload):
@@ -144,7 +164,32 @@ def create_organization(payload: OrganizationCreate, db: DbSession, actor: Curre
 @router.get("/{organization_id}/memberships")
 def memberships(organization_id: str, db: DbSession, actor: CurrentUser):
     organization=_org(db,organization_id);_manage(db,actor,organization)
-    return [_membership_dict(row) for row in db.scalars(select(OrganizationMembership).where(OrganizationMembership.organization_id == organization.id))]
+    return [_membership_dict(db,row) for row in db.scalars(select(OrganizationMembership).where(OrganizationMembership.organization_id == organization.id))]
+
+
+@router.get("/{organization_id}/invitations")
+def invitations(organization_id: str, db: DbSession, actor: CurrentUser):
+    organization=_org(db,organization_id);_manage(db,actor,organization)
+    if organization.type != "CUSTOMER":
+        raise HTTPException(404,"customer_organization_required")
+    return [{key:getattr(row,key) for key in ("id","email","role","purpose","status","expires_at")}
+        for row in db.scalars(select(Invitation).where(Invitation.organization_id == organization.id,
+            Invitation.purpose == "customer_employee")
+            .order_by(Invitation.expires_at.desc()))]
+
+
+@router.post("/{organization_id}/invitations", status_code=202)
+def invite_employee(organization_id: str, payload: EmployeeInvitation, db: DbSession,
+                    actor: CurrentUser):
+    organization=_org(db,organization_id);_manage(db,actor,organization)
+    if organization.type != "CUSTOMER":
+        raise HTTPException(404,"customer_organization_required")
+    _audit(db,actor,"organization",organization.id,"customer_employee_invitation",
+        {"email":payload.email,"reason":payload.reason})
+    result=issue_customer_employee(db,organization,payload.email,actor.id)
+    db.commit()
+    return {"id":result["id"],"status":result["status"],"email":payload.email,
+        "duplicate":result.get("duplicate",False)}
 
 
 @router.post("/{organization_id}/memberships",status_code=201)
@@ -157,7 +202,7 @@ def create_membership(organization_id: str, payload: MembershipCreate, db: DbSes
     row=OrganizationMembership(id="MEM-"+uuid4().hex,organization_id=organization.id,user_id=payload.user_id,
         role=payload.role,permission_profile=payload.permission_profile,scope_type=payload.scope_type,status=payload.status,joined_at=utc_now())
     db.add(row);db.flush();_apply(db,actor,organization,row,payload);db.commit()
-    return _membership_dict(row)
+    return _membership_dict(db,row)
 
 
 @router.patch("/{organization_id}/memberships/{membership_id}")

@@ -43,7 +43,7 @@ def invitations(customer_id: str,db: DbSession,user: CurrentUser,response: Respo
     response.headers["Cache-Control"]="private, no-store"
     org=db.scalar(select(Organization).where(Organization.customer_id==customer_id))
     if not org:return []
-    return [{"id":row.id,"email":row.email,"status":row.status,"expires_at":row.expires_at} for row in db.scalars(select(Invitation).where(Invitation.organization_id==org.id).order_by(Invitation.expires_at.desc()))]
+    return [{"id":row.id,"email":row.email,"purpose":row.purpose,"status":row.status,"expires_at":row.expires_at} for row in db.scalars(select(Invitation).where(Invitation.organization_id==org.id).order_by(Invitation.expires_at.desc()))]
 
 
 @router.post("/customers/{customer_id}/reviewer-invitations",status_code=202)

@@ -64,3 +64,5 @@ class CustomerRead(CustomerProfile):
     drive_folder_id: str | None
     drive_provisioning_status: str
     drive_provisioning_error: str | None
+    manager_invitation_status: str | None = None
+

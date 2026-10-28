@@ -92,6 +92,7 @@ class Invitation(Base):
     organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), index=True)
     email: Mapped[str] = mapped_column(String(320), index=True)
     role: Mapped[str] = mapped_column(String(64), nullable=False)
+    purpose: Mapped[str] = mapped_column(String(32), nullable=False, default="internal")
     scope_type: Mapped[str] = mapped_column(String(32), nullable=False)
     invited_by: Mapped[str | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     token_hash: Mapped[str] = mapped_column(String(128), unique=True, nullable=False)

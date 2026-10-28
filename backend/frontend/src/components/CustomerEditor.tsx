@@ -5,7 +5,7 @@ import {saveCustomer,prepareWriteSession,type RecordRow} from '../api';
 import {Button} from './Button';
 import {customerProfileFields,type CustomerInput} from '../customerProfile';
 
-export function CustomerEditor({record,onClose,onSaved}:{record:RecordRow|null;onClose:()=>void;onSaved:()=>void}){
+export function CustomerEditor({record,onClose,onSaved}:{record:RecordRow|null;onClose:()=>void;onSaved:(record:RecordRow)=>void}){
   const dialog=useRef<HTMLDialogElement>(null);
   const [values,setValues]=useState<Record<string,string>>(()=>Object.fromEntries(['name','customer_type',...customerProfileFields.map(f=>f.key)].map(key=>[key,String(record?.[key]??'')])));
   const name=values.name;
@@ -13,9 +13,9 @@ export function CustomerEditor({record,onClose,onSaved}:{record:RecordRow|null;o
   const cache=useQueryClient();
   const session=useQuery({queryKey:['write-session'],queryFn:prepareWriteSession,retry:false});
   const save=useMutation({mutationFn:()=>saveCustomer(values as CustomerInput,record?.id),retry:false,
-    onSuccess:async()=>{
+    onSuccess:async(data)=>{
       await cache.invalidateQueries({queryKey:['records']});
-      onSaved();
+      onSaved(data);
     }});
   useEffect(()=>{dialog.current?.showModal();},[]);
   function submit(event:FormEvent){event.preventDefault();if(!save.isPending)save.mutate();}
@@ -24,7 +24,7 @@ export function CustomerEditor({record,onClose,onSaved}:{record:RecordRow|null;o
     <header><h2 id="customer-editor-title">{record?'ویرایش اطلاعات مشتری':'ثبت مشتری جدید'}</h2>
       <Button variant="ghost" size="icon" aria-label="بستن فرم" disabled={save.isPending} onClick={onClose}><X size={20}/></Button></header>
     <form onSubmit={submit}>
-      <p className="muted">مشخصات مشتری را وارد کنید. فقط نام مشتری الزامی است.</p>
+      <p className="muted">{record?'ایمیل مدیر شرکت را ویرایش کنید. برای ارسال یا ارسال دوباره دعوت، از زبانه مدیر پنل استفاده کنید.':'ایمیل مدیر شرکت را ثبت کنید؛ پس از ساخت مشتری، لینک فعال‌سازی حساب به این ایمیل فرستاده می‌شود.'}</p>
       <label htmlFor="customer-name">نام مشتری <span aria-hidden="true">*</span></label>
       <input id="customer-name" name="name" autoFocus required minLength={2} maxLength={255}
         value={name} onChange={event=>change('name',event.target.value)} disabled={save.isPending} aria-describedby="customer-name-help"/>
@@ -37,7 +37,7 @@ export function CustomerEditor({record,onClose,onSaved}:{record:RecordRow|null;o
         <legend>{group.title}</legend><div className="customer-grid">{customerProfileFields.filter(field=>field.group===group.key).map(field=><div key={field.key} className={field.key==='address'?'full-width':''}>
           <label htmlFor={'customer-'+field.key}>{field.label}</label>
           {field.key==='address'?<textarea id={'customer-'+field.key} value={values[field.key]} maxLength={field.max} disabled={save.isPending} rows={3} onChange={event=>change(field.key,event.target.value)}/>:
-          <input id={'customer-'+field.key} name={field.key} type={'type' in field?field.type:'text'} dir={field.dir} maxLength={field.max} value={values[field.key]} disabled={save.isPending} onChange={event=>change(field.key,event.target.value)}/>}
+          <input id={'customer-'+field.key} name={field.key} type={'type' in field?field.type:'text'} dir={field.dir} maxLength={field.max} required={field.key==='email'} value={values[field.key]} disabled={save.isPending} onChange={event=>change(field.key,event.target.value)}/>}
         </div>)}</div></fieldset>)}
       {session.isPending&&<p role="status">در حال بررسی نشست…</p>}
       {session.isError&&<div role="alert"><p className="form-error">{session.error.message}</p><Button type="button" variant="outline" onClick={()=>void session.refetch()}>بررسی دوباره نشست</Button></div>}
@@ -48,3 +48,4 @@ export function CustomerEditor({record,onClose,onSaved}:{record:RecordRow|null;o
     </form>
   </dialog>;
 }
+

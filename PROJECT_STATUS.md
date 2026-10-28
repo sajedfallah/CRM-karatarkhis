@@ -2,7 +2,7 @@
 
 ## Current State
 Current Epic: CRM foundation / operations web UI
-Current Task: KRT-CRM-UI-001 — customer registration and safe new-tab writes
+Current Task: KRT-IAM-PORTAL-002 — customer manager and employee invitations
 Working Branch: codex/iam-session-auth-20261027
 Canonical Base: codex/canonical-v5-build
 Environment: isolated Neon staging + Vercel Preview; no production cutover
@@ -48,7 +48,7 @@ Plan: isolated CI branch → PostgreSQL tests → Alembic-generated staging upgr
 session where the legacy membership selection is unambiguous.
 
 ## Remaining IAM and product work
-- customer invitations and existing-account invitation acceptance;
+- existing-account invitation acceptance for previously registered users;
 - organization selection UX, password reset and MFA;
 - durable email queue/retry and production sender configuration;
 - Persian RTL React operations frontend;
@@ -298,3 +298,8 @@ PostgreSQL suite, frontend build/tests, secret scan); both Preview builds succee
 Authenticated Preview browser check confirmed the admin-only submitted/registered
 queue and its successful empty state. No customer requests, files or cases were
 created for live verification.
+
+
+## Customer company accounts and employee invitations — implementation prepared
+
+The admin customer form uses the company manager's email and the customer organization receives a one-time activation invitation. The manager can invite employees from «کارمندان شرکت»; management is confined to that manager's active organization. Declaration-review invitations retain their restricted permission through a distinct invitation purpose. Migration 0017 was applied only on staging branch staging-iam-20261027. Preview deployment and authenticated customer UAT remain pending; no customer or employee account was created and no invitation email was sent in this implementation. Production remains untouched.
