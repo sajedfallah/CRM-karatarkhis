@@ -241,5 +241,8 @@ list and save-time validation require an active internal employee in the admin's
 selected internal organization. Selection is stored only in versioned draft
 JSON; it creates no CaseAssignment, case access grant or final Case. The
 readiness view labels final assignment as a post-registration gap. No migration
-is required. Backend organization-scope and API regressions plus a frontend
-serialization regression were added; CI and Preview deployment are pending.
+is required. CI run 40643124379 passed: 79 PostgreSQL tests, 13 frontend tests,
+TypeScript/Vite build, migration rehearsal and secret scan. Vercel Preview for
+commit 11f2a6b4648db5b26015d1ba641c751e87bb3dbb is READY; the deployed
+JavaScript bundle was checked for the new step, endpoint and Persian warning.
+No real draft or customer data was changed during verification.

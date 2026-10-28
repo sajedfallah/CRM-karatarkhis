@@ -90,6 +90,11 @@ GET /case-drafts/{id}/readiness?expected_version=N برای نسخه قدیمی 
 فهرست مجاز خارج شود، باید مسئول دیگری انتخاب یا مقدار پاک شود تا ذخیره پذیرفته
 شود. فهرست فقط برای مدیر قابل دریافت است.
 
+اعتبارسنجی این برش در CI اجرا شد: ۷۹ آزمون PostgreSQL، ۱۳ آزمون رابط، ساخت
+TypeScript/Vite، تمرین مهاجرت و اسکن کلیدها موفق بودند. پیش‌نمایش Vercel برای
+commit `11f2a6b4648db5b26015d1ba641c751e87bb3dbb` آماده است. آزمون مرورگر فقط
+صفحه و فایل رابط منتشرشده را خواند؛ هیچ پیش‌نویس یا مشتری واقعی تغییر نکرد.
+
 Readiness runtime 8c6ea4758e02b34b3ba90a05c27224e752049b41 deployed READY.
 Saved-version checklist and canonical missing-step list verified in browser;
 existing draft stayed at version 9. Final submission remains unavailable.
