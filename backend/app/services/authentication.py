@@ -1,6 +1,8 @@
 """Opaque, hashed-at-rest sessions. Authorization remains in the domain layer."""
 import hashlib
 import hmac
+import os
+import re
 import secrets
 from datetime import datetime, timedelta, timezone
 
@@ -48,7 +50,15 @@ def hash_password(password: str) -> str:
 
 
 def require_origin(request: Request) -> None:
-    if request.headers.get("origin") not in get_settings().auth_allowed_origins:
+    settings = get_settings()
+    allowed = set(settings.auth_allowed_origins)
+    if settings.app_env.lower() == "staging" and os.getenv("VERCEL_ENV", "preview").lower() == "preview":
+        # Each Vercel Preview has a unique HTTPS origin. Permit only this deployment's
+        # own Vercel host; production continues to use the explicit allowlist above.
+        host = (os.getenv("VERCEL_URL") or request.url.hostname or "").strip().lower()
+        if len(host) <= 253 and re.fullmatch(r"(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+vercel\.app", host):
+            allowed.add("https://" + host)
+    if request.headers.get("origin") not in allowed:
         raise HTTPException(403, "invalid_origin")
 
 
