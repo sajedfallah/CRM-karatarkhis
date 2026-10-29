@@ -20,10 +20,12 @@ from app.api.v1.declarations import router as declarations_router
 
 from app.api.v1.customer_portal import router as customer_portal_router
 from app.api.v1.case_registration_requests import router as case_registration_requests_router
+from app.api.v1.case_workflow_messages import router as case_workflow_messages_router
 
 api_router = APIRouter(prefix="/api/v1")
 api_router.include_router(customer_portal_router)
 api_router.include_router(case_registration_requests_router)
+api_router.include_router(case_workflow_messages_router)
 api_router.include_router(declarations_router)
 api_router.include_router(drafts_router)
 api_router.include_router(compliance_router)
@@ -38,4 +40,3 @@ api_router.include_router(manual_sync_router)
 api_router.include_router(tasks_router)
 api_router.include_router(telegram_router)
 api_router.include_router(users_router)
-

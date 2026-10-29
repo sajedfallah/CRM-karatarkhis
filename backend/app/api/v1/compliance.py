@@ -10,10 +10,12 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from app.api.deps import CurrentUser, DbSession
 from app.api.v1.customers import _require_admin
-from app.models.core import AuditLog, Customer
+from app.models.core import AuditLog, Case, Customer
+from app.models.case_workflow import CaseWorkflowMessage, CaseWorkflowNotification
 from app.models.compliance import CorporateDocument, CorporateDocumentVersion, DocumentNotification
 from app.services.document_expiry import latest_versions, local_today, scan_expiry, validity
 from app.services.private_files import MAX_FILE_BYTES, PrivateFileStore
+from app.services.authorization import Action, AuthorizationDenied, AuthorizationService
 
 router = APIRouter(tags=["customer corporate documents"])
 
@@ -201,23 +203,43 @@ def download_document(customer_id: str, version_id: str, db: DbSession, user: Cu
 
 @router.get("/notifications")
 def notifications(db: DbSession, user: CurrentUser):
-    _require_admin(user)
-    recipient = user.id
-    scan_expiry(db)
-    latest = {version.id for _, version in latest_versions(db)}
-    rows = list(db.scalars(select(DocumentNotification).where(DocumentNotification.recipient_user_id == recipient,
-        DocumentNotification.version_id.in_(latest)).order_by(DocumentNotification.created_at.desc())))
-    return [{"id": row.id, "title": row.title, "customer_id": row.customer_id, "version_id": row.version_id,
-        "customer_name": db.get(Customer, row.customer_id).name,
-        "document_title": db.get(CorporateDocument, db.get(CorporateDocumentVersion, row.version_id).document_id).title,
-        "read_at": row.read_at, "created_at": row.created_at, "threshold": row.threshold} for row in rows]
+    result = []
+    if user.role == "admin":
+        scan_expiry(db)
+        latest = {version.id for _, version in latest_versions(db)}
+        rows = list(db.scalars(select(DocumentNotification).where(DocumentNotification.recipient_user_id == user.id,
+            DocumentNotification.version_id.in_(latest)).order_by(DocumentNotification.created_at.desc()))) if latest else []
+        result.extend({"id": row.id, "kind": "corporate_document", "title": row.title,
+            "customer_id": row.customer_id, "version_id": row.version_id,
+            "customer_name": db.get(Customer, row.customer_id).name,
+            "document_title": db.get(CorporateDocument, db.get(CorporateDocumentVersion, row.version_id).document_id).title,
+            "read_at": row.read_at, "created_at": row.created_at, "threshold": row.threshold} for row in rows)
+    workflow_rows = list(db.execute(select(CaseWorkflowNotification, CaseWorkflowMessage, Case).join(
+        CaseWorkflowMessage, CaseWorkflowMessage.id == CaseWorkflowNotification.message_id).join(
+        Case, Case.id == CaseWorkflowNotification.case_id).where(
+        CaseWorkflowNotification.recipient_user_id == user.id,
+        CaseWorkflowMessage.visibility == "customer").order_by(CaseWorkflowNotification.created_at.desc()).limit(100)))
+    result.extend({"id": notification.id, "kind": "case_workflow", "title": "پیام جدید دربارهٔ پرونده",
+        "case_id": case.id, "case_title": case.real_case_number or case.id,
+        "customer_id": case.customer_id, "body": message.body,
+        "read_at": notification.read_at, "created_at": notification.created_at}
+        for notification, message, case in workflow_rows)
+    return sorted(result, key=lambda row: row["created_at"], reverse=True)
 
 
 @router.patch("/notifications/{notification_id}/read", status_code=204)
 def read_notification(notification_id: str, db: DbSession, user: CurrentUser):
-    _require_admin(user)
     row = db.get(DocumentNotification, notification_id)
-    if not row or row.recipient_user_id != user.id:
+    if row and row.recipient_user_id == user.id and user.role == "admin":
+        row.read_at = row.read_at or datetime.now(timezone.utc)
+        db.commit()
+        return
+    workflow_row = db.get(CaseWorkflowNotification, notification_id)
+    if not workflow_row or workflow_row.recipient_user_id != user.id:
         raise HTTPException(404, "notification_not_found")
-    row.read_at = row.read_at or datetime.now(timezone.utc)
+    try:
+        AuthorizationService(db).require_case_action(user, db.get(Case, workflow_row.case_id), Action.VIEW)
+    except AuthorizationDenied:
+        raise HTTPException(404, "notification_not_found") from None
+    workflow_row.read_at = workflow_row.read_at or datetime.now(timezone.utc)
     db.commit()
