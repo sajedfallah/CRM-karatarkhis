@@ -4,7 +4,7 @@ from enum import Enum
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.core import Case, CaseAssignment, Permission, Task, User
+from app.models.core import Case, CaseAccessGrant, CaseAssignment, Permission, Task, User
 
 
 class Action(str, Enum):
@@ -45,10 +45,18 @@ class AuthorizationService:
     def require_create_case(self, user: User, customer_id: str) -> None:
         self._require_create_for_customer(user, customer_id)
 
-    def require_create_task(self, user: User, customer_id: str | None) -> None:
+    def require_create_task(self, user: User, customer_id: str | None, case_id: str | None = None) -> None:
+        if getattr(user, "scope_type", None) == "SELECTED_CASES":
+            case = self.db.get(Case, case_id) if case_id else None
+            if not case or case.customer_id != customer_id:
+                raise AuthorizationDenied("case_scope_required")
+            self.require_case_action(user, case, Action.CREATE)
+            return
         self._require_create_for_customer(user, customer_id)
 
     def require_customer_action(self, user: User, customer_id: str, action: Action) -> None:
+        if getattr(user, "scope_type", None) == "SELECTED_CASES":
+            raise AuthorizationDenied("case_scope_required")
         if not user.is_active:
             raise AuthorizationDenied("inactive_user")
         if user.role == "admin":
@@ -73,6 +81,8 @@ class AuthorizationService:
         raise AuthorizationDenied(f"action_not_allowed:{action.value}")
 
     def _require_create_for_customer(self, user: User, customer_id: str | None) -> None:
+        if getattr(user, "scope_type", None) == "SELECTED_CASES":
+            raise AuthorizationDenied("case_scope_required")
         if not user.is_active:
             raise AuthorizationDenied("inactive_user")
         if user.role == "admin":
@@ -85,6 +95,7 @@ class AuthorizationService:
             raise AuthorizationDenied("action_not_allowed:create")
 
     def require_case_action(self, user: User, case: Case, action: Action) -> None:
+        self._require_membership_case_scope(user, case.id, action)
         if not user.is_active:
             raise AuthorizationDenied("inactive_user")
         if user.role == "admin":
@@ -103,6 +114,7 @@ class AuthorizationService:
                 raise AuthorizationDenied("case_not_assigned")
 
     def require_task_action(self, user: User, task: Task, action: Action) -> None:
+        self._require_membership_case_scope(user, task.case_id, action)
         if not user.is_active:
             raise AuthorizationDenied("inactive_user")
         if user.role == "admin":
@@ -144,7 +156,28 @@ class AuthorizationService:
                 & (Permission.profile == user.permission_profile)
             ),
         )
-        return list(self.db.scalars(statement))
+        permissions = list(self.db.scalars(statement))
+        if getattr(user, "membership_id", None):
+            permissions = [p for p in permissions if p.role == user.role and p.profile == user.permission_profile]
+            if user.customer_id:
+                permissions = [p for p in permissions if p.scope_type == "CUSTOMER" and p.scope_id == user.customer_id
+                               or p.scope_type == "ASSIGNED" and p.scope_id in {user.customer_id, "OWN_ASSIGNMENTS"}]
+        return permissions
+
+    def effective_permissions(self, user: User) -> list[Permission]:
+        return self._active_permissions(user)
+
+    def _require_membership_case_scope(self, user: User, case_id: str | None, action: Action) -> None:
+        if getattr(user, "scope_type", None) != "SELECTED_CASES":
+            return
+        if not case_id:
+            raise AuthorizationDenied("case_scope_required")
+        grant = self.db.scalar(select(CaseAccessGrant).where(
+            CaseAccessGrant.membership_id == user.membership_id,
+            CaseAccessGrant.case_id == case_id, CaseAccessGrant.revoked_at.is_(None)))
+        levels = {"view", "edit"} if action == Action.VIEW else {"edit"}
+        if not grant or grant.access_level not in levels:
+            raise AuthorizationDenied("case_not_granted")
 
     @staticmethod
     def _scope_matches_case(permission: Permission, user: User, case: Case) -> bool:

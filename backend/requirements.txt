@@ -5,9 +5,13 @@ alembic>=1.18,<2.0
 psycopg[binary]>=3.2,<4.0
 pydantic-settings>=2.12,<3.0
 python-dotenv>=1.2,<2.0
+argon2-cffi>=25.1,<26.0
 google-api-python-client>=2.190,<3.0
 google-auth>=2.40,<3.0
 
 # Test and quality tooling used by the canonical backend test suite.
 pytest>=8.0,<9.0
 httpx>=0.28,<1.0
+
+boto3>=1.40,<2.0
+python-multipart>=0.0.22,<1.0

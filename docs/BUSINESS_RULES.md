@@ -29,6 +29,12 @@ Rule results: PASS, WARNING, BLOCK, REVIEW_REQUIRED, OVERRIDE_REQUIRED, NOT_APPL
 - PRD-003: Authorized human verification is authoritative.
 - PRD-004: Material product changes trigger HS revalidation.
 
+## Initial Import Case
+- IMP-CASE-001: Initial import registration captures case title, operation type, customs, HS code and uploaded case documents.
+- IMP-CASE-002: Import registration does not require the general shipment, package/weight, finance-estimate or proposed-assignee fields.
+- IMP-CASE-003: Import initial data is complete only when all ten user-defined categories are uploaded: bill of lading, insurance policy, order registration, certificate of origin, invoice, packing list, proforma invoice, inspection certificate, clearance assignment, and warehouse receipt. Reuploads are append-only versions; the checklist does not certify authenticity or legal sufficiency.
+- IMP-CASE-004: Import case documents are private, immutable uploads tied to the versioned draft; downloads are admin-only in this slice.
+
 ## Corporate compliance
 - CMP-001: Corporate documents are reusable customer assets with exact-version references.
 - CMP-002: AI may extract issue/expiry/scope data.
@@ -128,3 +134,4 @@ Rule results: PASS, WARNING, BLOCK, REVIEW_REQUIRED, OVERRIDE_REQUIRED, NOT_APPL
 - SRCH-002: Search حداقل Customer/Case/Kotazh/Document/Letter/Task/Contact را پوشش می‌دهد.
 - RPT-001: Report خروجی فقط داده مجاز کاربر را شامل می‌شود.
 - RPT-002: Saved View/Tag نباید Workflow State را تغییر دهد.
+

@@ -1,151 +1,305 @@
 # KARATARKHIS CRM — Project Status
 
 ## Current State
-Current Epic: EPIC-001 FOUNDATION
-Current Task: KRT-IAM-001
-Branch: codex/canonical-v5-build
-Base: feature/v5-backend-foundation
-Environment: repository baseline only; no production deployment
+Current Epic: CRM foundation / operations web UI
+Current Task: KRT-IAM-PORTAL-002 — customer manager and employee invitations
+Working Branch: codex/iam-session-auth-20261027
+Canonical Base: codex/canonical-v5-build
+Environment: isolated Neon staging + Vercel Preview; no production cutover
 
-## Task Status
-KRT-FOUNDATION-001R: PARTIAL
-KRT-FOUNDATION-002R: PASS
-KRT-IAM-001: IN_PROGRESS
-KRT-IAM-001A: PASS — identity/organization schema and ORM foundation; CI gate
-verified on 2026-09-23 by GitHub Actions run 35802057875 at commit
-`b772ddcc786c96cb0e3f9ef61b64c65c5b57ffa7`.
+## Verified baseline — 2026-10-27
+- KRT-FOUNDATION-002R: PASS — automated QA/CI foundation.
+- KRT-IAM-001A: PASS — organization and identity schema.
+- KRT-IAM-001B session/internal enrollment slice: PASS.
+- KRT-IAM-001 overall: IN_PROGRESS.
 
-Next Subtask: KRT-IAM-001B
+Password/session runtime includes Argon2id, verified-email binding, hashed opaque
+sessions, Secure/HttpOnly/SameSite cookies, Origin/CSRF checks, revocation and
+persistent atomic throttles. X-User-ID is explicit opt-in in development/test only.
+Internal enrollment uses one-time 24-hour invitation tokens and Resend.
+Auth utility pages /activate, /login and /account are deployed; they are not the
+final React operations frontend.
 
-## KRT-FOUNDATION-002R — Automated QA + CI Foundation
+31 PostgreSQL/API tests and CI secret scan passed at
+867cd57c888051b91b9436fc191db85a84d027a0.
+Isolated Neon staging-iam-20261027 was upgraded to 0007 with Alembic-generated SQL.
+Live /health and /health/db returned 200 with APP_ENV=staging.
+The initial invitation was located in Spam. Database evidence now confirms one
+accepted invitation, one verified account and one successful real-user login.
+No password or raw invitation token was read or stored in repository artifacts.
+The staging bootstrap secret was disabled after sending the invitation.
 
-**Status: PASS**
+## Current implementation
+KRT-IAM-001C backend slice: PASS (40 PostgreSQL tests; overall IAM remains partial).
+Requirement IDs: IAM-ORG, IAM-CASE-SCOPE, SEC-004, AUD-CORE.
 
-Implemented a canonical automated backend baseline:
-- pytest + FastAPI TestClient fixtures with a disposable SQLite developer
-  fallback and PostgreSQL CI configuration.
-- Health and identity boundary tests.
-- Customer tenant-isolation/IDOR regression tests for cases, tasks, and
-  documents, including cross-tenant create denial.
-- GitHub Actions CI with dependency installation, compile/import checks,
-  PostgreSQL zero-to-head Alembic validation, pytest, and Gitleaks scan.
-- Local commands documented in `docs/TEST_COMMANDS.md`.
+Implemented:
+- session-bound Membership identity without mutating the global User;
+- per-request membership/organization/customer activation checks;
+- exact customer-organization binding;
+- selected-case grants for cases/tasks/documents and restricted creation;
+- role/profile permission filtering for the selected organization;
+- organization and membership management API with delegation ceilings;
+- required reason and audit for sensitive membership changes;
+- migration 0008_session_org_scope, with all earlier migrations unchanged.
 
-Verification executed locally on 2026-09-23:
-`python -m compileall -q app tests` — PASS
-`python -m pytest -q` — **5 passed**
+Plan: isolated CI branch → PostgreSQL tests → Alembic-generated staging upgrade
+→ deploy tested code on the existing Preview branch. Preserve the current admin
+session where the legacy membership selection is unambiguous.
 
-The PostgreSQL migration rehearsal is enforced by CI's disposable PostgreSQL
-service. No credentials, production database, or live data were used.
+## Remaining IAM and product work
+- existing-account invitation acceptance for previously registered users;
+- organization selection UX, password reset and MFA;
+- durable email queue/retry and production sender configuration;
+- Persian RTL React operations frontend;
+- canonical CRM/workflow/documents/submission governance/finance/communication,
+  AI and export P0 milestones;
+- migration rehearsal, backup/restore, complete security audit and UAT.
 
-**Next Task:** KRT-IAM-001 — Production Authentication, Organizations,
-Memberships, Invitations, Email Confirmation, RBAC, and security event logs.
+V4 remains a legacy operational bridge. The user explicitly selected V5 web
+completion and migration as the target. No live customer data was migrated.
+The full roadmap and product authority remain docs/MASTER_SPEC_FA.md,
+docs/IMPLEMENTATION_ROADMAP_FA.md and docs/TRACEABILITY_MATRIX.md.
 
-## Baseline
-V5 backend foundation: FastAPI + SQLAlchemy 2 + PostgreSQL/Neon + Alembic.
-Legacy V4: Google Sheets + Apps Script + Drive + Telegram, retained as migration bridge.
+## Local verification limits
+Organization scope slice: PASS — 40 PostgreSQL CI tests and secret scan passed
+on 9668fc10b2559207d8b972c0924cde8d6a71a27f. Staging migration 0008 applied.
+The initial administrator accepted the invitation and completed a real login.
 
-## Existing migrations
-- 0001_initial_v5_schema
-- 0002_case_sync_metadata
-- 0003_tasks
-- 0004_documents
+Current task: UI-WEB initial read-only operations panel — PASS for this slice; full UI remains PARTIAL.
+React/TypeScript/Vite, Tailwind, TanStack Query/Table/Router, self-hosted Vazirmatn.
+Real API lists and counts, role-aware navigation, explicit detail fields,
+loading/error/empty states. No fabricated records. 42 PostgreSQL backend tests,
+3 frontend tests, TypeScript/Vite build and secret scan passed. Deployed browser
+verification passed on the active Preview alias with the signed-in administrator.
+HTML, hashed JS/CSS responses and real zero-count/empty states verified.
+Runtime code SHA: 512eb353088aa8370537da8673296446db06d30c.
+Forms, organization selector and full product UI
+remain future slices.
 
-These migrations are locked and were byte-identical by Git blob SHA between the base branch and canonical branch during this task.
+compileall and git diff --check passed for the previous slices. Local pip downloads
+timed out, so runtime pytest results come from PostgreSQL CI, not this workstation.
+Do not claim complete frontend, complete organization IAM, or production readiness
+from backend health alone.
 
-## Verification performed
-- canonical branch created directly from feature/v5-backend-foundation
-- branch diff reviewed: documentation/status files only
-- backend/app/main.py blob SHA unchanged from base
-- Alembic migration 0001 blob SHA unchanged from base
-- Alembic migration 0002 blob SHA unchanged from base
-- Alembic migration 0003 blob SHA unchanged from base
-- Alembic migration 0004 blob SHA unchanged from base
-- existing health endpoints statically confirmed in backend/app/main.py: /health, /health/db, /health/sheets
+## Active slice — customer registration UI
+KRT-CRM-UI-001 / UI-WEB / CRM-001 / SEC-003: PASS for this slice; full CRM remains PARTIAL.
+Admin-only create and rename customer dialogs use existing APIs with CSRF,
+no automatic retries, pending guard and cache refresh after server success.
+Server trims names and rejects whitespace-only/explicit-null names.
+No schema migration. Case creation UI remains gated on canonical draft workflow.
+46 PostgreSQL tests and 7 frontend tests, TypeScript/Vite build and secret scan
+passed on 2df25a97c7cd14e89feaf7471be9692455da53dc.
+New-tab session preparation uses authenticated no-store CSRF recovery, preserving
+legacy sessions and existing tabs. Origin/CSRF validation remains mandatory.
+No customer records were fabricated for live verification.
 
-No executable CI/pytest suite exists in the audited V5 baseline, so no claim of runtime automated-test execution is made. Establishing that capability is the next task.
+Browser verification: active administrator opened the deployed customer form;
+new-tab CSRF preparation completed without re-login or error. No live record
+was created by the agent. Create/rename persistence, audit, role denial, Origin,
+CSRF recovery and logout revocation were exercised against disposable PostgreSQL
+in CI. Runtime code: 2df25a97c7cd14e89feaf7471be9692455da53dc.
+Next task: canonical case-draft foundation and resumable registration flow.
 
-## Production Cutover Blocker
-Version identity mismatch:
-- main: V4.26
-- V5 docs: production V4.9.2
-- audit target: V4.30 staging
+## Active correction — customer profile
+CRM-CUSTOMER / UI-WEB: PASS for the profile slice; full Customer 360 remains PARTIAL. Extend create/edit/detail to include person/company,
+identity/registration/tax identifiers, primary contact, phone/mobile/email, province,
+city/postal/address. Name remains required; optional fields can be completed later.
+Migration 0009 adds nullable columns; existing customers/sessions are preserved.
+Plan: PostgreSQL/frontend CI, additive staging migration, deploy, browser form QA.
 
-Exact live deployment/version/commit must be pinned before production migration.
+Customer profile: 48 PostgreSQL tests, 8 frontend tests, TypeScript/Vite build
+and secret scan PASS. Runtime candidate 188e67e132988d5fa1e7ffae6d83928b54795bba.
+Additive Alembic-generated migration applied to isolated staging; schema 0009.
 
-## Completed in this task
-- canonical branch created
-- canonical documentation baseline established
-- V5 current-state matrix established
-- traceability baseline established
-- migration delta priorities documented
-- V4 kept intact
-- no production deployment
-- no live customer-data migration
-- no wholesale PR #4 merge
+Profile deployment verified with the existing administrator/customer: details
+include all new fields, editor preserves the previous name, contact/address
+sections and save button render correctly, and write-session preparation completes.
+The agent did not modify the real customer profile or create test records in staging.
 
-## Known P0 Gaps
-- automated V5 test/CI foundation
-- real production authentication
-- canonical document version/file model
-- worker/queue architecture
-- customer submission confirmation/lock/reopen
-- security regression suite
+## Active task — corporate documents and expiry notifications
+DOC-CORE / CMP-001 / CMP-005 / NTF-INAPP: PASS for this corporate-document/in-app slice; full compliance remains PARTIAL. Private branch-scoped Neon
+object storage, authenticated upload/download, immutable versions, POA date range,
+configurable reminder window (30 days default), deduplicated per-recipient in-app
+alerts and read state. 3 MiB PDF/JPEG/PNG cap. No AI extraction/malware-scan claim.
+Expiry alerts refresh on the authenticated panel poll (60 seconds) and next visit;
+background/offline email/push delivery and daily standalone worker remain future.
+Vercel storage provisioning returned 403; existing Neon branch storage used.
+Additive migration 0010 required; prior migrations unchanged.
 
-## Remaining verification
-Runtime health/migration execution was not rerun in this task because the V5 baseline has no verified automated test/CI runner in-repository. Static route/migration integrity and branch diff verification passed. This is the only reason the task remains PARTIAL.
+Corporate documents: 53 PostgreSQL tests, 8 frontend tests, TypeScript/Vite build
+and secret scan PASS. Runtime candidate 8e9760510e893295cc414eea01e3f77ee8f25f3e.
+Staging upgraded with Alembic-generated SQL to 0010_customer_documents.
+Private Neon bucket and scoped server credentials provisioned on staging only.
+Live authenticated storage probe and upload-form readiness verified without
+uploading a fabricated customer document. See docs/CUSTOMER_DOCUMENTS_FA.md.
 
-## Documentation Pack
-بسته مستندات فارسی برای Codex تکمیل و به Repository اضافه شد:
-- AGENTS.md
-- README.md Canonical
-- CODEX_MASTER_PROMPT.md
-- docs/START_HERE.md
-- docs/MASTER_SPEC_FA.md
-- docs/UI_REFERENCES.md
-- docs/IMPLEMENTATION_ROADMAP_FA.md
-- docs/CODEX_EXECUTION_GUIDE_FA.md
-- docs/DECISIONS_FA.md
-- UI/UX و AI Agent Context به‌صورت فارسی و با Referenceهای UI به‌روزرسانی شدند.
+Final runtime 8e9760510e893295cc414eea01e3f77ee8f25f3e deployed and verified:
+customer document tab/deep link, upload fields, actual private-storage readiness,
+notification bell and empty notification center. The agent uploaded no customer
+file and modified no real profile. No independent offline scheduler is claimed.
 
-## Newly Approved Product Decision
-نامه‌نگاری هوشمند به‌صورت **Template-First + AI-Assisted** قفل شد:
-- Templateهای آماده برای موضوعات پرتکرار
-- پیشنهاد Template توسط AI
-- در صورت نبود Template، AI ابتدا Missing Information را می‌گیرد و سپس Draft تولید می‌کند
-- Letter نهایی می‌تواند به Template Draft تبدیل شود
-- Active Template فقط با Human/Admin Approval
-- ارسال رسمی همیشه Human Review و در موارد حساس Approval دارد
+## Active task — resumable case draft foundation
+CASE-DRAFT / UI-WEB / SEC-003: PASS for initial drafts; full wizard remains PARTIAL. Separate draft records with bounded
+initial operation/goods/shipment fields, idempotent creation/save replay, atomic
+optimistic version checks and audit. Admin-only scope initially; no final-submit
+command is exposed and no Case record is created. Web autosave/resume and
+unsaved-navigation protection added. Full wizard/confirmation/submission remain.
+Additive migration 0011 required; prior migrations unchanged.
 
-این تصمیم در CORRESPONDENCE.md، MASTER_SPEC_FA.md، BUSINESS_RULES.md، TRACEABILITY_MATRIX.md و DECISIONS_FA.md ثبت شده است.
+Case draft runtime 631a7b6bdedcb74cbd4f70385a95a9c01b089358: 57 PostgreSQL
+tests, 10 frontend tests, TypeScript/Vite build and secret scan PASS. Additive
+migration 0011 applied to isolated staging using Alembic-generated SQL.
+See docs/CASE_DRAFTS_FA.md for the explicit initial-draft scope.
 
-## Product Decisions Synced — 2026-09-22
-تصمیم‌های جدید این جلسه به مستندات Canonical اضافه شدند:
+Deployed /app/drafts verified with the existing administrator: menu, active
+customer selector and saved-draft list load successfully. The agent created no
+fabricated draft in staging. Save/resume/conflict/replay validation is PostgreSQL
+CI evidence; final confirmation/submission workflows remain unimplemented.
 
-- Organization model برای Internal/Customer
-- Invite flow و Customer Admin user management
-- Email + Password + Email Confirmation
-- Organization + Case scope RBAC
-- Audit/Security Logs
-- Dev/Staging/Prod
-- Feature Flags
-- Observability
-- Backup/Restore Drill
-- Case calendar/reminders
-- Admin/Customer dashboards
-- In-App Notification Center + unread badge + deep links
-- Admin Announcement Board
-- Case completion satisfaction survey
-- Global Search / Tags / Saved Views / Report templates
-- Timeline-based Case UX
-- Comments/attachments per stage
-- Import declaration draft customer approval/correction
-- Kotazh as primary operational reference after declaration
-- Authorized route assignment
-- GREEN/YELLOW/RED import workflow branches
-- Actionable chart policy
 
-این تغییرات Documentation/Specification هستند و به معنی پیاده‌سازی Runtime نیستند.
+Terminology correction (UI-WEB / CASE-DRAFT): initial case-data UI is labelled
+«پرونده‌های در حال ثبت». External declaration draft upload/customer approval
+(IMP-DRAFT) remains a separate missing workflow; no declaration sending or
+customer approval is claimed. Existing draft IDs, API, content and autosave remain intact.
 
-## Next Task
-KRT-FOUNDATION-002R — Automated QA + CI Foundation
+
+IMP-DRAFT / DOC-003 / SEC-004: declaration-review slice PASS for API/UI foundation; full import workflow PARTIAL. Private
+immutable import-case file versions, explicit verified customer-manager recipient,
+version-bound approval/correction with required comment, append-only decisions,
+stale-version rejection and customer action inbox. No automatic EPS integration,
+email delivery, customer enrollment or case final-submission implementation.
+Migration 0012_declaration_review is additive. 62 PostgreSQL tests, 10 frontend tests, TypeScript/Vite build and secret scan PASS (CI 40535885618). Staging upgraded to 0012 with Alembic-generated SQL. Runtime e05eed0a3456fa89b05c4c0672e98fba7d079161.
+
+Authenticated Preview verification: /app/declarations renders the separate menu,
+import-case selector and honest empty state; /health/db returns 200. No real
+case or file was fabricated. Runtime e05eed0a3456fa89b05c4c0672e98fba7d079161
+was READY on the active Preview alias. Full customer workflow remains PARTIAL.
+
+
+UI-WEB / IAM-INVITE / IMP-DRAFT: grouped case navigation and customer reviewer
+enrollment PASS for this restricted slice; full customer portal PARTIAL. Case lists, registration drafts, declarations and documents
+share an accessible disclosure. Admin-only email invitation creates a dedicated
+DECLARATION_REVIEW permission, not generic customer data or delegation rights.
+Customer activation still verifies email and consumes a one-use 24h token. Existing
+accounts and general customer portal invitations remain outside this slice.
+No migration. 66 PostgreSQL tests, 10 frontend tests, TypeScript/Vite build and secret scan PASS (CI 40538045883; runtime 5820a9bc4db3fd7f046a838563fd46528d4e1073). Authenticated Preview group collapse/reopen with Enter and reviewer invitation tab verified; no live email sent.
+
+Preview verification: compact four-item navigation, keyboard disclosure and empty
+reviewer invitation form load with the existing admin. No customer profile or
+invitation was changed. /health/db returns 200. Full final submission remains open.
+
+
+CASE-DRAFT / UI-WEB / SUB-001/002: registration-readiness diagnostics PASS for this read-only slice; full submission remains PARTIAL.
+Read-only, exact saved-version initial-data checklist, latest customer corporate
+document validity and explicit unimplemented canonical wizard dependencies.
+Completing initial fields cannot enable final submission. No case/snapshot/customer
+confirmation is fabricated. No migration; 69 PostgreSQL tests, 10 frontend tests, TypeScript/Vite build and secret scan PASS (CI 40540571845; runtime 8c6ea4758e02b34b3ba90a05c27224e752049b41). Authenticated Preview verified with existing saved draft version 9; no data changed.
+
+Readiness runtime 8c6ea4758e02b34b3ba90a05c27224e752049b41 deployed READY.
+Saved-version checklist and canonical missing-step list verified in browser;
+existing draft stayed at version 9. Final submission remains unavailable.
+
+
+PRD-HS / PRD-002/003/004: draft technical product details and explicit admin human
+review PASS for draft-only slice; Product Master/final submission remain PARTIAL. Immutable review snapshots and source fingerprint plus monotonic
+product revision invalidate reviews on material change, including change-and-revert.
+No AI suggestion, Product Master promotion or final submission is claimed.
+Additive migration 0013 applied to isolated staging. 72 PostgreSQL tests, 11 frontend tests, TypeScript/Vite build and secret scan PASS (CI 40594359687; runtime 3d0ef60a087ddf6b3f607b98d33a9f14348d2bd9). Authenticated Preview verified: technical fields, disabled incomplete-review action and existing draft version 9 preserved.
+
+Product-review runtime 3d0ef60a087ddf6b3f607b98d33a9f14348d2bd9 deployed READY.
+Technical form and human-review readiness verified in authenticated Preview.
+No real HS value, review, customer record or draft edit was fabricated.
+
+## Active slice — export shipment details
+CASE-SHIPMENT / UI-WEB: implementation prepared; full shipment workflow remains PARTIAL.
+Export drafts now include packaging type/count, total value/currency, driver mobile,
+and vehicle/plate. The read-only saved-version checklist includes the existing
+product, quantity, weight, customs and HS data plus a separate human-HS-review
+check. Import/transit requirements are not inferred. These fields stay inside the
+existing versioned draft JSON, so no migration or final-case creation is added.
+Customer confirmation, immutable submission snapshot, final-submit lock, and
+document linkage remain unavailable. PostgreSQL CI run 40596279931 passed: 73
+backend tests, 11 frontend tests, TypeScript/Vite build, migration rehearsal and
+secret scan. The code is deployed READY on the existing protected Preview alias
+at commit 7273b710a7c15756f1de449457babc0b7af9286a. Staging schema stayed at 0013;
+no real draft/customer was edited to test export fields.
+
+## Active slice — exact document version links
+DOC-CORE / CASE-DRAFT / SEC-004: implementation prepared; document governance remains PARTIAL.
+Admin can attach a specific immutable corporate-document version belonging to
+the draft's customer, or soft-detach it. Cross-customer IDs are denied; each
+change advances the draft version and appends audit. Readiness and the draft UI
+show the exact linked version and date-based validity without claiming document
+authenticity, requirement sufficiency or customer approval. Migration 0014 is
+additive; PostgreSQL CI, staging migration and protected-preview verification are
+pending. No production data changed.
+
+## Next wizard slice — proposed draft assignee
+The draft form now offers an optional internal proposed assignee. The eligible
+list and save-time validation require an active internal employee in the admin's
+selected internal organization. Selection is stored only in versioned draft
+JSON; it creates no CaseAssignment, case access grant or final Case. The
+readiness view labels final assignment as a post-registration gap. No migration
+is required. CI run 40643124379 passed: 79 PostgreSQL tests, 13 frontend tests,
+TypeScript/Vite build, migration rehearsal and secret scan. Vercel Preview for
+commit 11f2a6b4648db5b26015d1ba641c751e87bb3dbb is READY; the deployed
+JavaScript bundle was checked for the new step, endpoint and Persian warning.
+No real draft or customer data was changed during verification.
+
+## Customer draft review — implementation in progress
+SUB-001 / SEC-004: a customer manager may review only a request explicitly
+addressed to that active, verified membership and customer. The immutable
+customer-facing copy omits internal finance estimate and proposed assignee;
+approval or correction binds to the exact draft version and becomes stale after
+any draft/document-link change. Correction requires a comment. This is a
+pre-final review; no final confirmation, Case, immutable submission, assignment
+or lock is created. Migration 0015 is additive and applied only to isolated
+staging; the deployed Preview alias serves `/app/customer-reviews` and the review
+table/revision were verified. Production remains untouched.
+
+## Import initial-registration form — implementation in progress
+Per the latest business instruction, import drafts show only case title,
+operation, customs and HS fields; all ten specified private document categories
+are required for initial-data completeness: bill of lading, insurance, order
+registration, certificate of origin, invoice, packing list, proforma, inspection
+certificate, clearance assignment and warehouse receipt. PDF/PNG/JPEG uploads
+are immutable, hash-checked, audited and stored in versioned draft JSON with a
+private object key; only admins can download them in this slice. Reuploads append
+a version. Other product/shipment/finance/assignee fields are hidden for imports.
+No schema migration is needed. CI run 40654476767 passed on commit
+3960a1d374f56af4d658e4c66a16f798beb8ebca. The matching Vercel Preview is
+READY; `/app/drafts` returned HTTP 200 and its built JavaScript contains all ten
+document labels and the categorized upload field. Authenticated upload against a
+real case was not exercised.
+
+
+## Active slice — customer case submissions and admin review
+
+The customer-facing case-registration request flow is implemented as an additive
+slice: customers submit an import/export request with title, operation, customs,
+HS code and private documents; import requests require all ten user-specified
+document types. Admin sees only submitted requests and requests already registered
+but awaiting declaration approval/quota. Admin review creates a Case. The admin
+can upload an externally prepared APS/EPS declaration through the existing
+versioned private-document flow and send it to a verified customer reviewer.
+After that reviewer approves the latest declaration, the admin can record a unique
+customs quota number, which starts the case and removes it from the review queue.
+
+Export documents are accepted as titled supporting files because no canonical
+export checklist has been specified. The chosen dual document mode is not complete:
+APS/EPS upload is supported; generating the official declaration PDF requires an
+approved template and field mapping. Migration 0016 was applied only to staging branch staging-iam-20261027. Verified
+Alembic head, request table and unique quota-number constraint on that branch;
+production was not changed. Local Python syntax compilation passed. Local pytest
+and frontend build were unavailable because packages are not installed and network
+package access is blocked. GitHub Actions run 40662240684 passed (backend
+PostgreSQL suite, frontend build/tests, secret scan); both Preview builds succeeded.
+Authenticated Preview browser check confirmed the admin-only submitted/registered
+queue and its successful empty state. No customer requests, files or cases were
+created for live verification.
+
+
+## Customer company accounts and employee invitations — implementation prepared
+
+The admin customer form uses the company manager's email and the customer organization receives a one-time activation invitation. The manager can invite employees from «کارمندان شرکت»; management is confined to that manager's active organization. Declaration-review invitations retain their restricted permission through a distinct invitation purpose. Migration 0017 was applied only on staging branch staging-iam-20261027. Preview is READY at https://crm-karatarkhis-6mkgn93ul-fallahsajed-2126s-projects.vercel.app; authenticated customer UAT remains pending; no customer or employee account was created and no invitation email was sent in this implementation. Production remains untouched.

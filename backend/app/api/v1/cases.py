@@ -2,14 +2,22 @@ from datetime import datetime, timezone
 from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException, status
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 
 from app.api.deps import CurrentUser, DbSession
 from app.models.core import AuditLog, Case, CaseAssignment, Customer, User
+from app.models.case_registration_request import CaseRegistrationRequest
+from app.models.declarations import DeclarationDecision, DeclarationRequest, DeclarationVersion
 from app.schemas.cases import AssignmentCreate, AssignmentRead, CaseCreate, CaseRead, CaseUpdate
 from app.services.authorization import Action, AuthorizationDenied, AuthorizationService
 
 router = APIRouter(prefix="/cases", tags=["cases"])
+
+
+class QuotaNumber(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    number: str = Field(min_length=1, max_length=128)
 
 _ALLOWED_ASSIGNMENT_TYPES = {
     "مسئول داخلی اصلی",
@@ -38,9 +46,11 @@ def _require_case_action(db: DbSession, current_user: User, case: Case, action: 
 
 @router.get("", response_model=list[CaseRead])
 def list_cases(db: DbSession, current_user: CurrentUser) -> list[Case]:
-    cases = list(db.scalars(select(Case).order_by(Case.created_at.desc())))
     if current_user.role == "admin":
-        return cases
+        return list(db.scalars(select(Case).join(CaseRegistrationRequest,
+            CaseRegistrationRequest.registered_case_id == Case.id).where(
+                CaseRegistrationRequest.status == "REGISTERED").order_by(Case.created_at.desc())))
+    cases = list(db.scalars(select(Case).order_by(Case.created_at.desc())))
 
     authorized: list[Case] = []
     auth = AuthorizationService(db)
@@ -99,12 +109,47 @@ def get_case(case_id: str, db: DbSession, current_user: CurrentUser) -> Case:
     return case
 
 
+@router.post("/{case_id}/customs-quota-number")
+def record_customs_quota_number(case_id: str, payload: QuotaNumber, db: DbSession, current_user: CurrentUser):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="admin_required")
+    case = db.scalar(select(Case).where(Case.id == case_id).with_for_update())
+    if not case:
+        raise HTTPException(status_code=404, detail="case_not_found")
+    if case.operation_type not in {"import", "export"}:
+        raise HTTPException(status_code=409, detail="import_or_export_case_required")
+    version = db.scalar(select(DeclarationVersion).where(DeclarationVersion.case_id == case_id)
+        .order_by(DeclarationVersion.version.desc()).limit(1))
+    sent = db.scalar(select(DeclarationRequest).where(DeclarationRequest.version_id == version.id)) if version else None
+    decision = db.scalar(select(DeclarationDecision).where(DeclarationDecision.request_id == sent.id)) if sent else None
+    if not decision or decision.decision != "approved":
+        raise HTTPException(status_code=409, detail="customer_declaration_confirmation_required")
+    if case.customs_quota_number and case.customs_quota_number != payload.number:
+        raise HTTPException(status_code=409, detail="customs_quota_number_already_recorded")
+    case.customs_quota_number = payload.number
+    case.status = "فعال"
+    case.sync_version += 1
+    case.sync_source = "api"
+    case.sync_updated_at = datetime.now(timezone.utc)
+    db.add(AuditLog(actor_user_id=current_user.id, entity_type="case", entity_id=case.id,
+        action="record_customs_quota_number", new_value=payload.number, source="api"))
+    registration = db.scalar(select(CaseRegistrationRequest).where(CaseRegistrationRequest.registered_case_id == case.id).with_for_update())
+    if registration:
+        registration.status = "ACTIVE"
+        registration.updated_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(case)
+    return CaseRead.model_validate(case)
+
+
 @router.patch("/{case_id}", response_model=CaseRead)
 def update_case(case_id: str, payload: CaseUpdate, db: DbSession, current_user: CurrentUser) -> Case:
     case = _case_or_404(db, case_id)
     _require_case_action(db, current_user, case, Action.EDIT)
 
     changes = payload.model_dump(exclude_unset=True)
+    if changes.get("status") == "فعال" and case.operation_type in {"import", "export"} and not case.customs_quota_number:
+        raise HTTPException(status_code=409, detail="customs_quota_number_required_to_activate_case")
     if not changes:
         return case
 
@@ -252,3 +297,4 @@ def end_case_assignment(
     db.commit()
     db.refresh(assignment)
     return assignment
+

@@ -4,6 +4,7 @@ import os
 # their engine during import. CI supplies a disposable PostgreSQL database; the
 # SQLite fallback keeps the API regression suite runnable for contributors.
 os.environ.setdefault("APP_ENV", "test")
+os.environ.setdefault("DEV_IDENTITY_ENABLED", "true")
 os.environ.setdefault("DATABASE_URL", os.getenv("KRT_TEST_DATABASE_URL", "sqlite+pysqlite:///:memory:"))
 
 import pytest
@@ -15,6 +16,13 @@ from sqlalchemy.pool import StaticPool
 from app.db.deps import get_db
 from app.main import app
 from app.models.core import AuditLog, Case, CaseAccessGrant, CaseAssignment, Customer, Document, EmailVerification, Invitation, Organization, OrganizationMembership, Permission, SecurityEvent, Task, TaskMessage, User
+from app.models.auth import AuthSession, LoginThrottle, PasswordCredential
+from app.models.drafts import CaseDraft, DraftCorporateDocumentLink
+from app.models.product_review import DraftProductReview
+from app.models.draft_review import DraftCustomerReview
+from app.models.case_registration_request import CaseRegistrationRequest
+from app.models.declarations import DeclarationVersion, DeclarationRequest, DeclarationDecision
+from app.models.compliance import CorporateDocument, CorporateDocumentVersion, DocumentNotification
 
 
 @pytest.fixture()
@@ -39,13 +47,13 @@ def db(db_engine):
         # CI uses one migrated PostgreSQL database for the suite. API handlers
         # commit by design, so rollback alone cannot isolate examples there.
         # Delete in FK-safe order to keep every test independently repeatable.
-        for model in (SecurityEvent, CaseAccessGrant, EmailVerification, Invitation, OrganizationMembership, AuditLog, TaskMessage, Document, Task, CaseAssignment, Permission, Case, Organization, User, Customer):
+        for model in (DraftCustomerReview, DraftProductReview, DeclarationDecision, DeclarationRequest, DeclarationVersion, CaseRegistrationRequest, DraftCorporateDocumentLink, CaseDraft, DocumentNotification, CorporateDocumentVersion, CorporateDocument, AuthSession, PasswordCredential, LoginThrottle, SecurityEvent, CaseAccessGrant, EmailVerification, Invitation, OrganizationMembership, AuditLog, TaskMessage, Document, Task, CaseAssignment, Permission, Case, Organization, User, Customer):
             session.execute(delete(model))
         session.commit()
         yield session
     finally:
         session.rollback()
-        for model in (SecurityEvent, CaseAccessGrant, EmailVerification, Invitation, OrganizationMembership, AuditLog, TaskMessage, Document, Task, CaseAssignment, Permission, Case, Organization, User, Customer):
+        for model in (DraftCustomerReview, DraftProductReview, DeclarationDecision, DeclarationRequest, DeclarationVersion, CaseRegistrationRequest, DraftCorporateDocumentLink, CaseDraft, DocumentNotification, CorporateDocumentVersion, CorporateDocument, AuthSession, PasswordCredential, LoginThrottle, SecurityEvent, CaseAccessGrant, EmailVerification, Invitation, OrganizationMembership, AuditLog, TaskMessage, Document, Task, CaseAssignment, Permission, Case, Organization, User, Customer):
             session.execute(delete(model))
         session.commit()
         session.close()
@@ -80,3 +88,4 @@ def actors(db):
 @pytest.fixture()
 def auth_headers():
     return lambda user_id: {"X-User-ID": user_id}
+

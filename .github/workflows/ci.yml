@@ -9,6 +9,20 @@ permissions:
   contents: read
 
 jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend/frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install frontend dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Verify frontend
+        run: npm test && npm run build
   backend:
     runs-on: ubuntu-latest
     services:
@@ -43,10 +57,20 @@ jobs:
       - name: Run backend regression suite
         working-directory: backend
         run: pytest
+      - name: Generate reviewed staging upgrade SQL
+        working-directory: backend
+        run: alembic upgrade 0012_declaration_review:head --sql
   secret-scan:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_ENABLE_COMMENTS: 'false'
+

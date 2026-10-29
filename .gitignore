@@ -50,3 +50,5 @@ __pycache__/
 # Local screenshots / captures that may contain sensitive data
 screenshots/private/
 captures/
+backend/frontend/node_modules/
+backend/app/web/panel/

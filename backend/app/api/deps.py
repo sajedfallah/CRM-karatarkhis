@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import Depends, Header, HTTPException, status
+from fastapi import Depends, Header, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
@@ -13,11 +13,17 @@ DbSession = Annotated[Session, Depends(get_db)]
 
 def get_current_user(
     db: DbSession,
+    request: Request,
     x_user_id: Annotated[str | None, Header()] = None,
 ) -> User:
-    """DEV/STAGING identity adapter only; production requires a real adapter."""
-    if get_settings().app_env.lower() == "production":
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="production_auth_not_configured")
+    from app.services.authentication import session_user
+
+    user = session_user(db, request)
+    if user is not None:
+        return user
+    settings = get_settings()
+    if settings.app_env.lower() not in {"development", "test"} or not settings.dev_identity_enabled:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="missing_identity")
     if not x_user_id:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="missing_identity")
 
