@@ -123,7 +123,11 @@ def test_expiry_thresholds_dedupe_recipient_isolation_and_renewal(client, db, ac
     foreign = db.scalar(select(DocumentNotification).where(DocumentNotification.recipient_user_id == other.id))
     assert client.patch(f"/api/v1/notifications/{foreign.id}/read", headers=headers).status_code == 404
     assert client.patch(f"/api/v1/notifications/{own[0]['id']}/read", headers=headers).status_code == 204
-    assert client.get("/api/v1/notifications", headers=auth_headers(actors["manager_a"].id)).status_code == 403
+    customer_notifications = client.get("/api/v1/notifications", headers=auth_headers(actors["manager_a"].id))
+    assert customer_notifications.status_code == 200
+    # Case inbox is available; internal corporate expiry alerts remain private.
+    assert customer_notifications.json() == []
+    assert client.patch(f"/api/v1/notifications/{own[0]['id']}/read", headers=auth_headers(actors["manager_a"].id)).status_code == 404
     for offset in (23,30,31):
         scan_expiry(db, TODAY+timedelta(days=offset))
     assert db.scalar(select(func.count()).select_from(DocumentNotification)) == 8
