@@ -118,8 +118,14 @@ def record_customs_quota_number(case_id: str, payload: QuotaNumber, db: DbSessio
         raise HTTPException(status_code=404, detail="case_not_found")
     if case.operation_type not in {"import", "export"}:
         raise HTTPException(status_code=409, detail="import_or_export_case_required")
+    registration_guard = db.scalar(select(CaseRegistrationRequest).where(CaseRegistrationRequest.registered_case_id == case.id))
+    if registration_guard and registration_guard.status != "REGISTERED":
+        raise HTTPException(409, "registration_review_incomplete")
     version = db.scalar(select(DeclarationVersion).where(DeclarationVersion.case_id == case_id)
         .order_by(DeclarationVersion.version.desc()).limit(1))
+    review_after = (registration_guard.details or {}).get("_review_after") if registration_guard else None
+    if review_after and (not version or version.created_at.replace(tzinfo=timezone.utc) < datetime.fromisoformat(review_after)):
+        raise HTTPException(409, "fresh_declaration_required_after_correction")
     sent = db.scalar(select(DeclarationRequest).where(DeclarationRequest.version_id == version.id)) if version else None
     decision = db.scalar(select(DeclarationDecision).where(DeclarationDecision.request_id == sent.id)) if sent else None
     if not decision or decision.decision != "approved":

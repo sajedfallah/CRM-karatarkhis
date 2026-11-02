@@ -54,10 +54,14 @@ def _customer_request(db, user, request_id, editable=False):
 
 def _read(row, customer, include_admin_details=False, actor_id=None):
     details = dict(row.details or {})
+    correction_reason = details.pop("_correction_reason", None)
+    details.pop("_admin_action_history", None)
+    details.pop("_deleted_previous_status", None)
+    details.pop("_review_after", None)
     packing = details.pop("_packing_list_snapshot", None)
     if not include_admin_details:
         details.pop("corporate_document_version_ids", None)
-    return {"id": row.id, "customer_id": row.customer_id, "customer_name": customer.name,
+    return {"id": row.id, "correction_reason": correction_reason, "customer_id": row.customer_id, "customer_name": customer.name,
         "title": row.title, "operation_type": row.operation_type, "customs": row.customs,
         "hs_code": row.hs_code, "details": details,
         "packing_list_ready": bool(packing and packing.get("fingerprint") == _packing_fingerprint(row)),
@@ -154,7 +158,7 @@ def inbox(db: DbSession, user: CurrentUser, response: Response):
     _require_admin(user)
     response.headers["Cache-Control"] = "private, no-store"
     rows = db.scalars(select(CaseRegistrationRequest).where(
-        CaseRegistrationRequest.status.in_(("SUBMITTED", "REGISTERED"))).order_by(
+        CaseRegistrationRequest.status.in_(("SUBMITTED", "REGISTERED", "ACTIVE"))).order_by(
             CaseRegistrationRequest.submitted_at.desc(), CaseRegistrationRequest.created_at.desc()))
     result = []
     for row in rows:
@@ -497,11 +501,17 @@ def register(request_id: str, db: DbSession, user: CurrentUser, response: Respon
         return {**_read(row, db.get(Customer, row.customer_id), include_admin_details=True), "case_id": row.registered_case_id}
     if row.status != "SUBMITTED":
         raise HTTPException(409, "request_not_submitted")
-    case = Case(id="CASE-" + uuid4().hex[:20].upper(), customer_id=row.customer_id,
-        operation_type=row.operation_type, customs=row.customs, status="در انتظار پیش‌نویس اظهارنامه",
-        sync_version=0, sync_source="api", sync_updated_at=datetime.now(timezone.utc), created_by=user.id)
-    db.add(case)
-    db.flush()
+    case = db.get(Case, row.registered_case_id) if row.registered_case_id else None
+    if case:
+        case.customs = row.customs
+        case.operation_type = row.operation_type
+        case.status = "در انتظار پیش‌نویس اظهارنامه"
+    else:
+        case = Case(id="CASE-" + uuid4().hex[:20].upper(), customer_id=row.customer_id,
+            operation_type=row.operation_type, customs=row.customs, status="در انتظار پیش‌نویس اظهارنامه",
+            sync_version=0, sync_source="api", sync_updated_at=datetime.now(timezone.utc), created_by=user.id)
+        db.add(case)
+        db.flush()
     row.status, row.reviewed_by, row.reviewed_at, row.registered_case_id = "REGISTERED", user.id, datetime.now(timezone.utc), case.id
     db.add(AuditLog(actor_user_id=user.id, entity_type="case_registration_request", entity_id=row.id,
         action="approve_and_register", new_value=f"case_id={case.id}", source="api"))
@@ -511,3 +521,57 @@ def register(request_id: str, db: DbSession, user: CurrentUser, response: Respon
     response.headers["Cache-Control"] = "private, no-store"
     return {**_read(row, db.get(Customer, row.customer_id), include_admin_details=True), "case_id": case.id}
 
+
+
+class AdminRequestAction(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    reason: str = Field(min_length=3, max_length=1000)
+
+
+@router.get("/admin/deleted")
+def deleted_requests(db: DbSession, user: CurrentUser):
+    _require_admin(user)
+    rows = db.scalars(select(CaseRegistrationRequest).where(CaseRegistrationRequest.status == "DELETED"))
+    return [_read(row, db.get(Customer, row.customer_id), include_admin_details=True) for row in rows]
+
+
+@router.post("/{request_id}/admin-action/{action}")
+def admin_request_action(request_id: str, action: str, payload: AdminRequestAction,
+        db: DbSession, user: CurrentUser):
+    _require_admin(user)
+    row = db.scalar(select(CaseRegistrationRequest).where(CaseRegistrationRequest.id == request_id).with_for_update())
+    if not row:
+        raise HTTPException(404, "request_not_found")
+    if action not in {"correction", "delete", "restore"}:
+        raise HTTPException(422, "invalid_request_action")
+    case = db.get(Case, row.registered_case_id) if row.registered_case_id else None
+    if row.status == "ACTIVE" or (case and case.customs_quota_number):
+        raise HTTPException(409, "active_case_requires_separate_authorized_revision")
+    details = dict(row.details or {})
+    previous = row.status
+    if action == "restore":
+        if row.status != "DELETED":
+            raise HTTPException(409, "request_not_deleted")
+        row.status = details.pop("_deleted_previous_status", "SUBMITTED")
+    elif action == "delete":
+        if row.status == "DELETED":
+            raise HTTPException(409, "request_already_deleted")
+        details["_deleted_previous_status"] = row.status
+        row.status = "DELETED"
+    else:
+        if row.status not in {"SUBMITTED", "REGISTERED"}:
+            raise HTTPException(409, "request_not_reviewable")
+        row.status = "DRAFT"
+        details["_correction_reason"] = payload.reason
+        details["_review_after"] = datetime.now(timezone.utc).isoformat()
+        details.pop("_packing_list_snapshot", None)
+        if case:
+            case.status = "در انتظار اصلاح اطلاعات توسط مشتری"
+    details["_admin_action_history"] = [*(details.get("_admin_action_history") or []),
+        {"action": action, "reason": payload.reason, "from": previous, "actor": user.id,
+         "at": datetime.now(timezone.utc).isoformat()}]
+    row.details = details
+    db.add(AuditLog(actor_user_id=user.id, entity_type="case_registration_request",
+        entity_id=row.id, action="admin_"+action, new_value=payload.reason, source="api"))
+    db.commit()
+    return _read(row, db.get(Customer, row.customer_id), include_admin_details=True)
