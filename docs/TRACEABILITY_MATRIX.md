@@ -170,3 +170,14 @@ are pending.
 
 ## 2026-11-02 — Export intake and unified case workspace
 Export registration now requires saved structured shipment/product details and an audited packing-list snapshot before customer submission. Editing invalidates the generated draft. Customer navigation groups import/export lists; declaration approval, documents table and case conversation are shown within the same registered request. Admin declaration upload has an explicit heading and shortcut. Initial packing output supports browser print/save as PDF; merged corporate-document PDF package remains incomplete. Existing submitted cases remain readable. No production migration or data change. TypeScript and Python compilation pass; PostgreSQL CI and Preview verification pending.
+
+
+## 2026-11-02 — case workspace corrections
+Status: PASS for automated regression; PARTIAL for manual dual-account UAT.
+- Export route initializes and submits operation_type=export, independent of previous import form state.
+- Shared back navigation, compact request headings, tabular case documents and per-case chat.
+- Admin reason/audit commands return pre-quota submissions for correction, remove them recoverably and restore them. Customer lists and detail access exclude removed requests.
+- Registered corrections reuse the existing case; quota registration requires a fresh customer-reviewed declaration after correction. Active/quota cases reject these intake actions.
+- CI run 41459274053 succeeded (backend, frontend, zero-to-head migrations, secret scan); preceding run 41456081046 verified the new correction/delete/restore regression with 86 backend tests.
+- Browser admin view verified tables, pending customer approval, correction/delete controls and chat tab. No real cases were deleted/reopened and no customer messages were sent during QA. Customer live session/manual completion was not available; role/tenant behavior was checked by the automated suite.
+- Preview only at https://crm.nexustrade.ir; Production unchanged. Recoverable removal is not permanent purge; full canonical submission revisions/PDF package merge remain separate unfinished work.
