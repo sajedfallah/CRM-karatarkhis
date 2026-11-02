@@ -81,6 +81,8 @@ def invite_customer_manager(customer_id: str, db: DbSession, current_user: Curre
         Invitation.status == "pending", Invitation.revoked_at.is_(None), Invitation.expires_at > utc_now())):
         pending.status = "revoked"
         pending.revoked_at = utc_now()
+    # Persist revocations before duplicate detection (session autoflush is disabled).
+    db.flush()
     db.add(AuditLog(actor_user_id=current_user.id, entity_type="customer", entity_id=customer.id,
         action="invite_customer_manager", new_value="Admin resent company manager invitation", source="api"))
     result = issue_customer_manager(db, org, customer.email, current_user.id)
