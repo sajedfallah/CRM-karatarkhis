@@ -23,15 +23,38 @@ def send_invitation_email(invitation: Invitation, token: str) -> str:
     if not settings.resend_api_key or url.scheme != "https" or not url.netloc or url.path or url.query or url.fragment:
         raise HTTPException(503, "email_delivery_not_configured")
     link = origin + "/activate#token=" + token
+    purpose = getattr(invitation, "purpose", "")
+    role = getattr(invitation, "role", "")
+    if purpose == "customer_manager":
+        subject = "به کاراترخیص خوش آمدید"
+        intro = ("به کاراترخیص خوش آمدید. از اینکه ما را برای همراهی در مسیر تجارت و ترخیص "
+                 "انتخاب کرده‌اید، سپاسگزاریم.")
+        access = ""
+    elif purpose == "customer_employee" or role == "customer_employee":
+        subject = "دعوت به پنل شرکت در کاراترخیص"
+        intro = "مدیر شرکت شما را برای استفاده از پنل کاراترخیص دعوت کرده است."
+        access = "پس از فعال‌سازی می‌توانید در محدودهٔ دسترسی تعیین‌شده، پرونده‌ها و امور شرکت را پیگیری کنید."
+    else:
+        subject = "دعوت به کاراترخیص — فعال‌سازی حساب"
+        intro = "برای شما در سامانهٔ کاراترخیص دسترسی کاربری ایجاد شده است."
+        access = "پس از فعال‌سازی می‌توانید از امکانات متناسب با نقش کاربری خود استفاده کنید."
+    body = (
+        ("مدیر محترم،\n" if purpose == "customer_manager" else "")
+        + "با سلام و احترام،\n\n"
+        + intro + "\n\n"
+        + (access + "\n\n" if access else "")
+        + "برای فعال‌کردن حساب و تعیین نام و رمز عبور شخصی خود، از پیوند امن زیر استفاده کنید:\n"
+        + link + "\n\n"
+        + "این پیوند فقط یک‌بار قابل استفاده است و تا ۲۴ ساعت اعتبار دارد. لطفاً آن را در اختیار دیگران قرار ندهید.\n\n"
+        + "اگر انتظار دریافت این دعوت را نداشتید، پیوند را باز نکنید و این پیام را نادیده بگیرید.\n\n"
+        + "با آرزوی همکاری ثمربخش،\nتیم کاراترخیص"
+    )
     try:
         response = httpx.post("https://api.resend.com/emails", timeout=20,
             headers={"Authorization": "Bearer " + settings.resend_api_key.get_secret_value(),
                      "Idempotency-Key": "invitation/" + invitation.id},
             json={"from": settings.email_from, "to": [invitation.email],
-                  "subject": "دعوت به کاراترخیص — فعال‌سازی حساب",
-                  "text": "برای تأیید ایمیل و تعیین رمز حساب کاراترخیص، لینک زیر را باز کنید.\n"
-                          "این لینک یک‌بارمصرف است و پس از ۲۴ ساعت منقضی می‌شود.\n\n" + link +
-                          "\n\nاگر این دعوت را انتظار نداشتید، آن را نادیده بگیرید."})
+                  "subject": subject, "text": body})
         response.raise_for_status()
         message_id = response.json().get("id")
         if not message_id:
@@ -100,7 +123,7 @@ def _issue_invitation(db: Session, organization: Organization, email: str, role:
         token_hash=token_hash(token), expires_at=utc_now() + timedelta(hours=24), status="pending")
     db.add(invitation)
     db.add(SecurityEvent(user_id=actor_id, organization_id=organization.id, event_type="invitation_created"))
-    delivery = SimpleNamespace(id=invitation.id, email=invitation.email)
+    delivery = SimpleNamespace(id=invitation.id, email=invitation.email, purpose=purpose, role=role)
     db.commit()  # No external HTTP call inside the database transaction.
     try:
         message_id = send_invitation_email(delivery, token)
