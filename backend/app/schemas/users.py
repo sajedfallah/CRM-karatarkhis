@@ -31,6 +31,9 @@ class CurrentUserRead(BaseModel):
     permission_profile: str
     is_active: bool
     workspace_url: str | None
+    organization_id: str | None = None
+    membership_id: str | None = None
+    scope_type: str | None = None
 
 
 class UserCreate(BaseModel):

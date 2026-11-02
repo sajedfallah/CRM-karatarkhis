@@ -1,11 +1,30 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "cd frontend && npm ci --no-audit --no-fund",
+  "buildCommand": "cd frontend && npm run build && node -e \"require('node:fs').rmSync('node_modules', {recursive:true,force:true})\"",
+  "outputDirectory": "app/web/panel",
   "functions": {
     "api/index.py": {
-      "maxDuration": 60
+      "maxDuration": 60,
+      "excludeFiles": "{frontend/**,tests/**,__pycache__/**,.venv/**}"
     }
   },
   "routes": [
+    {
+      "src": "/app(?:/(.*))?",
+      "dest": "/api/index",
+      "transforms": [{"type":"request.path","op":"set","args":"/app/$1"}]
+    },
+    {
+      "src": "/(activate|login|account|auth-assets/.*)",
+      "dest": "/api/index",
+      "transforms": [{"type": "request.path", "op": "set", "args": "/$1"}]
+    },
+    {
+      "src": "/",
+      "dest": "/api/index",
+      "transforms": [{"type": "request.path", "op": "set", "args": "/"}]
+    },
     {
       "src": "/health",
       "dest": "/api/index",

@@ -19,6 +19,19 @@ class Customer(Base):
 
     id: Mapped[str] = mapped_column(String(32), primary_key=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    customer_type: Mapped[str | None] = mapped_column(String(24))
+    national_id: Mapped[str | None] = mapped_column(String(32))
+    registration_number: Mapped[str | None] = mapped_column(String(64))
+    economic_code: Mapped[str | None] = mapped_column(String(32))
+    contact_name: Mapped[str | None] = mapped_column(String(255))
+    phone: Mapped[str | None] = mapped_column(String(40))
+    mobile: Mapped[str | None] = mapped_column(String(40))
+    email: Mapped[str | None] = mapped_column(String(320))
+    province: Mapped[str | None] = mapped_column(String(100))
+    city: Mapped[str | None] = mapped_column(String(100))
+    postal_code: Mapped[str | None] = mapped_column(String(20))
+    address: Mapped[str | None] = mapped_column(String(2000))
+
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     drive_folder_id: Mapped[str | None] = mapped_column(String(128), unique=True)
     drive_provisioning_status: Mapped[str] = mapped_column(String(32), nullable=False, default="pending")
@@ -52,6 +65,7 @@ class Organization(Base):
     type: Mapped[str] = mapped_column(String(16), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     slug: Mapped[str] = mapped_column(String(128), unique=True, nullable=False)
+    customer_id: Mapped[str | None] = mapped_column(ForeignKey("customers.id", ondelete="RESTRICT"), unique=True)
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="active")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
@@ -78,6 +92,7 @@ class Invitation(Base):
     organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), index=True)
     email: Mapped[str] = mapped_column(String(320), index=True)
     role: Mapped[str] = mapped_column(String(64), nullable=False)
+    purpose: Mapped[str] = mapped_column(String(32), nullable=False, default="internal")
     scope_type: Mapped[str] = mapped_column(String(32), nullable=False)
     invited_by: Mapped[str | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     token_hash: Mapped[str] = mapped_column(String(128), unique=True, nullable=False)
@@ -123,12 +138,14 @@ class SecurityEvent(Base):
 
 class Case(Base):
     __tablename__ = "cases"
+    __table_args__ = (UniqueConstraint("customs_quota_number", name="uq_cases_customs_quota_number"),)
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     customer_id: Mapped[str] = mapped_column(ForeignKey("customers.id", ondelete="RESTRICT"), nullable=False, index=True)
     real_case_number: Mapped[str | None] = mapped_column(String(128), index=True)
     operation_type: Mapped[str] = mapped_column(String(32), nullable=False)
     customs: Mapped[str] = mapped_column(String(64), nullable=False)
+    customs_quota_number: Mapped[str | None] = mapped_column(String(128))
     status: Mapped[str] = mapped_column(String(64), nullable=False, default="پیش‌نویس")
     sync_version: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     sync_source: Mapped[str | None] = mapped_column(String(32))
@@ -244,3 +261,4 @@ class AuditLog(Base):
     new_value: Mapped[str | None] = mapped_column(Text)
     source: Mapped[str] = mapped_column(String(32), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+

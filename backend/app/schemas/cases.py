@@ -33,6 +33,7 @@ class CaseRead(BaseModel):
     created_by: str | None
     created_at: datetime
     updated_at: datetime
+    customs_quota_number: str | None = None
 
 
 class AssignmentCreate(BaseModel):
@@ -54,3 +55,4 @@ class AssignmentRead(BaseModel):
     assigned_by: str | None
     assigned_at: datetime
     ended_at: datetime | None
+
