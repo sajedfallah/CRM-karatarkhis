@@ -124,3 +124,9 @@ html,body,#root{width:100%;min-height:100%;overflow-x:hidden}.workspace{min-heig
 @media(max-width:700px){.case-workflow-messages{padding-inline:15px}.workflow-message-composer{grid-template-columns:1fr}.workflow-message-composer label:first-child{grid-column:auto}}
 @media(max-width:720px){.case-registration-timeline{padding:16px 12px}.case-registration-steps{display:flex;overflow-x:auto;overscroll-behavior-inline:contain;padding:2px 0 10px;scrollbar-color:#b9cbea transparent;scrollbar-width:thin}.case-registration-steps li{flex:0 0 132px}.case-registration-step-copy{padding-inline:3px}.case-registration-step-copy strong{font-size:10px}.case-registration-step-copy small{font-size:9px}}
 @media(min-width:1200px){.operational-timeline{width:100%;min-width:0}.operational-timeline li{flex:1 1 0}.operational-timeline li>div{max-width:170px}}
+
+.table-scroll{width:100%;overflow-x:auto}.request-documents-table{width:100%;border-collapse:collapse;min-width:650px}.request-documents-table th,.request-documents-table td{padding:12px;text-align:right;border-bottom:1px solid #dbeafe}.request-documents-table th{background:#eff6ff;color:#1e3a8a}.request-documents-table caption{text-align:right;font-weight:700;padding:12px}.request-documents-table tbody tr:nth-child(even){background:#f8fbff}
+
+
+.admin-declaration-panel{scroll-margin-top:24px;border:2px solid #93c5fd;border-radius:14px;padding:18px;margin-block:24px;background:#f8fbff}.admin-declaration-panel h2{color:#1e3a8a}
+

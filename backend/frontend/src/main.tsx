@@ -44,17 +44,16 @@ function ErrorState({retry}:{retry:()=>void}){return <div className="error-state
 
 function CaseNavigation({user,pendingCount,onNavigate}:{user:User;pendingCount:number;onNavigate:()=>void}){
   const pathname=useRouterState({select:state=>state.location.pathname});
-  const inGroup=/\/(cases|drafts|declarations|documents|customer-reviews|case-requests)\/?$/.test(pathname);
+  const inGroup=pathname.includes('/cases/')||/\/(cases|drafts|declarations|documents|customer-reviews|case-requests)\/?$/.test(pathname);
   const [open,setOpen]=useState(inGroup);
   useEffect(()=>{if(inGroup)setOpen(true);},[pathname,inGroup]);
   return <details className={'nav-group'+(inGroup?' is-current':'')} open={open} onToggle={event=>setOpen(event.currentTarget.open)}>
     <summary className="nav-item"><Files size={18}/><span>پرونده‌ها</span>{pendingCount>0&&<span className="nav-count" aria-label="درخواست‌های نیازمند بررسی">{pendingCount.toLocaleString('fa-IR')}</span>}<ChevronDown size={15} className="nav-chevron"/></summary>
       <div className="nav-children">
-      <Link to="/cases" onClick={onNavigate} activeProps={{className:'nav-item active'}} className="nav-item">فهرست پرونده‌ها</Link>
-      {(user.role==='customer_manager'||user.role==='customer_employee')&&<Link to="/case-requests" onClick={onNavigate} activeProps={{className:'nav-item active'}} className="nav-item">درخواست ثبت پرونده</Link>}
-      {user.role==='customer_manager'&&<Link to="/declarations" onClick={onNavigate} activeProps={{className:'nav-item active'}} className="nav-item">پیش‌نویس اظهارنامه</Link>}
-      {user.role==='customer_manager'&&<Link to="/customer-reviews" onClick={onNavigate} activeProps={{className:'nav-item active'}} className="nav-item">بازبینی اطلاعات پرونده</Link>}
-      {user.role!=='admin'&&<Link to="/documents" onClick={onNavigate} activeProps={{className:'nav-item active'}} className="nav-item">اسناد پرونده‌ها</Link>}
+      {(user.role==='customer_manager'||user.role==='customer_employee')?<>
+      <Link to="/cases/export" onClick={onNavigate} activeProps={{className:'nav-item active'}} className="nav-item">صادرات</Link>
+      <Link to="/cases/import" onClick={onNavigate} activeProps={{className:'nav-item active'}} className="nav-item">واردات</Link>
+      </>:<Link to="/cases" onClick={onNavigate} activeProps={{className:'nav-item active'}} className="nav-item">فهرست پرونده‌ها</Link>}
     </div>
   </details>;
 }
@@ -112,12 +111,14 @@ function ResourcePage({resource}:{resource:Resource}){
 
 function Declarations(){const user=useUser();return user.role==='admin'?<CaseRegistrationRequestsPage key={user.id} admin identityId={user.id}/>:<DeclarationsPage admin={false}/>;}
 function Drafts(){const user=useUser();return user.role==='admin'?<CaseRegistrationRequestsPage key={user.id} admin identityId={user.id}/>:user.role==='customer_manager'||user.role==='customer_employee'?<CaseRegistrationRequestsPage key={user.id} admin={false} identityId={user.id}/>:<p role="alert">دسترسی به این بخش برای این نقش فعال نیست.</p>;}
-function CaseRequests(){const user=useUser();return user.role==='admin'?<CaseRegistrationRequestsPage key={user.id} admin identityId={user.id}/>:user.role==='customer_manager'||user.role==='customer_employee'?<CaseRegistrationRequestsPage key={user.id} admin={false} identityId={user.id}/>:<ResourcePage resource="cases"/>;}
+function CaseRequests({operationFilter}:{operationFilter?:'import'|'export'}){const user=useUser();return user.role==='admin'?<CaseRegistrationRequestsPage key={user.id} admin identityId={user.id}/>:user.role==='customer_manager'||user.role==='customer_employee'?<CaseRegistrationRequestsPage key={user.id+operationFilter} admin={false} identityId={user.id} operationFilter={operationFilter}/>:<ResourcePage resource="cases"/>;}
 function CustomerTeam(){const user=useUser();return user.role==='customer_manager'?<CustomerTeamPage organizationId={user.organization_id}/>:<p role="alert">این بخش فقط برای مدیر شرکت فعال است.</p>;}
 const rootRoute=createRootRoute({component:Frame});
 const overviewRoute=createRoute({getParentRoute:()=>rootRoute,path:'/',component:Overview});
 const customersRoute=createRoute({getParentRoute:()=>rootRoute,path:'/customers',component:()=> <ResourcePage resource="customers"/>});
 const casesRoute=createRoute({getParentRoute:()=>rootRoute,path:'/cases',component:()=> <CaseRequests/>});
+const exportCasesRoute=createRoute({getParentRoute:()=>rootRoute,path:'/cases/export',component:()=> <CaseRequests operationFilter="export"/>});
+const importCasesRoute=createRoute({getParentRoute:()=>rootRoute,path:'/cases/import',component:()=> <CaseRequests operationFilter="import"/>});
 const caseRequestsRoute=createRoute({getParentRoute:()=>rootRoute,path:'/case-requests',component:()=> <CaseRequests/>});
 const tasksRoute=createRoute({getParentRoute:()=>rootRoute,path:'/tasks',component:()=> <ResourcePage resource="tasks"/>});
 const documentsRoute=createRoute({getParentRoute:()=>rootRoute,path:'/documents',component:()=> <ResourcePage resource="documents"/>});
@@ -126,7 +127,8 @@ const declarationsRoute=createRoute({getParentRoute:()=>rootRoute,path:'/declara
 const draftsRoute=createRoute({getParentRoute:()=>rootRoute,path:'/drafts',component:Drafts});
 const customerReviewsRoute=createRoute({getParentRoute:()=>rootRoute,path:'/customer-reviews',component:CustomerDraftReviewsPage});
 const teamRoute=createRoute({getParentRoute:()=>rootRoute,path:'/team',component:CustomerTeam});
-const router=createRouter({routeTree:rootRoute.addChildren([overviewRoute,customersRoute,casesRoute,caseRequestsRoute,tasksRoute,documentsRoute,notificationsRoute,draftsRoute,declarationsRoute,customerReviewsRoute,teamRoute]),basepath:'/app',defaultPreload:'intent'});
+const router=createRouter({routeTree:rootRoute.addChildren([overviewRoute,customersRoute,casesRoute,exportCasesRoute,importCasesRoute,caseRequestsRoute,tasksRoute,documentsRoute,notificationsRoute,draftsRoute,declarationsRoute,customerReviewsRoute,teamRoute]),basepath:'/app',defaultPreload:'intent'});
 declare module '@tanstack/react-router'{interface Register{router:typeof router}}
 const client=new QueryClient({defaultOptions:{queries:{retry:false,staleTime:30000}}});
 createRoot(document.getElementById('root')!).render(<React.StrictMode><QueryClientProvider client={client}><RouterProvider router={router}/></QueryClientProvider></React.StrictMode>);
+

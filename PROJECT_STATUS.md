@@ -303,3 +303,7 @@ created for live verification.
 ## Customer company accounts and employee invitations — implementation prepared
 
 The admin customer form uses the company manager's email and the customer organization receives a one-time activation invitation. The manager can invite employees from «کارمندان شرکت»; management is confined to that manager's active organization. Declaration-review invitations retain their restricted permission through a distinct invitation purpose. Migration 0017 was applied only on staging branch staging-iam-20261027. Preview is READY at https://crm-karatarkhis-6mkgn93ul-fallahsajed-2126s-projects.vercel.app; authenticated customer UAT remains pending; no customer or employee account was created and no invitation email was sent in this implementation. Production remains untouched.
+
+
+## 2026-11-02 — Export intake and unified case workspace
+Export registration now requires saved structured shipment/product details and an audited packing-list snapshot before customer submission. Editing invalidates the generated draft. Customer navigation groups import/export lists; declaration approval, documents table and case conversation are shown within the same registered request. Admin declaration upload has an explicit heading and shortcut. Initial packing output supports browser print/save as PDF; merged corporate-document PDF package remains incomplete. Existing submitted cases remain readable. No production migration or data change. TypeScript and Python compilation pass; PostgreSQL CI and Preview verification pending.

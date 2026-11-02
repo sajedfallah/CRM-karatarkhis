@@ -27,3 +27,4 @@ export function registrationTimeline(status:RegistrationStatus,declarationStatus
     state:index<current?'complete':index===current?'current':'upcoming',
   }));
 }
+

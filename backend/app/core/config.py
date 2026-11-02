@@ -15,6 +15,8 @@ class Settings(BaseSettings):
     auth_public_url: str | None = None
     resend_api_key: SecretStr | None = None
     email_from: str = "Karatarkhis <onboarding@resend.dev>"
+    ai_gateway_api_key: SecretStr | None = None
+    ai_review_model: str = "openai/gpt-4o-mini"
     admin_bootstrap_email: str | None = None
     admin_bootstrap_token: SecretStr | None = None
 

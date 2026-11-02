@@ -19,3 +19,4 @@ export function CaseRegistrationTimeline({requestId,status,caseId}:{requestId:st
     {latestStatus==='correction_required'&&<p className="case-registration-timeline-note" role="status">درخواست اصلاح مشتری ثبت شده است؛ پس از بارگذاری نسخهٔ جدید، سند دوباره برای تأیید ارسال می‌شود.</p>}
   </section>;
 }
+

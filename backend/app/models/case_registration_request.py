@@ -16,6 +16,8 @@ class CaseRegistrationRequest(Base):
     operation_type: Mapped[str] = mapped_column(String(16), nullable=False)
     customs: Mapped[str] = mapped_column(String(64), nullable=False)
     hs_code: Mapped[str] = mapped_column(String(12), nullable=False)
+    details: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict, server_default="{}")
+    ai_review: Mapped[dict | None] = mapped_column(JSON)
     documents: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     status: Mapped[str] = mapped_column(String(24), nullable=False, default="DRAFT", server_default="DRAFT", index=True)
     submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
