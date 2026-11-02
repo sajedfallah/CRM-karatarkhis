@@ -38,7 +38,7 @@ def _customer_actor(user):
 
 def _customer_request(db, user, request_id, editable=False):
     row = db.scalar(select(CaseRegistrationRequest).where(CaseRegistrationRequest.id == request_id).with_for_update()) if editable else db.get(CaseRegistrationRequest, request_id)
-    if not row:
+    if not row or (row.status == "DELETED" and user.role != "admin"):
         raise HTTPException(404, "request_not_found")
     if user.role != "admin":
         customer_id = _customer_actor(user)
@@ -145,7 +145,7 @@ class UpdateRequest(BaseModel):
 def mine(db: DbSession, user: CurrentUser, response: Response):
     customer_id = _customer_actor(user)
     response.headers["Cache-Control"] = "private, no-store"
-    query = select(CaseRegistrationRequest).where(CaseRegistrationRequest.customer_id == customer_id)
+    query = select(CaseRegistrationRequest).where(CaseRegistrationRequest.customer_id == customer_id, CaseRegistrationRequest.status != "DELETED")
     if user.role == "customer_employee":
         query = query.where(CaseRegistrationRequest.created_by == user.id)
     rows = db.scalars(query.order_by(CaseRegistrationRequest.created_at.desc()))
@@ -201,7 +201,7 @@ def create(payload: CreateRequest, db: DbSession, user: CurrentUser, response: R
 @router.get("/{request_id}")
 def detail(request_id: str, db: DbSession, user: CurrentUser, response: Response):
     row = _customer_request(db, user, request_id)
-    if user.role == "admin" and row.status not in {"SUBMITTED", "REGISTERED"}:
+    if user.role == "admin" and row.status not in {"SUBMITTED", "REGISTERED", "ACTIVE", "DELETED"}:
         raise HTTPException(404, "request_not_found")
     response.headers["Cache-Control"] = "private, no-store"
     return _read(row, db.get(Customer, row.customer_id), include_admin_details=user.role == "admin", actor_id=user.id)
@@ -281,7 +281,7 @@ def upload_document(request_id: str, db: DbSession, user: CurrentUser,
 @router.get("/{request_id}/documents/{document_id}/file")
 def download_document(request_id: str, document_id: str, db: DbSession, user: CurrentUser):
     row = _customer_request(db, user, request_id)
-    if user.role == "admin" and row.status not in {"SUBMITTED", "REGISTERED"}:
+    if user.role == "admin" and row.status not in {"SUBMITTED", "REGISTERED", "ACTIVE", "DELETED"}:
         raise HTTPException(404, "request_not_found")
     doc = next((item for item in row.documents if item["id"] == document_id), None)
     if not doc:
@@ -305,8 +305,7 @@ def download_document(request_id: str, document_id: str, db: DbSession, user: Cu
 
 
 def _packing_source(row):
-    details = copy.deepcopy(row.details or {})
-    details.pop("_packing_list_snapshot", None)
+    details = {key: copy.deepcopy(value) for key, value in (row.details or {}).items() if not key.startswith("_")}
     details.pop("corporate_document_version_ids", None)
     return {"title": row.title, "customs": row.customs, "details": details}
 
@@ -433,7 +432,7 @@ def set_export_document_selection(request_id: str, payload: ExportDocumentSelect
 def get_ai_review(request_id: str, db: DbSession, user: CurrentUser, response: Response):
     _require_admin(user)
     row = db.get(CaseRegistrationRequest, request_id)
-    if not row or row.status not in {"SUBMITTED", "REGISTERED"}:
+    if not row or row.status not in {"SUBMITTED", "REGISTERED", "ACTIVE", "DELETED"}:
         raise HTTPException(404, "request_not_found")
     stored = row.ai_review
     current_fingerprint = source_fingerprint(row.documents or [])
@@ -452,7 +451,7 @@ def get_ai_review(request_id: str, db: DbSession, user: CurrentUser, response: R
 async def run_ai_review(request_id: str, db: DbSession, user: CurrentUser, response: Response):
     _require_admin(user)
     row = db.get(CaseRegistrationRequest, request_id)
-    if not row or row.status not in {"SUBMITTED", "REGISTERED"}:
+    if not row or row.status not in {"SUBMITTED", "REGISTERED", "ACTIVE", "DELETED"}:
         raise HTTPException(404, "request_not_found")
     documents = [dict(item) for item in (row.documents or [])]
     snapshot_fingerprint = source_fingerprint(documents)
