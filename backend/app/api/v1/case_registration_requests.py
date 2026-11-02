@@ -215,8 +215,8 @@ def update(request_id: str, payload: UpdateRequest, db: DbSession, user: Current
     row.title, row.operation_type, row.customs = payload.title, payload.operation_type, payload.customs
     row.hs_code = (payload.details.products[0].hs_code if payload.operation_type == "export" and payload.details.products else payload.hs_code)
     previous_selection = (row.details or {}).get("corporate_document_version_ids", [])
-    row.details = _customer_details(payload)
-    row.details["corporate_document_version_ids"] = previous_selection
+    internal = {key: value for key, value in (row.details or {}).items() if key.startswith("_") and key != "_packing_list_snapshot"}
+    row.details = {**_customer_details(payload), **internal, "corporate_document_version_ids": previous_selection}
     row.updated_at = datetime.now(timezone.utc)
     db.add(AuditLog(actor_user_id=user.id, entity_type="case_registration_request", entity_id=row.id,
         action="update", source="api"))
